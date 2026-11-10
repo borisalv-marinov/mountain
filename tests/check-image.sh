@@ -122,6 +122,24 @@ check_phase10() {
   if grep -rl "Mountain" /usr/share/applications /etc/xdg | grep -q .; then fail "hard-coded name in applications or /etc/xdg"; fi
 }
 
+check_phase11() {
+  local k=/usr/share/Kvantum/MountainGlass n=0 f
+  assert_cmd kvantummanager
+  assert_file "$k/MountainGlass.kvconfig"
+  assert_file "$k/MountainGlass.svg"
+  assert_grep '^translucent_windows=true$' "$k/MountainGlass.kvconfig"
+  assert_grep '^theme=MountainGlass$' /etc/xdg/Kvantum/kvantum.kvconfig
+  assert_grep '^widgetStyle=kvantum$' /etc/xdg/kdeglobals
+  assert_grep '^ButtonsOnRight=IAX$' /etc/xdg/kwinrc
+  assert_grep '^blurEnabled=true$' /etc/xdg/kwinrc
+  for f in /etc/skel/Desktop/*.desktop; do
+    [[ -x $f ]] || fail "not executable: $f"
+    grep -qE '^(Exec|URL)=' "$f" || fail "no Exec/URL: $f"
+    n=$((n+1))
+  done
+  (( n >= 9 )) || fail "only $n desktop icons in /etc/skel/Desktop"
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

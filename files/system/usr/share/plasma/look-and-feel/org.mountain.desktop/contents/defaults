@@ -2,10 +2,10 @@
 ColorScheme=BreezeDark
 
 [kdeglobals][KDE]
-widgetStyle=Breeze
+widgetStyle=kvantum
 
 [kdeglobals][Icons]
-Theme=breeze-dark
+Theme=Papirus-Dark
 
 [plasmarc][Theme]
 name=breeze-dark

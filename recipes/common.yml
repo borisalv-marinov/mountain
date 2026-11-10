@@ -22,6 +22,13 @@ modules:
         - python3
         - python3-pip
         - git
+        - kvantum
+        - kvantum-data
+        - papirus-icon-theme
+
+  - type: script
+    scripts:
+      - kvantum-glass.sh
 
   - type: default-flatpaks
     configurations:

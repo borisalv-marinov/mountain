@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Firefox
+Exec=flatpak run org.mozilla.firefox
+Icon=org.mozilla.firefox
