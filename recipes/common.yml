@@ -30,4 +30,9 @@ modules:
           - com.heroicgameslauncher.hgl
       - scope: user
 
+  - type: systemd
+    system:
+      enabled:
+        - mountain-gpu-check.service
+
   - type: signing

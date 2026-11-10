@@ -83,6 +83,30 @@ check_phase7() {
   assert_grep '^Persistent=true$' "$t"
 }
 
+check_phase9() {
+  local s=/usr/libexec/mountain-gpu-check d out want
+  assert_file "$s"
+  [[ -x $s ]] || fail "not executable: $s"
+  d=$(mktemp -d)
+  printf '#!/bin/sh
+echo "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation [10de:2484]"
+' > "$d/lspci"
+  chmod +x "$d/lspci"
+  export MOUNTAIN_STATE_DIR=$d/state
+  mkdir -p "$MOUNTAIN_STATE_DIR"
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    # NVIDIA image + NVIDIA GPU: already matching
+    out=$(PATH="$d:$PATH" "$s" --dry-run); [[ $out == "nothing to do" ]] || fail "expected 'nothing to do', got: $out"
+  else
+    want=ghcr.io/borisalv-marinov/mountain-nvidia:latest
+    out=$(PATH="$d:$PATH" "$s" --dry-run); [[ $out == "would switch to $want" ]] || fail "expected switch to $want, got: $out"
+    echo "$want" > "$MOUNTAIN_STATE_DIR/gpu-switched"
+    out=$(PATH="$d:$PATH" "$s" --dry-run); [[ $out == "already switched" ]] || fail "expected 'already switched', got: $out"
+  fi
+  unset MOUNTAIN_STATE_DIR
+  rm -rf "$d"
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
