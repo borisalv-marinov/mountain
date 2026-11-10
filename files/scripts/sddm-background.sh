@@ -5,4 +5,4 @@ rsvg-convert -w 1920 -h 1080 -f png -o /usr/share/mountain/wallpaper.png /usr/sh
 for d in /usr/share/sddm/themes/*/; do
   [[ -f ${d}theme.conf ]] && printf '[General]\ntype=image\nbackground=/usr/share/mountain/wallpaper.png\n' > "${d}theme.conf.user"
 done
-grep -q wallpaper.png /usr/share/sddm/themes/breeze/theme.conf.user
+ls /usr/share/sddm/themes; grep -rq wallpaper.png /usr/share/sddm/themes --include=theme.conf.user
