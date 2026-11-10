@@ -9,6 +9,6 @@ mv KvMojave.svg MountainGlass.svg
 for kv in translucent_windows=true blurring=true popup_blurring=true reduce_window_opacity=30 reduce_menu_opacity=15; do
   k=${kv%%=*}
   sed -i -E "/^$k=/d" MountainGlass.kvconfig
-  sed -i "0,/^\[General\]/s//[General]\n$kv/" MountainGlass.kvconfig
+  sed -i "0,/^\[%General\]/s//[%General]\n$kv/" MountainGlass.kvconfig
 done
 grep -q '^translucent_windows=true$' MountainGlass.kvconfig
