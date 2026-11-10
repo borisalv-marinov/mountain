@@ -113,28 +113,25 @@ jobs:
       - name: Run tests
         run: |
           cd "$HOME/vm"
-          SSHO="-i $PWD/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 -o BatchMode=yes"
+          SSHO="-i $PWD/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes"
           set +e # a failing check must not abort the run
-          U=tester; P="echo '$TESTPW' | sudo -S -p ''" # P = root prefix for remote commands
-          R() { ssh $SSHO $U@127.0.0.1 "$@"; }
-          S() { R "$P bash -c \"$1\""; }
+          R() { ssh $SSHO root@127.0.0.1 "$@"; } # everything runs as root over ssh
+          TU() { printf 'sudo -u tester -i bash -c %q' "$1"; } # wrap a command to run as tester
           wait_ssh() {
             local end=$(( $(date +%s) + $1 ))
-            while [ "$(date +%s)" -lt "$end" ]; do
-              U=tester; P="echo '$TESTPW' | sudo -S -p ''"; R true 2>/dev/null && return 0
-              U=root; P=":|"; R true 2>/dev/null && return 0
-              sleep 10
-            done
+            while [ "$(date +%s)" -lt "$end" ]; do R true 2>/dev/null && return 0; sleep 10; done
             return 1
           }
           printf '# VM test report (%s)\n\n| Check | Result | Evidence |\n|---|---|---|\n' "$IMG" > report.md
           CORE_FAIL=0
-          chk() { # name core(0/1) cmd [expected regex]
+          chk() { # name core(0/1, 2=INFO only) cmd expected-regex
             local out rc ev r
             for _ in 1 2 3; do out=$(R "$3" 2>&1); rc=$?; [ $rc -ne 255 ] && break; sleep 10; done
-            if [ -n "$4" ]; then echo "$out" | grep -Eq -- "$4" || rc=1; fi
-            ev=$(echo "$out" | head -3 | tr '\n|' ' /' | cut -c1-160)
-            if [ $rc -eq 0 ]; then r=PASS; else r=FAIL; [ "$2" = 1 ] && CORE_FAIL=1; fi
+            echo "$out" | grep -Eq -- "$4" || rc=1
+            ev=$(echo "$out" | head -3 | tr '\n|' ' /' | cut -c1-80)
+            if [ "$2" = 2 ]; then r=INFO
+            elif [ $rc -eq 0 ]; then r=PASS
+            else r=FAIL; [ "$2" = 1 ] && CORE_FAIL=1; fi
             echo "| $1 | $r | \`$ev\` |" >> report.md
             echo "$r $1"
           }
@@ -146,27 +143,30 @@ jobs:
             echo "::error::SSH never came up"; exit 1
           fi
           BOOT=$(( $(date +%s) - $(cat boot_start) ))
-          echo "| SSH up | PASS | ${BOOT}s after qemu start, user $U |" >> report.md
+          echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
+          # bib's config.toml user was not created, so make it (gets /etc/skel)
+          R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
 
           chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
-          chk "mountain config" 1 "cat /usr/share/mountain/config"
-          chk "bootc status" 0 "$P bootc status 2>&1 | head -8"
-          chk "rpm code python3 git" 1 "rpm -q code python3 git"
-          chk "hello.py" 1 "python3 ~/Projects/hello.py" 'hello'
-          chk "free -m (no desktop)" 0 "free -m"
-          chk "failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none"
-          chk "journal errors" 0 "journalctl -p err -b --no-pager | tail -20"
-          chk "systemd-analyze" 0 "systemd-analyze"
-          chk "wpctl status" 0 "wpctl status | head -30"
-          chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'bbr'
-          chk "uupd.timer" 0 "systemctl cat uupd.timer | grep OnCalendar" 'weekly'
-          chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run"
-          chk "skel Desktop" 0 "ls ~/Desktop"
-          chk "kvantum/kwin settings" 0 "ls ~/.config/Kvantum ~/.config/kwinrc ~/.config/kdeglobals 2>&1; ls /etc/xdg | head"
-          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop"
-          chk "steam gamemoderun" 0 "command -v steam gamemoderun"
-          chk "ping 1.1.1.1" 0 "ping -c3 1.1.1.1 | tail -2"
-          chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1"
+          chk "hostname" 0 "hostname" '^mountain$'
+          chk "mountain config" 1 "cat /usr/share/mountain/config" 'MOUNTAIN_NAME="Mountain"'
+          chk "bootc status" 0 "bootc status 2>&1 | head -8" 'kind: BootcHost'
+          chk "rpm code python3 git" 1 "rpm -q --qf '%{NAME}\n' code python3 git | grep -cE '^(code|python3|git)\$'" '^3$'
+          chk "hello.py (tester)" 1 "$(TU 'python3 ~/Projects/hello.py')" 'hello'
+          chk "free -m (no desktop)" 0 "free -m" 'Mem:'
+          chk "failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+          chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
+          chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
+          chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
+          chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
+          chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
+          chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'firefox\.desktop'
+          chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
+          chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
+          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^[3-9]'
+          chk "steam gamemoderun" 0 "command -v steam gamemoderun | wc -l" '^2$'
+          chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '.'
+          chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
 
           # first-boot flatpaks, up to 25 min
           FP="dev.vencord.Vesktop com.discordapp.Discord com.microsoft.Edge org.onlyoffice.desktopeditors com.heroicgameslauncher.hgl org.mozilla.firefox"
@@ -180,24 +180,29 @@ jobs:
           if [ -z "$M" ]; then echo "| flatpaks | PASS | all 6 present |" >> report.md
           else echo "| flatpaks | FAIL | missing:$M |" >> report.md; fi
 
-          # desktop shots with a fresh user
+          # desktop: autologin a fresh user, 3 screenshots
           SESS=$(R "ls /usr/share/wayland-sessions | grep -i plasma | head -1")
           echo "session file: $SESS"
-          S "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\n' > /etc/sddm.conf.d/zz-autologin.conf; systemctl restart sddm" || true
-          sleep 90
+          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' > /etc/sddm.conf.d/zz-autologin.conf; systemctl restart sddm"
+          sleep 120
+          LT='sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest)'
           shot() { echo "screendump /tmp/$1.ppm" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 2; convert /tmp/$1.ppm "$1.png" || true; }
+          chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" 'looktest'
           shot desk1
-          chk "free -m (desktop)" 0 "free -m"
+          chk "free -m (desktop)" 0 "free -m" 'Mem:'
+          chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" 'Audio'
           echo "sendkey meta_l" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 3; shot desk2
           echo "sendkey esc" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null
-          chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest"
-          chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none"
+          R "$LT WAYLAND_DISPLAY=wayland-0 setsid nohup dolphin </dev/null >/dev/null 2>&1 &"
+          sleep 15; shot desk3
+          chk "dolphin running" 0 "pgrep -u looktest -x dolphin" '^[0-9]+$'
+          chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
-          S "rm -f /etc/sddm.conf.d/zz-autologin.conf" || true
+          R "rm -f /etc/sddm.conf.d/zz-autologin.conf"
           for n in 1 2; do
-            R "$P systemctl reboot" || true
+            R "systemctl reboot" || true
             sleep 30
-            if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none"
+            if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
 

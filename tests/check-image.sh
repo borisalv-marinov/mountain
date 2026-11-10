@@ -140,6 +140,13 @@ check_phase11() {
   (( n >= 9 )) || fail "only $n desktop icons in /etc/skel/Desktop"
 }
 
+check_phase12() {
+  assert_file /usr/share/mountain/wallpaper.png
+  assert_grep 'wallpaper.png' /usr/share/sddm/themes/breeze/theme.conf.user
+  assert_grep '^mountain$' /etc/hostname
+  assert_file /etc/skel/Projects/hello.py
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

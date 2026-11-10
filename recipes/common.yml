@@ -25,10 +25,12 @@ modules:
         - kvantum
         - kvantum-data
         - papirus-icon-theme
+        - /usr/bin/rsvg-convert
 
   - type: script
     scripts:
       - kvantum-glass.sh
+      - sddm-background.sh
 
   - type: default-flatpaks
     configurations:
@@ -40,6 +42,7 @@ modules:
           - com.microsoft.Edge
           - org.onlyoffice.desktopeditors
           - com.heroicgameslauncher.hgl
+          - org.mozilla.firefox
       - scope: user
 
   - type: systemd
