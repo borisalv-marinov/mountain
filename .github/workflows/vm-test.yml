@@ -72,6 +72,8 @@ jobs:
             echo "password = \"$TESTPW\""
             echo "key = \"$(cat key.pub)\""
             echo 'groups = ["wheel"]'
+            echo '[customizations.services]'
+            echo 'enabled = ["sshd"]' # Bazzite ships sshd disabled
           } > config.toml
           mkdir -p output
           sudo podman run --rm --privileged --pull=newer \
