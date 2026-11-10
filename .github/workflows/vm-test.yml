@@ -1,6 +1,9 @@
 name: vm-test
 on:
   workflow_dispatch:
+  push: # lets the branch run it before the file exists on main
+    branches: [mountain-phases]
+    paths: ['.github/workflows/vm-test.yml']
   workflow_run:
     workflows: [bluebuild]
     types: [completed]
