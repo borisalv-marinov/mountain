@@ -9,6 +9,9 @@ modules:
     configurations:
       - notify: true
         scope: system
+        install:
+          - dev.vencord.Vesktop
+          - com.discordapp.Discord
       - scope: user
 
   - type: signing

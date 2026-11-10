@@ -36,6 +36,14 @@ check_phase1() {
   assert_cmd flatpak # Bazzite ships Firefox as a Flatpak installed at first boot, so it is not in the image
 }
 
+check_phase2() {
+  # list path per blue-build/modules default-flatpaks v1 script
+  for id in dev.vencord.Vesktop com.discordapp.Discord; do
+    assert_grep "$id" /usr/share/bluebuild/default-flatpaks/system/install
+  done
+  assert_cmd pw-cli
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

@@ -63,7 +63,7 @@ jobs:
     permissions:
       packages: read
     env:
-      MOUNTAIN_PHASE: 1
+      MOUNTAIN_PHASE: 2
     strategy:
       fail-fast: false
       matrix:
