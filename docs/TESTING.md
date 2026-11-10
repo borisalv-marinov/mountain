@@ -27,7 +27,7 @@
 - [ ] Task 8
 - [x] Task 9
 - [x] Task 10
-- [ ] Task 10b: glass look + desktop icons
+- [x] Task 10b: glass look + desktop icons
 
 ## Notes
 
