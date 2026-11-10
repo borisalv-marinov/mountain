@@ -1,8 +1,5 @@
 name: Try Mountain
 on:
-  push: # TEMP test trigger
-    branches: [mountain-phases]
-    paths: ['.github/workflows/try-mountain.yml']
   workflow_dispatch:
     inputs:
       minutes:
@@ -22,7 +19,7 @@ jobs:
       IMG: mountain
       BRANCH: ${{ github.ref_name }}
       TRY_PASSWORD: ${{ secrets.TRY_PASSWORD }}
-      MINUTES: ${{ inputs.minutes || '20' }}
+      MINUTES: ${{ inputs.minutes || '240' }}
     steps:
       - name: Check inputs
         run: |
