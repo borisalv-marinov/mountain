@@ -37,9 +37,9 @@ check_phase1() {
 }
 
 check_phase2() {
-  # list path per blue-build/modules default-flatpaks v1 script
+  # path per blue-build/modules default-flatpaks v2 (default-flatpaks.nu, configPath)
   for id in dev.vencord.Vesktop com.discordapp.Discord; do
-    assert_grep "$id" /usr/share/bluebuild/default-flatpaks/system/install
+    assert_grep "$id" /usr/share/bluebuild/default-flatpaks/configuration.yaml
   done
   assert_cmd pw-cli
 }
