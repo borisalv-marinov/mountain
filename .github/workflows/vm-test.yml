@@ -13,7 +13,7 @@ jobs:
   vm:
     name: Boot image in VM
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # 26.04 denies bib mounts
     timeout-minutes: 120
     permissions:
       contents: read
@@ -75,7 +75,7 @@ jobs:
           } > config.toml
           mkdir -p output
           sudo podman run --rm --privileged --pull=newer \
-            --security-opt label=type:unconfined_t \
+            --security-opt label=type:unconfined_t --security-opt apparmor=unconfined \
             -v "$PWD/config.toml:/config.toml:ro" \
             -v "$PWD/output:/output" \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
