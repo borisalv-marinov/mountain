@@ -107,6 +107,21 @@ echo "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation [10de:2484]"
   rm -rf "$d"
 }
 
+check_phase10() {
+  local l=/usr/share/plasma/look-and-feel/org.mountain.desktop p=/usr/share/kde-settings/kde-profile/default/xdg
+  # shellcheck disable=SC1091
+  source /usr/share/mountain/config
+  grep -q "^PRETTY_NAME=\"${MOUNTAIN_NAME} " /usr/lib/os-release || fail "PRETTY_NAME does not start with $MOUNTAIN_NAME"
+  assert_grep panel "$l/contents/layouts/org.kde.plasma.desktop-layout.js"
+  assert_grep "^LookAndFeelPackage=org.mountain.desktop$" /etc/xdg/kdeglobals
+  assert_grep "^blurEnabled=true$" /etc/xdg/kwinrc
+  assert_file /usr/share/mountain/wallpaper.svg
+  assert_grep "\"Name\": \"${MOUNTAIN_NAME}\"" "$l/metadata.json"
+  # Fedora's profile dir wins over /etc/xdg, so it must not set these keys
+  if grep -qsE '^(LookAndFeelPackage|blurEnabled)=' "$p/kdeglobals" "$p/kwinrc"; then fail "kde-profile overrides our defaults"; fi
+  if grep -rl "Mountain" /usr/share/applications /etc/xdg | grep -q .; then fail "hard-coded name in applications or /etc/xdg"; fi
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

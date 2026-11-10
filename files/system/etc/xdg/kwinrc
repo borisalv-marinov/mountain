@@ -1,0 +1,7 @@
+[Plugins]
+blurEnabled=true
+contrastEnabled=true
+wobblywindowsEnabled=false
+
+[Compositing]
+Enabled=true

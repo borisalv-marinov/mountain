@@ -1,0 +1,7 @@
+[KDE]
+LookAndFeelPackage=org.mountain.desktop
+widgetStyle=Breeze
+
+[General]
+ColorScheme=BreezeDark
+AccentColor=61,174,233

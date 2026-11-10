@@ -1,0 +1,12 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [{"Name": "@MOUNTAIN_NAME@"}],
+        "Description": "Dark, glossy look with a floating dock",
+        "Id": "org.mountain.desktop",
+        "License": "GPL-2.0+",
+        "Name": "@MOUNTAIN_NAME@",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2"
+}

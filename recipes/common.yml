@@ -5,6 +5,11 @@ modules:
       - source: system
         destination: /
 
+  - type: script
+    scripts:
+      - branding.sh
+      - kde-defaults.sh
+
   - type: dnf
     repos:
       files:

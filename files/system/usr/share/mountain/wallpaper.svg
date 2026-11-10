@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" width="3840" height="2160">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#05070f"/>
+      <stop offset="0.55" stop-color="#142347"/>
+      <stop offset="1" stop-color="#3a3f7a"/>
+    </linearGradient>
+    <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b4a85"/><stop offset="1" stop-color="#1c2650"/>
+    </linearGradient>
+    <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26325f"/><stop offset="1" stop-color="#101834"/>
+    </linearGradient>
+    <linearGradient id="near" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121a33"/><stop offset="1" stop-color="#05070f"/>
+    </linearGradient>
+  </defs>
+  <rect width="3840" height="2160" fill="url(#sky)"/>
+  <circle cx="2900" cy="560" r="170" fill="#dfe6ff" opacity="0.12"/>
+  <path fill="url(#far)" d="M0 1500 L420 1100 L760 1380 L1250 800 L1750 1300 L2200 950 L2750 1400 L3250 1000 L3840 1450 V2160 H0Z"/>
+  <path fill="url(#mid)" d="M0 1720 L500 1300 L900 1620 L1500 1060 L2050 1600 L2600 1220 L3200 1650 L3840 1330 V2160 H0Z"/>
+  <path fill="url(#near)" d="M0 1950 L600 1560 L1100 1860 L1800 1420 L2400 1880 L3000 1560 L3500 1850 L3840 1700 V2160 H0Z"/>
+</svg>
