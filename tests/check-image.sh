@@ -63,6 +63,17 @@ check_phase4() {
   assert_file /etc/skel/Projects/.keep
 }
 
+check_phase5() {
+  assert_grep org.onlyoffice.desktopeditors /usr/share/bluebuild/default-flatpaks/configuration.yaml
+}
+
+check_phase6() {
+  assert_grep com.heroicgameslauncher.hgl /usr/share/bluebuild/default-flatpaks/configuration.yaml
+  # steam is an RPM layered by Bazzite (build_files/bazzite/08-install-steam-lutris.sh).
+  # gamemode is removed by that same script, so gamemoderun is deliberately not checked.
+  assert_cmd steam
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

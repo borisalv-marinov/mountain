@@ -21,8 +21,8 @@
 - [x] Task 2
 - [x] Task 3
 - [x] Task 4
-- [ ] Task 5
-- [ ] Task 6
+- [x] Task 5
+- [x] Task 6
 - [ ] Task 7
 - [ ] Task 8
 - [ ] Task 9
@@ -30,3 +30,5 @@
 
 ## Notes
 
+- Squad (Steam app 393380) on ProtonDB, checked 2026-11-10: tier Gold (best reported Platinum), 648 reports, strong confidence. Anti-cheat (EAC) works on Linux; re-check before relying on it.
+- Bazzite ships `steam` as an RPM but removes `gamemode` (build_files/bazzite/08-install-steam-lutris.sh), so check_phase6 tests only `steam`.

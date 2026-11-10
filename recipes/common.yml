@@ -26,6 +26,8 @@ modules:
           - dev.vencord.Vesktop
           - com.discordapp.Discord
           - com.microsoft.Edge
+          - org.onlyoffice.desktopeditors
+          - com.heroicgameslauncher.hgl
       - scope: user
 
   - type: signing
