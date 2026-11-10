@@ -5,14 +5,18 @@ modules:
       - source: system
         destination: /
 
-  - type: rpm-ostree
+  - type: dnf
     repos:
-      - https://packages.microsoft.com/yumrepos/vscode/config.repo
+      files:
+        - https://packages.microsoft.com/yumrepos/vscode/config.repo
+      keys:
+        - https://packages.microsoft.com/keys/microsoft.asc
     install:
-      - code
-      - python3
-      - python3-pip
-      - git
+      packages:
+        - code
+        - python3
+        - python3-pip
+        - git
 
   - type: default-flatpaks
     configurations:
