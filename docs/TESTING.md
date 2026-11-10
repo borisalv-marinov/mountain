@@ -17,7 +17,7 @@
 ## Progress
 
 - [x] Task 0
-- [ ] Task 1
+- [x] Task 1
 - [ ] Task 2
 - [ ] Task 3
 - [ ] Task 4
@@ -26,7 +26,7 @@
 - [ ] Task 7
 - [ ] Task 8
 - [ ] Task 9
-- [ ] Task 10
+- [x] Task 10
 
 ## Notes
 
