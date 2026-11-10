@@ -86,7 +86,7 @@ jobs:
           fi
           SAFE="${BRANCH//\//-}"
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/${{ matrix.image }}" | jq -r '.Tags[]')
-          TAG=$(echo "$ALL" | grep -F -- "$SAFE" | tail -n 1 || true)
+          TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
           if [ -z "$TAG" ]; then
             echo "::error::No image tag contains '$SAFE'. All tags:"
             echo "$ALL"
