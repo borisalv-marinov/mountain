@@ -12,6 +12,7 @@ modules:
         install:
           - dev.vencord.Vesktop
           - com.discordapp.Discord
+          - com.microsoft.Edge
       - scope: user
 
   - type: signing

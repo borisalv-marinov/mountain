@@ -44,6 +44,18 @@ check_phase2() {
   assert_cmd pw-cli
 }
 
+check_phase3() {
+  assert_grep com.microsoft.Edge /usr/share/bluebuild/default-flatpaks/configuration.yaml
+  assert_cmd desktop-file-validate
+  local url f
+  for url in geforcenow=https://play.geforcenow.com xboxcloud=https://www.xbox.com/play boosteroid=https://cloud.boosteroid.com; do
+    f=/usr/share/applications/mountain-${url%%=*}.desktop
+    assert_file "$f"
+    assert_grep "^Exec=flatpak run com.microsoft.Edge --app=${url#*=}\$" "$f"
+    desktop-file-validate "$f" || fail "invalid desktop file: $f"
+  done
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
