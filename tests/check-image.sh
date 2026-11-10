@@ -142,7 +142,7 @@ check_phase11() {
 
 check_phase12() {
   assert_file /usr/share/mountain/wallpaper.png
-  grep -rq wallpaper.png /usr/share/sddm/themes --include=theme.conf.user || fail 'no sddm theme.conf.user'
+  assert_grep '^Image=file:///usr/share/mountain/wallpaper.png$' /usr/lib/plasmalogin/defaults.conf
   assert_grep '^mountain$' /etc/hostname
   assert_file /etc/skel/Projects/hello.py
 }
