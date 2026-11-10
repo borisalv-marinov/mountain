@@ -74,6 +74,15 @@ check_phase6() {
   assert_cmd steam
 }
 
+check_phase7() {
+  local s=/usr/lib/sysctl.d/90-mountain.conf t=/usr/lib/systemd/system/uupd.timer.d/mountain.conf
+  assert_grep '^net.core.default_qdisc = fq$' "$s"
+  assert_grep '^net.ipv4.tcp_congestion_control = bbr$' "$s"
+  # uupd.timer is Bazzite's update timer (ublue-os/uupd); no services are disabled on purpose
+  assert_grep '^OnCalendar=weekly$' "$t"
+  assert_grep '^Persistent=true$' "$t"
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
