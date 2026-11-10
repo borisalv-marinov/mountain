@@ -1,0 +1,14 @@
+---
+modules:
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  - type: default-flatpaks
+    configurations:
+      - notify: true
+        scope: system
+      - scope: user
+
+  - type: signing

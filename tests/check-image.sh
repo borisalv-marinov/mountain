@@ -30,6 +30,12 @@ check_phase0() {
   assert_file /usr/share/mountain/config
 }
 
+check_phase1() {
+  assert_no_rpm micro
+  assert_no_rpm starship
+  assert_cmd firefox
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
