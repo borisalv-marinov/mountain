@@ -33,7 +33,7 @@ check_phase0() {
 check_phase1() {
   assert_no_rpm micro
   assert_no_rpm starship
-  assert_cmd firefox
+  assert_cmd flatpak # Bazzite ships Firefox as a Flatpak installed at first boot, so it is not in the image
 }
 
 PHASE=${1:-0}
