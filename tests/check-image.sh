@@ -123,12 +123,12 @@ check_phase10() {
 }
 
 check_phase11() {
-  local k=/usr/share/Kvantum/MountainGlass n=0 f
+  local k=/usr/share/Kvantum/GlassDark n=0 f
   assert_cmd kvantummanager
-  assert_file "$k/MountainGlass.kvconfig"
-  assert_file "$k/MountainGlass.svg"
-  assert_grep '^translucent_windows=true$' "$k/MountainGlass.kvconfig"
-  assert_grep '^theme=MountainGlass$' /etc/xdg/Kvantum/kvantum.kvconfig
+  assert_file "$k/GlassDark.kvconfig"
+  assert_file "$k/GlassDark.svg"
+  assert_grep '^translucent_windows=true$' "$k/GlassDark.kvconfig"
+  assert_grep '^theme=GlassDark$' /etc/xdg/Kvantum/kvantum.kvconfig
   assert_grep '^widgetStyle=kvantum$' /etc/xdg/kdeglobals
   assert_grep '^ButtonsOnRight=IAX$' /etc/xdg/kwinrc
   assert_grep '^blurEnabled=true$' /etc/xdg/kwinrc
