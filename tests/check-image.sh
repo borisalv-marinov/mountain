@@ -56,6 +56,13 @@ check_phase3() {
   done
 }
 
+check_phase4() {
+  local c
+  for c in code python3 git pip3; do assert_cmd "$c"; done
+  python3 -c 'import sys; assert sys.version_info >= (3,12)' || fail "python3 older than 3.12"
+  assert_file /etc/skel/Projects/.keep
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
