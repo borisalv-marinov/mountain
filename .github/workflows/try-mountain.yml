@@ -116,7 +116,7 @@ jobs:
             [ -n "$URL" ] && break; sleep 2
           done
           [ -n "$URL" ] || { cat cf.log; echo "::error::no tunnel URL"; exit 1; }
-          echo "Tunnel URL: $URL"
+          echo "::notice title=Mountain link::$URL/vnc.html?autoconnect=1&resize=scale"
           echo "Open $URL/vnc.html?autoconnect=1&resize=scale — password: the one in your Mountain notes file (first 8 characters)" >> "$GITHUB_STEP_SUMMARY"
           echo "The desktop appears a few minutes after this link works (the first start is slow)." >> "$GITHUB_STEP_SUMMARY"
 
