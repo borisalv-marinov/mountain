@@ -62,6 +62,9 @@ modules:
         - mountain-gpu-check.service
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
+        - uupd.timer # owner's choice: no background updates; "Updates" app runs one on click
+        - dnf-makecache.timer # package metadata refresh, useless on an image-based system
+        - rpm-ostree-countme.timer # usage counting ping
     user:
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship

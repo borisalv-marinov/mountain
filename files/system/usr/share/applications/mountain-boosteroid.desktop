@@ -4,3 +4,4 @@ Name=Boosteroid
 Exec=flatpak run com.microsoft.Edge --app=https://cloud.boosteroid.com
 Icon=mountain-boosteroid
 Categories=Game;
+StartupWMClass=msedge-cloud.boosteroid.com__-Default

@@ -237,6 +237,9 @@ check_phase19() { # Mountain logo everywhere
     case $(readlink -f "$f") in "$logo"|/usr/share/icons/breeze*) n=$((n+1)) ;; *) fail "Windows-style icon left: $f" ;; esac
   done < <(find /usr/share/icons/We10X* \( -name 'start-here*' -o -name 'distributor-logo*' -o -name 'applications-all*' \))
   (( n > 0 )) || fail "no We10X logo icons replaced"
+  while IFS= read -r f; do [[ $(readlink -f "$f") == "$logo" ]] || fail "Bazzite logo left: $f"; done < <(find /usr/share/icons/hicolor -name 'bazzite-logo*')
+  [[ ! -e /usr/share/wallpapers/bazzite ]] || fail "Bazzite wallpapers still shipped"
+  assert_file /etc/skel/.config/no-show-user-motd
   grep -aq mountain-logo /usr/share/icons/hicolor/icon-theme.cache || fail "hicolor cache lacks mountain-logo"
   cmp -s /usr/share/mountain/watermark.png /usr/share/plymouth/themes/spinner/watermark.png || fail "plymouth watermark not ours"
   if command -v lsinitrd >/dev/null 2>&1; then
@@ -301,7 +304,30 @@ check_phase23() { # lean and secure defaults
   grep -qE 'NOPASSWD: *ALL *$' <<<"$nop" && fail "passwordless sudo for everything in the image"
   assert_grep '^Autolock=true$' /etc/xdg/kscreenlockerrc
   assert_grep '^LockOnResume=true$' /etc/xdg/kscreenlockerrc
-  [[ $(systemctl is-enabled uupd.timer 2>/dev/null) == enabled ]] || fail "automatic updates off"
+  local t
+  for t in uupd.timer dnf-makecache.timer rpm-ostree-countme.timer; do # owner: no background updates (one click via "Updates")
+    [[ $(systemctl is-enabled $t 2>/dev/null) == disabled ]] || fail "$t still enabled"
+  done
+  assert_grep '^Name=Updates$' /usr/share/applications/io.github.rfrench3.bazzite-updater.desktop
+}
+
+check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch, launchers, dev env, drivers
+  local f p
+  python3 -c 'import sys,xml.dom.minidom as m; d=m.parse(sys.argv[1]); assert d.documentElement.getAttribute("version")' /etc/skel/.local/share/kxmlgui5/dolphin/dolphinui.rc || fail "bad dolphinui.rc"
+  assert_grep 'name="commandBar"' /etc/skel/.local/share/kxmlgui5/dolphin/dolphinui.rc
+  [[ -x /usr/libexec/mountain-topbar ]] || fail "mountain-topbar not executable"
+  bash -n /usr/libexec/mountain-topbar || fail "mountain-topbar syntax"
+  /usr/libexec/mountain-topbar sideways >/dev/null 2>&1 && fail "mountain-topbar accepted a bad argument"
+  for f in topbar python node; do desktop-file-validate /usr/share/applications/mountain-$f.desktop || fail "invalid mountain-$f.desktop"; done
+  for f in geforcenow xboxcloud boosteroid; do assert_grep '^StartupWMClass=msedge-' /usr/share/applications/mountain-$f.desktop; done
+  assert_grep 'NPM_CONFIG_PREFIX="$HOME/.local"' /etc/profile.d/mountain-dev.sh
+  assert_grep '^TitleAlignment=AlignLeft$' /etc/xdg/breezerc
+  assert_grep '^AnimationDurationFactor=0.5$' /etc/xdg/kdeglobals
+  assert_grep '^Name=App Store$' /usr/share/applications/io.github.kolunmi.Bazaar.desktop
+  assert_grep '^Name=Welcome$' /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+  for p in ffmpeg mesa-vulkan-drivers mesa-dri-drivers NetworkManager-wifi bluez pipewire linux-firmware; do
+    rpm -q "$p" >/dev/null 2>&1 || fail "driver/codec package missing: $p"
+  done
 }
 
 PHASE=${1:-0}

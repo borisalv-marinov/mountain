@@ -50,6 +50,27 @@ Baseline (vm-test run 43083205572, main, 2026-11-11): desktop RAM 1535 MB used; 
 8. Double-click interval 500 ms (Windows default); 800 ms in the Try VM (remote latency).
 9. KWin QPainter backend not used (risk); speed comes from the display path, lite mode and fewer services.
 
+## Wave 2 — owner addendum (2026-11-11 night)
+
+Reference: `Desktop\Operating System\mountain-v3-refs\explorer-reference.png` (Windows 11 File Explorer), `logo-sketch-1/2.png`.
+
+| # | Requirement | MVP shipped | Check |
+|---|---|---|---|
+| W1 | Logo from the owner's sketches | Two sharp white stroke peaks + ridge line on a dark tile (`mountain-logo.svg`); flows to start button, menu, About, boot watermark | phase 19, screenshots |
+| W2 | File Explorer like Windows 11 | Tabs (Dolphin), address row back/forward/up/refresh + breadcrumb + search, command bar New · cut/copy/paste/rename/delete · Sort · View · Filter · Details (skel `kxmlgui5/dolphin/dolphinui.rc`, version 49), left pane Home/Desktop/Documents/Downloads/Pictures/Music/Videos/Recycle Bin, item count in status bar. Not in MVP: Gallery, "Stored locally" tiles, Recent/Favorites tabs, Details pane open by default | phase 24, `file-explorer` shot |
+| W3 | Taskbar transparent + blur; top bar on/off | Panels translucent with KWin blur (off in lite mode); "Top Bar On/Off" app (`mountain-topbar`) | phase 24 |
+| W4 | Lock/login like Windows | Login: blurred wallpaper; lock: Breeze big clock, name, password, blurs on input. Not in MVP: "Hello, name" text (needs a custom greeter theme) | `after-logout` shot |
+| W5 | Windows 11 title bars | Breeze, buttons right (min/max/close), left-aligned title, large shadow, rounded corners, KWin snap | phase 24 |
+| W6 | Snappy | Animations ×0.5 (0 in lite), indexer off, fewer services; Bazzite already ships scx schedulers, tuned-ppd, zram, foreground booster, uresourced (no hand-rolled tweaks) | vm-test latency |
+| W7 | Drivers/codecs | Bazzite's: full ffmpeg, Mesa (AMD/Intel), NVIDIA image, linux-firmware, NetworkManager-wifi, bluez, pipewire — asserted | phase 24 |
+| W8 | Every app an icon, every CLI a launcher | AI CLIs, Terminal, Python, Node.js, btop, nvtop launchers | phase 14/24 |
+| W9 | Clean web-app names | `StartupWMClass=msedge-…-Default` so Edge app windows group under "GeForce NOW" etc. | `geforce-now` shot |
+| W10 | Coding/AI ready | `~/.local/bin` on PATH, `npm -g` to `~/.local` without sudo | phase 24 |
+| W11 | No background updates | uupd, dnf-makecache, countme timers disabled; "Updates" app = one click | phase 23 |
+| W12 | Own identity | Bazzite/Fedora logos → Mountain logo; Bazaar → App Store, Bazzite Portal → Welcome, Bazzite Updater → Updates; terminal welcome text off; Bazzite wallpapers removed | phase 19/24 |
+
+Ruling 10: owner's latest words win over master-prompt item 10 "updates automatic": updates run only on click.
+
 ## Review Focus
 
 1. A brand-new user's first login (no `~/.config`, no `~/.local/share/user-places.xbel`) gets every default — test with a fresh `looktest` user in vm-test.

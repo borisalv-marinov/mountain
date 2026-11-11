@@ -4,3 +4,4 @@ Name=GeForce NOW
 Exec=flatpak run com.microsoft.Edge --app=https://play.geforcenow.com
 Icon=/usr/share/icons/Papirus/64x64/apps/geforcenow.svg
 Categories=Game;
+StartupWMClass=msedge-play.geforcenow.com__-Default

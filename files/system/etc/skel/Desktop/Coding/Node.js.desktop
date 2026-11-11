@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Node.js
+Comment=Interactive Node.js console
+Exec=konsole --hold -e node
+Icon=utilities-terminal
+Categories=Development;

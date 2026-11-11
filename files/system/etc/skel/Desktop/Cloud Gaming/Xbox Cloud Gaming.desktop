@@ -3,3 +3,4 @@ Type=Application
 Name=Xbox Cloud Gaming
 Exec=flatpak run com.microsoft.Edge --app=https://www.xbox.com/play
 Icon=/usr/share/icons/Papirus/64x64/apps/xbox.svg
+StartupWMClass=msedge-www.xbox.com__play-Default

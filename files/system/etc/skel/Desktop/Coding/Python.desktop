@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Python
+Comment=Interactive Python console
+Exec=konsole --hold -e python3
+Icon=text-x-python
+Categories=Development;

@@ -12,9 +12,13 @@ ren org.kde.konsole.desktop "Terminal"
 ren org.kde.plasma-systemmonitor.desktop "Task Manager"
 ren org.kde.kinfocenter.desktop "System Information"
 ren org.kde.kwrite.desktop "Notepad"
+# Own identity: no other distro's name on everyday apps
+ren io.github.kolunmi.Bazaar.desktop "App Store"
+ren io.github.ublue_os.yafti_gtk.desktop "Welcome"
+ren io.github.rfrench3.bazzite-updater.desktop "Updates"
 for f in kvantummanager org.kde.kwalletmanager kwalletmanager5-kwalletd org.kde.khelpcenter input-remapper-gtk \
          org.kde.kdebugsettings org.kde.kjournaldbrowser org.kde.kcolorschemeeditor org.kde.keditbookmarks \
-         org.kde.knetattach yad-icon-browser bbrew btop nvtop discourse gkbd-keyboard-display org.freedesktop.IBus.Setup \
+         org.kde.knetattach yad-icon-browser bbrew bazzite-documentation discourse gkbd-keyboard-display org.freedesktop.IBus.Setup \
          com.gerbilsoft.rom-properties.rp-config org.kde.kdeconnect.app org.kde.kdeconnect.sms org.kde.kdeconnect.nonplasma org.kde.plasma-interactiveconsole ibus-setup-anthy ibus-setup-chewing \
          ibus-setup-hangul ibus-setup-libbopomofo ibus-setup-libpinyin ibus-setup-m17n ibus-setup-tb ibus-setup-typing-booster; do
   [[ -f $a/$f.desktop ]] || continue

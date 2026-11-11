@@ -39,6 +39,8 @@
     <Include>
       <Filename>com.microsoft.VSCode.desktop</Filename>
       <Filename>org.kde.konsole.desktop</Filename>
+      <Filename>mountain-python.desktop</Filename>
+      <Filename>mountain-node.desktop</Filename>
     </Include>
   </Menu>
   <Menu>

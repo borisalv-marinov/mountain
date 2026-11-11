@@ -12,4 +12,13 @@ for t in /usr/share/icons/We10X*/; do
       rm -f "$f"; ln -sf "$src" "${f%.*}.svg"
     done
 done
+# Own identity: other distros' logos (Bazzite/Fedora) become the Mountain logo wherever apps look them up.
+find /usr/share/icons/hicolor -name 'bazzite-logo*' -print0 | while IFS= read -r -d '' f; do
+  rm -f "$f"; ln -sf "$logo" "${f%.*}.svg"
+done
+for f in /usr/share/pixmaps/{system-logo-white,fedora-logo,fedora-logo-small,fedora_logo_med,fedora-gdm-logo,fedora_whitelogo_med}.png; do
+  [[ -f $f ]] && rsvg-convert -w 256 -h 256 -o "$f" "$logo"
+done
+for f in /usr/share/pixmaps/{fedora-logo-sprite,fedora_whitelogo}.svg; do [[ -f $f ]] && ln -sf "$logo" "$f"; done
+rm -rf /usr/share/wallpapers/bazzite /usr/share/wallpapers/bazzite-*.png
 for t in /usr/share/icons/hicolor /usr/share/icons/We10X*; do gtk-update-icon-cache -f -t -q "$t"; done
