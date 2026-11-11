@@ -201,15 +201,20 @@ check_phase16() {
   for n in claude codex gemini copilot; do assert_file /usr/share/applications/mountain-ai-$n.desktop; done
 }
 
+# Plasma 6 ships many applets as compiled plugins, not plasmoid dirs.
+applet_exists() {
+  [[ -e /usr/share/plasma/plasmoids/$1 ]] || compgen -G "/usr/lib*/qt6/plugins/plasma/applets/$1.so" >/dev/null
+}
+
 check_phase17() {
   local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js id
   assert_file "$L"
   for id in kickoff icontasks systemtray digitalclock; do
-    [[ -e /usr/share/plasma/plasmoids/org.kde.plasma.$id ]] || fail "plasmoid missing: $id"
+    applet_exists "org.kde.plasma.$id" || fail "plasmoid missing: $id"
   done
   # optional applets are guarded by knownWidgetTypes in the layout: report, do not fail
   for id in $(grep -o 'opt([A-Za-z_]*, *"[^"]*"' "$L" | grep -o '"[^"]*"' | tr -d '"' | sort -u); do
-    [[ -e /usr/share/plasma/plasmoids/$id ]] || echo "NOTE: optional applet not installed: $id"
+    applet_exists "$id" || echo "NOTE: optional applet not installed: $id"
   done
   assert_grep 'mountain-logo' "$L"
   assert_grep 'ButtonsOnRight=IAX' /etc/xdg/kwinrc
