@@ -25,6 +25,7 @@ modules:
         - kvantum
         - kvantum-data
         - papirus-icon-theme
+        - We10X-icon-theme
         - /usr/bin/rsvg-convert
         - egl-utils
         - nodejs

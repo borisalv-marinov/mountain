@@ -214,6 +214,10 @@ check_phase17() {
   assert_grep 'SingleClick=false' /etc/xdg/kdeglobals
 }
 
+check_phase18() {
+  assert_file /usr/share/icons/We10X-dark/index.theme
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
