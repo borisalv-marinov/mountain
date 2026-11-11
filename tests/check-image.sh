@@ -325,6 +325,9 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   assert_grep '^AnimationDurationFactor=0.5$' /etc/xdg/kdeglobals
   assert_grep '^Name=App Store$' /usr/share/applications/io.github.kolunmi.Bazaar.desktop
   assert_grep '^Name=Welcome$' /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+  grep -qE '^(Name|Comment|GenericName)(\[|=).*Bazzite' /usr/share/applications/io.github.{kolunmi.Bazaar,ublue_os.yafti_gtk,rfrench3.bazzite-updater}.desktop && fail "Bazzite name left in a renamed app"
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc
+  assert_grep 'erofs' /usr/lib/udev/rules.d/90-mountain-hide-system.rules
   for p in ffmpeg mesa-vulkan-drivers mesa-dri-drivers NetworkManager-wifi; do
     rpm -q "$p" >/dev/null 2>&1 || fail "driver/codec package missing: $p"
   done

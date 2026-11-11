@@ -314,16 +314,18 @@ jobs:
           # 6. drag a file between two Dolphin panes (best effort)
           R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"
           L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
-          QM drag $((W/4)) $((H*3/10)) $((W*3/4)) $((H/2)); sleep 2; QM key ret; sleep 2; shot drag-after
-          chk "drag file between panes" 2 "test -e /home/looktest/Documents/drag-me.txt && echo copied || echo not-copied" '.'
+          # drag notes.txt (right pane) onto the Office folder (left pane); Enter picks "Move Here"
+          QM drag $((916*W/1280)) $((275*H/800)) $((603*W/1280)) $((580*H/800)); sleep 2; shot drag-menu; QM key ret; sleep 2; shot drag-after
+          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '^moved$'
           K -x dolphin
 
           # 7. Steam
           L steam; wchk "steam starts" 1 steam 60; sleep 40; shot steam; K -f steam
 
           # 8. cloud gaming launcher
-          L gtk-launch mountain-geforcenow
+          L flatpak run com.microsoft.Edge --app=https://play.geforcenow.com
           PGF=-f wchk "geforcenow opens Edge" 0 msedge 60; sleep 20; shot geforce-now; K -f msedge
+          chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '.'
 
           # 9. AI launchers
           for n in claude codex gemini copilot; do

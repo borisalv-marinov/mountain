@@ -16,6 +16,9 @@ ren org.kde.kwrite.desktop "Notepad"
 ren io.github.kolunmi.Bazaar.desktop "App Store"
 ren io.github.ublue_os.yafti_gtk.desktop "Welcome"
 ren io.github.rfrench3.bazzite-updater.desktop "Updates"
+for f in io.github.kolunmi.Bazaar io.github.ublue_os.yafti_gtk io.github.rfrench3.bazzite-updater; do # descriptions and actions too
+  sed -i -E '/^(Comment|GenericName|Name|Keywords)(\[|=)/{s/Bazzite Portal/Welcome/g; s/Bazzite/your PC/g}' "$a/$f.desktop"
+done
 for f in kvantummanager org.kde.kwalletmanager kwalletmanager5-kwalletd org.kde.khelpcenter input-remapper-gtk \
          org.kde.kdebugsettings org.kde.kjournaldbrowser org.kde.kcolorschemeeditor org.kde.keditbookmarks \
          org.kde.knetattach yad-icon-browser bbrew bazzite-documentation discourse gkbd-keyboard-display org.freedesktop.IBus.Setup \
