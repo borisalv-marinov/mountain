@@ -31,12 +31,17 @@ modules:
         - nodejs
         - npm
         - libxml2
+        - gwenview
+        - okular
+        - haruna
 
   - type: script
     scripts:
       - kvantum-glass.sh
       - sddm-background.sh
       - app-icons.sh
+      - windows-names.sh
+      - icons-finalize.sh
 
   - type: default-flatpaks
     configurations:
@@ -55,5 +60,12 @@ modules:
     system:
       enabled:
         - mountain-gpu-check.service
+      disabled:
+        - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
+    user:
+      masked:
+        - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
+
+  - type: initramfs # boot splash watermark lives in the initramfs
 
   - type: signing
