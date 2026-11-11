@@ -25,6 +25,7 @@ const rfb = new RFB($("screen"), url);
 rfb.scaleViewport = true; rfb.qualityLevel = 6; rfb.compressionLevel = 2;
 rfb.addEventListener("credentialsrequired", () => { $("msg").style.display = "flex"; $("pw").focus(); });
 $("msg").onsubmit = (e) => { e.preventDefault(); $("msg").style.display = "none"; rfb.sendCredentials({ password: $("pw").value }); };
+rfb.addEventListener("securityfailure", () => alert("Wrong password. Use the browser password (first 8 characters of your notes file), not 123."));
 rfb.addEventListener("disconnect", () => setTimeout(() => location.reload(), 3000));
 rfb.addEventListener("clipboard", (e) => { $("txt").value = e.detail.text; $("box").style.display = "block"; });
 $("toggle").onclick = () => { const b = $("box"); b.style.display = b.style.display === "block" ? "none" : "block"; $("txt").focus(); };
