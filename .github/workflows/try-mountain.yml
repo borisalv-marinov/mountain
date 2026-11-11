@@ -103,6 +103,10 @@ jobs:
           RUN --mount=type=bind,source=pw,target=/pw \
               useradd -m -G wheel mountain && chpasswd < /pw \
            && SESS=\$(ls /usr/share/wayland-sessions | grep -i plasma | head -1) \
+           && echo 'mountain ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zz-mountain-try \
+           && mkdir -p /etc/polkit-1/rules.d && printf 'polkit.addRule(function(a,s){if(s.user=="mountain")return polkit.Result.YES;});\n' > /etc/polkit-1/rules.d/49-mountain-try.rules \
+           && mkdir -p /home/mountain/.config && printf '[Daemon]\nAutolock=false\nLockOnResume=false\n' > /home/mountain/.config/kscreenlockerrc \
+           && chown -R mountain:mountain /home/mountain/.config \
            && mkdir -p /etc/sddm.conf.d \
            && printf '[Autologin]\nUser=mountain\nSession=%s\n' "\$SESS" | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf
           EOF
