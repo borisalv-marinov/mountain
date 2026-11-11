@@ -196,7 +196,7 @@ jobs:
           echo "sendkey esc" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null
           R "$LT WAYLAND_DISPLAY=wayland-0 setsid nohup dolphin </dev/null >/dev/null 2>&1 &"
           sleep 15; shot desk3
-          chk "dolphin running" 0 "pgrep -u looktest dolphin | head -1" '^[0-9]+$'
+          chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"

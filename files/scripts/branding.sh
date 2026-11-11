@@ -4,5 +4,5 @@ set -euo pipefail
 source /usr/share/mountain/config
 sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"${MOUNTAIN_NAME} (based on Bazzite)\"|" /usr/lib/os-release
 grep -q "^PRETTY_NAME=\"${MOUNTAIN_NAME} " /usr/lib/os-release
-# Hide Bazzite's welcome portal at login (still in the app menu).
-grep -lisE 'yafti|bazzite.?portal' /etc/xdg/autostart/*.desktop 2>/dev/null | xargs -r rm -v || true
+# Don't auto-open Bazzite's welcome portal, announcements or Steam at login (less RAM; all stay in the app menu/dock).
+rm -f /etc/skel/.config/autostart/bazzite-portal.desktop /etc/skel/.config/autostart/steam.desktop /etc/xdg/autostart/bazzite-announcement.desktop

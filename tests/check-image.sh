@@ -143,6 +143,7 @@ check_phase11() {
 check_phase12() {
   assert_file /usr/share/mountain/wallpaper.png
   assert_grep '^Image=file:///usr/share/mountain/wallpaper.png$' /usr/lib/plasmalogin/defaults.conf
+  [[ ! -e /etc/skel/.config/autostart/bazzite-portal.desktop ]] || fail "welcome portal still autostarts"
   assert_grep '^mountain$' /etc/hostname
   assert_file /etc/skel/Projects/hello.py
 }
