@@ -22,6 +22,9 @@ jobs:
       TRY_PASSWORD: ${{ secrets.TRY_PASSWORD }}
       MINUTES: ${{ inputs.minutes || '240' }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: try
       - name: Check inputs
         run: |
           [ -n "$TRY_PASSWORD" ] || { echo "::error::secret TRY_PASSWORD is missing"; exit 1; }
