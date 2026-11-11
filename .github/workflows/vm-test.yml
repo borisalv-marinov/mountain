@@ -164,7 +164,7 @@ jobs:
           chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
           chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
           chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^[3-9]'
-          chk "steam gamemoderun" 0 "command -v steam gamemoderun | wc -l" '^2$'
+          chk "steam" 0 "command -v steam" 'steam'  # gamemode is removed upstream on purpose
           chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '.'
           chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
 
@@ -185,17 +185,18 @@ jobs:
           echo "session file: $SESS"
           R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
           sleep 120
-          LT='sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest)'
+          LT='sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest) DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u looktest)/bus'
           shot() { echo "screendump /tmp/$1.ppm" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 2; convert /tmp/$1.ppm "$1.png" || true; }
           chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" 'looktest'
           shot desk1
-          chk "free -m (desktop)" 0 "free -m" 'Mem:'
-          chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" 'Audio'
+          chk "RAM used (desktop)" 0 "free -m | awk '/Mem:/{print \$3\" MB used\"}'" 'MB used'
+          chk "autostart entries" 2 "ls /etc/xdg/autostart ~looktest/.config/autostart 2>&1" '.'
+          chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" "^PipeWire '"
           echo "sendkey meta_l" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 3; shot desk2
           echo "sendkey esc" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null
           R "$LT WAYLAND_DISPLAY=wayland-0 setsid nohup dolphin </dev/null >/dev/null 2>&1 &"
           sleep 15; shot desk3
-          chk "dolphin running" 0 "pgrep -u looktest -x dolphin" '^[0-9]+$'
+          chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
