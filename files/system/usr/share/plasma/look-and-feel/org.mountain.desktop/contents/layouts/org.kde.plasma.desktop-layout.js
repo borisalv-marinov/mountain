@@ -1,6 +1,10 @@
 // Top bar (menu, title, CPU/RAM/net, tray, clock) + floating bottom taskbar.
 // opt() skips applets that are not installed so a missing one never breaks the panel.
-const opt = (p, id) => knownWidgetTypes.indexOf(id) >= 0 ? p.addWidget(id) : null;
+const known = (typeof knownWidgetTypes !== "undefined") ? knownWidgetTypes : null;
+const opt = (p, id) => {
+    if (known === null) { try { return p.addWidget(id); } catch (e) { return null; } }
+    return known.indexOf(id) >= 0 ? p.addWidget(id) : null;
+};
 
 const top = new Panel();
 top.location = "top";
@@ -11,7 +15,7 @@ top.height = Math.round(gridUnit * 1.6);
 
 opt(top, "org.kde.plasma.appmenu");
 opt(top, "org.kde.plasma.panelspacer");
-opt(top, "org.kde.plasma.windowtitle");
+opt(top, "org.kde.windowtitle") || opt(top, "org.kde.plasma.windowtitle"); // only one exists, whichever is installed
 opt(top, "org.kde.plasma.panelspacer");
 opt(top, "org.kde.plasma.systemmonitor.cpu");
 opt(top, "org.kde.plasma.systemmonitor.memory");

@@ -30,6 +30,7 @@ modules:
         - egl-utils
         - nodejs
         - npm
+        - libxml2
 
   - type: script
     scripts:

@@ -132,11 +132,11 @@ check_phase11() {
   assert_grep '^widgetStyle=kvantum$' /etc/xdg/kdeglobals
   assert_grep '^ButtonsOnRight=IAX$' /etc/xdg/kwinrc
   assert_grep '^blurEnabled=true$' /etc/xdg/kwinrc
-  for f in /etc/skel/Desktop/*.desktop; do
+  while IFS= read -r f; do
     [[ -x $f ]] || fail "not executable: $f"
     grep -qE '^(Exec|URL)=' "$f" || fail "no Exec/URL: $f"
     n=$((n+1))
-  done
+  done < <(find /etc/skel/Desktop -name '*.desktop')
   (( n >= 9 )) || fail "only $n desktop icons in /etc/skel/Desktop"
 }
 
@@ -181,7 +181,9 @@ check_phase14() {
 
 check_phase15() {
   local f d n
-  xmllint --noout /etc/xdg/menus/applications-merged/mountain.menu || fail "invalid mountain.menu"
+  for f in /etc/xdg/menus/applications-merged/mountain.menu /etc/xdg/menus/plasma-applications-merged/mountain.menu; do
+    xmllint --noout "$f" || fail "invalid $f"
+  done
   for n in cloudgaming games launchers browsers coding ai office chat; do assert_file /usr/share/desktop-directories/mountain-$n.directory; done
   for d in "Cloud Gaming" Games "Game Launchers" Browsers Coding AI Office Chat; do
     [[ -n "$(find "/etc/skel/Desktop/$d" -name '*.desktop' 2>/dev/null)" ]] || fail "desktop folder empty/missing: $d"

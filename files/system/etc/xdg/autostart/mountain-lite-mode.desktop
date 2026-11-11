@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Mountain Lite Mode
+Name=Lite Mode
 Exec=/usr/libexec/mountain-lite-mode
 X-KDE-autostart-phase=1
 NoDisplay=true

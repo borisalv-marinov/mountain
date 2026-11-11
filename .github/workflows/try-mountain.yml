@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       minutes:
-        description: "How long to keep the desktop open (max 330)"
+        description: "How long to keep the desktop open (max 300)"
         default: "240"
         type: string
 
@@ -25,7 +25,7 @@ jobs:
       - name: Check inputs
         run: |
           [ -n "$TRY_PASSWORD" ] || { echo "::error::secret TRY_PASSWORD is missing"; exit 1; }
-          [[ "$MINUTES" =~ ^[0-9]+$ ]] && [ "$MINUTES" -ge 1 ] && [ "$MINUTES" -le 330 ] || { echo "::error::minutes must be 1-330"; exit 1; }
+          [[ "$MINUTES" =~ ^[0-9]+$ ]] && [ "$MINUTES" -ge 1 ] && [ "$MINUTES" -le 300 ] || { echo "::error::minutes must be 1-300"; exit 1; }
           echo "::add-mask::${TRY_PASSWORD:0:8}"
 
       - name: Enable KVM and install tools
@@ -139,7 +139,7 @@ jobs:
           for _ in $(seq 120); do
             grep -q 'MOUNTAIN-READY' serial.log && break; sleep 15
           done
-          grep -oE 'MOUNTAIN-READY(-TIMEOUT)?' serial.log | head -1 || echo "not ready after 30 min"
+          grep -q 'MOUNTAIN-READY' serial.log || echo "not ready after 30 min"
 
       - name: Start noVNC and tunnel
         run: |
