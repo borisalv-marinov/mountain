@@ -174,10 +174,10 @@ check_phase14() {
     case "$i" in
       /*) [[ -f "$i" ]] || fail "$f: icon missing: $i" ;;
       com.*|org.*|dev.*|io.*) ;; # flatpak ids arrive at first boot
-      *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) -print -quit 2>/dev/null || true)
+      *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) -xtype f -print -quit 2>/dev/null || true)
          [[ -n "$d" ]] || fail "$f: icon not found: $i" ;;
     esac
-  done < <(find /usr/share/applications -name 'mountain-*.desktop'; find /etc/skel/Desktop -name '*.desktop')
+  done < <(find /usr/share/applications -name "mountain-*.desktop" -o -name code.desktop; find /etc/skel/Desktop -name '*.desktop')
 }
 
 check_phase15() {
