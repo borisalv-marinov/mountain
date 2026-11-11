@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "FAIL: line $LINENO: $BASH_COMMAND"' ERR
 
 # Runs inside the built image. Usage: check-image.sh <phase>
 
@@ -168,12 +169,12 @@ check_phase14() {
     xmllint --noout "$f" || fail "invalid svg: $f"
   done
   while IFS= read -r f; do
-    i=$(sed -n 's/^Icon=//p' "$f" | head -1)
+    i=$(sed -n '/^Icon=/{s/^Icon=//p;q}' "$f")
     [[ -n "$i" ]] || continue
     case "$i" in
       /*) [[ -f "$i" ]] || fail "$f: icon missing: $i" ;;
       com.*|org.*|dev.*|io.*) ;; # flatpak ids arrive at first boot
-      *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) 2>/dev/null | head -1)
+      *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) -print -quit 2>/dev/null || true)
          [[ -n "$d" ]] || fail "$f: icon not found: $i" ;;
     esac
   done < <(find /usr/share/applications -name 'mountain-*.desktop'; find /etc/skel/Desktop -name '*.desktop')
