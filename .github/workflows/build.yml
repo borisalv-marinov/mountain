@@ -98,4 +98,4 @@ jobs:
       - name: Run image tests
         env:
           TAG: ${{ steps.tag.outputs.tag }}
-        run: podman run --rm -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh "$MOUNTAIN_PHASE"
+        run: podman run --rm --no-hostname -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh "$MOUNTAIN_PHASE"
