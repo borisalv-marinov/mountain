@@ -174,7 +174,7 @@ jobs:
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
           chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
           chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
-          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^[3-9]'
+          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^([3-9]|[1-9][0-9])$'
           chk "steam" 0 "command -v steam" 'steam'  # gamemode is removed upstream on purpose
           chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '.'
           chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
@@ -198,7 +198,9 @@ jobs:
           TL() { printf 'sudo -u looktest -i bash -c %q' "$1"; } # wrap a command to run as looktest
           Q() { sudo socat - UNIX-CONNECT:/tmp/qmon; }
           mkdir -p shots; SN=0
+          trap 'echo "::warning::got SIGTERM during: $STEP"' TERM
           shot() { # NAME: screendump -> shots/NN-NAME.png
+            STEP=$1; echo "step: $1"
             SN=$((SN+1)); echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
             sudo cat /tmp/$1.ppm | convert - "$(printf 'shots/%02d-%s.png' $SN "$1")" || true
           }
