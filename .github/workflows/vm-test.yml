@@ -83,6 +83,9 @@ jobs:
             echo "password = \"$TESTPW\""
             echo "key = \"$(cat key.pub)\""
             echo 'groups = ["wheel"]'
+            echo '[[customizations.filesystem]]'
+            echo 'mountpoint = "/"'
+            echo 'minsize = "40 GiB"' # first-boot apps filled the default-size root ("Low Disk Space")
           } > config.toml
           mkdir -p output
           sudo podman run --rm --privileged --pull=newer \
@@ -264,7 +267,7 @@ jobs:
           R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
           LT0=$(date +%s); LTD="never"
           while [ $(( $(date +%s) - LT0 )) -lt 240 ]; do
-            R "$LT qdbus6 org.kde.plasmashell /PlasmaShell" >/dev/null 2>&1 && { LTD=$(( $(date +%s) - LT0 )); break; }
+            R "$LT dbus-send --session --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.NameHasOwner string:org.kde.plasmashell" 2>/dev/null | grep -q "boolean true" && { LTD=$(( $(date +%s) - LT0 )); break; }
             sleep 2
           done
           echo "| login-to-desktop | INFO | ${LTD}s |" >> report.md
@@ -284,7 +287,7 @@ jobs:
           QM type settings; sleep 3; shot search-settings
           QM key ret
           wchk "start menu opens System Settings" 1 systemsettings 20; sleep 5; shot settings
-          K -x systemsettings
+          K -x systemsettings; K -x kdebugsettings
 
           # 3. double-click the first desktop icon (folder AI)
           QM dclick $((58*W/1280)) $((75*H/800))
@@ -328,6 +331,10 @@ jobs:
           chk "codex installed" 2 "test -e ~looktest/.local/bin/codex && echo yes || echo no" '.'
           K -x konsole
 
+          # top bar switch
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 3; shot topbar-off
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar on"; sleep 3; shot topbar-on
+
           # 10. latency
           LATS=""; for _ in 1 2 3; do LATS="$LATS $(latency)"; sleep 2; done
           LAT=$(printf '%s\n' $LATS | sort -n | sed -n 2p)
@@ -354,7 +361,8 @@ jobs:
           P "$LT systemctl --user list-unit-files --state=enabled --no-pager" user-unit-files
 
           # 11. logout
-          R "$LT qdbus6 org.kde.Shutdown /Shutdown logout" || true
+          K -x kdebugsettings; QM key esc
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
           LO=fail
           for _ in $(seq 30); do
             R "loginctl list-sessions --no-legend | grep -q looktest" || { LO=ok; break; }
@@ -372,6 +380,10 @@ jobs:
             if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
+          # clean shutdown: the VM must power itself off
+          R "systemctl poweroff" || true
+          if timeout 180 sudo podman wait qemu >/dev/null 2>&1; then echo "| shutdown | PASS | VM powered off |" >> report.md
+          else echo "| shutdown | FAIL | still running after 180 s |" >> report.md; CORE_FAIL=1; fi
 
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$CORE_FAIL" = 1 ]; then echo "::error::core check failed"; exit 1; fi

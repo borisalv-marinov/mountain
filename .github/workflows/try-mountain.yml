@@ -114,9 +114,12 @@ jobs:
           EOF
           sudo podman build -t localhost/mountain-try:latest .
           rm pw
+          # room for the first-boot apps and Steam (bib's default root filled up: "Low Disk Space")
+          printf '[[customizations.filesystem]]\nmountpoint = "/"\nminsize = "40 GiB"\n' > config.toml
           mkdir -p output
           sudo podman run --rm --privileged --pull=newer \
             --security-opt label=type:unconfined_t --security-opt apparmor=unconfined \
+            -v "$PWD/config.toml:/config.toml:ro" \
             -v "$PWD/output:/output" \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             quay.io/centos-bootc/bootc-image-builder:latest \

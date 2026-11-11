@@ -15,4 +15,4 @@ else if ((want === "on" || want === "toggle") && !on) {
 }'
 want=${1:-toggle}
 [[ $want =~ ^(on|off|toggle)$ ]] || { echo "usage: mountain-topbar [on|off|toggle]" >&2; exit 2; }
-qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "${js//@WANT@/$want}"
+dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:${js//@WANT@/$want}" >/dev/null

@@ -10,7 +10,9 @@ case "${1:-}" in
   copilot) name="Copilot CLI"; cmd=$(npm_i @github/copilot) ;;
   *) echo "usage: mountain-ai <claude|codex|gemini|copilot>" >&2; exit 2 ;;
 esac
-command -v "$1" >/dev/null 2>&1 && exec "$1"
+# a real install, not a stub another app puts on PATH (VS Code ships a "copilot" that only says "not found")
+installed() { local p; for p in $(type -aP "$1"); do [[ $(readlink -f "$p") == /usr/share/code/* ]] || return 0; done; return 1; }
+installed "$1" && exec "$1"
 if [[ -n ${MOUNTAIN_AI_OFFLINE:-} ]] || { [[ -z ${MOUNTAIN_AI_DRYRUN:-} ]] && ! curl -sfI --max-time 5 https://registry.npmjs.org >/dev/null; }; then
   echo "No internet — connect and click again"; exit 1
 fi
@@ -18,6 +20,6 @@ echo "Installing $name (first time only, about a minute) — please keep this wi
 if [[ -n ${MOUNTAIN_AI_DRYRUN:-} ]]; then echo "$cmd"; exit 0; fi
 bash -c "$cmd" || { echo "Install failed — check your internet and click the icon again."; exit 1; }
 hash -r
-command -v "$1" >/dev/null 2>&1 || { echo "Install finished but $name was not found — click the icon again."; exit 1; }
+installed "$1" || { echo "Install finished but $name was not found — click the icon again."; exit 1; }
 echo "Ready — starting $name. Next time it opens straight away."
 exec "$1"

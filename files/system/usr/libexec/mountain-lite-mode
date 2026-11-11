@@ -18,5 +18,5 @@ echo "lite: on ($reason)"
 kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false
 kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled false
 kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0
-qdbus6 org.kde.KWin /KWin reconfigure || true
+dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true # qdbus6 is not installed
 exit 0
