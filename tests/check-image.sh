@@ -325,8 +325,14 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   assert_grep '^AnimationDurationFactor=0.5$' /etc/xdg/kdeglobals
   assert_grep '^Name=App Store$' /usr/share/applications/io.github.kolunmi.Bazaar.desktop
   assert_grep '^Name=Welcome$' /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
-  for p in ffmpeg mesa-vulkan-drivers mesa-dri-drivers NetworkManager-wifi bluez pipewire linux-firmware; do
+  for p in ffmpeg mesa-vulkan-drivers mesa-dri-drivers NetworkManager-wifi; do
     rpm -q "$p" >/dev/null 2>&1 || fail "driver/codec package missing: $p"
+  done
+  # files, not package names (Bazzite renames/forks some packages)
+  compgen -G '/usr/libexec/bluetooth/bluetoothd' >/dev/null || command -v bluetoothd >/dev/null || fail "no Bluetooth daemon"
+  assert_cmd pw-cli
+  for p in amdgpu i915 'iwlwifi-*' 'rtw8*' nvidia; do
+    compgen -G "/usr/lib/firmware/$p*" >/dev/null || fail "firmware missing: $p"
   done
 }
 
