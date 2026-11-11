@@ -167,7 +167,7 @@ check_phase14() {
     assert_file "$f"
     xmllint --noout "$f" || fail "invalid svg: $f"
   done
-  for f in /usr/share/applications/mountain-*.desktop /etc/skel/Desktop/*.desktop; do
+  while IFS= read -r f; do
     i=$(sed -n 's/^Icon=//p' "$f" | head -1)
     [[ -n "$i" ]] || continue
     case "$i" in
@@ -176,7 +176,18 @@ check_phase14() {
       *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) 2>/dev/null | head -1)
          [[ -n "$d" ]] || fail "$f: icon not found: $i" ;;
     esac
+  done < <(find /usr/share/applications -name 'mountain-*.desktop'; find /etc/skel/Desktop -name '*.desktop')
+}
+
+check_phase15() {
+  local f d n
+  xmllint --noout /etc/xdg/menus/applications-merged/mountain.menu || fail "invalid mountain.menu"
+  for n in cloudgaming games launchers browsers coding ai office chat; do assert_file /usr/share/desktop-directories/mountain-$n.directory; done
+  for d in "Cloud Gaming" Games "Game Launchers" Browsers Coding AI Office Chat; do
+    [[ -n "$(find "/etc/skel/Desktop/$d" -name '*.desktop' 2>/dev/null)" ]] || fail "desktop folder empty/missing: $d"
+    assert_file "/etc/skel/Desktop/$d/.directory"
   done
+  while IFS= read -r f; do [[ -x "$f" ]] || fail "not executable: $f"; done < <(find /etc/skel/Desktop -name '*.desktop')
 }
 
 check_phase16() {

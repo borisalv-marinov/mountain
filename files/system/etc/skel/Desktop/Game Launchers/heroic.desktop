@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Heroic
+Exec=flatpak run com.heroicgameslauncher.hgl
+Icon=com.heroicgameslauncher.hgl
