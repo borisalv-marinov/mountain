@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Microsoft Edge
+Exec=flatpak run com.microsoft.Edge
+Icon=com.microsoft.Edge

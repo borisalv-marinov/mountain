@@ -32,6 +32,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm
+          # Azure apt mirror outages break installs; use the main Ubuntu mirror with retries.
+          echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+          echo "Acquire::Retries \"5\";" | sudo tee /etc/apt/apt.conf.d/80retries
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils ovmf imagemagick socat skopeo
           ls /usr/share/OVMF/ /usr/share/ovmf/ 2>/dev/null || true
@@ -199,6 +202,27 @@ jobs:
           chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
+          # perf data (non-fatal): full outputs, ~3 min after the session is up
+          mkdir -p perf
+          P() { R "$1" > "perf/$2.txt" 2>&1 || true; } # cmd, filename
+          sleep 30
+          P "uptime; free -m; cat /proc/pressure/memory /proc/pressure/cpu; ps -eo rss,pcpu,user,comm --sort=-rss | head -40" ps1
+          P "top -b -n 2 -d 5 | head -40" top
+          sleep 60
+          P "free -m; ps -eo rss,pcpu,user,comm --sort=-rss | head -40" ps2
+          P "ps -eo rss,comm --no-headers | awk '{a[\$2]+=\$1; n[\$2]++} END{for(k in a) printf \"%d MB %d procs %s\n\", a[k]/1024, n[k], k}' | sort -rn | head -40" ps-grouped
+          P "free -m; cat /proc/pressure/memory /proc/pressure/cpu; zramctl; cat /sys/kernel/mm/transparent_hugepage/enabled; sysctl vm.swappiness; swapon --show" mem
+          P "systemctl list-unit-files --state=enabled --no-pager" unit-files-enabled
+          P "systemctl list-units --type=service --state=running --no-pager" system-running
+          P "$LT systemctl --user list-units --type=service --state=running --no-pager" user-running
+          P "systemd-analyze; systemd-analyze blame | head -30; systemd-analyze critical-chain" boot
+          P "ls -la /etc/xdg/autostart ~looktest/.config/autostart" autostart
+          P "journalctl -b --no-pager | grep -i -E 'llvmpipe|renderer|kwin|softpipe|swrast|virtio_gpu|virgl' | head -60; ls /dev/dri; (glxinfo -B || eglinfo | head -40) 2>&1" gpu
+          P "kreadconfig6 --file kwinrc --group Plugins --key x 2>&1; cat ~looktest/.config/kwinrc /etc/xdg/kwinrc 2>&1; $LT qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadedEffects 2>&1; $LT qdbus6 org.kde.KWin /KWin org.kde.KWin.supportInformation 2>&1 | head -120" kwin
+          P "flatpak list --app; flatpak ps; rpm -q kdeconnect plasma-discover baloo input-remapper geoclue2 2>&1; balooctl6 status 2>&1" misc
+          P "ps -eo pid,rss,pcpu,user,args --sort=-rss | head -25 | cut -c1-200" ps-args
+          P "$LT systemctl --user list-unit-files --state=enabled --no-pager" user-unit-files
+
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
           for n in 1 2; do
             R "systemctl reboot" || true
@@ -217,4 +241,5 @@ jobs:
           path: |
             /home/runner/vm/report.md
             /home/runner/vm/*.png
+            /home/runner/vm/perf/*.txt
             /home/runner/vm/serial.log

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Codex
+Exec=konsole --hold -e /usr/libexec/mountain-ai codex
+Icon=mountain-folder-ai
+Categories=Development;

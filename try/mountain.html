@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mountain</title>
+<style>
+html,body{margin:0;height:100%;background:#111;color:#eee;font:14px sans-serif}
+#screen{position:fixed;inset:0}
+#bar{position:fixed;top:6px;right:6px;z-index:10;opacity:.5}
+#bar:hover,#bar:focus-within{opacity:1}
+#box{display:none;margin-top:4px;background:#222;padding:8px;border-radius:6px}
+#box textarea{display:block;width:260px;height:110px}
+#msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#111e;z-index:5}
+button{cursor:pointer}
+</style></head><body>
+<div id="screen"></div>
+<form id="msg" style="display:none"><label>Password <input id="pw" type="password" autofocus></label> <button>Connect</button></form>
+<div id="bar"><button id="toggle">Paste</button>
+<div id="box"><textarea id="txt" placeholder="Paste here, then Send. Text copied inside Mountain shows up here too."></textarea>
+<button id="send">Send to Mountain</button> <button id="copy">Copy</button></div></div>
+<script type="module">
+import RFB from "./core/rfb.js";
+import { charToKeysym } from "./keysym.mjs";
+const $ = (id) => document.getElementById(id);
+const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/websockify";
+const rfb = new RFB($("screen"), url);
+rfb.scaleViewport = true; rfb.qualityLevel = 6; rfb.compressionLevel = 2;
+rfb.addEventListener("credentialsrequired", () => { $("msg").style.display = "flex"; $("pw").focus(); });
+$("msg").onsubmit = (e) => { e.preventDefault(); $("msg").style.display = "none"; rfb.sendCredentials({ password: $("pw").value }); };
+rfb.addEventListener("disconnect", () => setTimeout(() => location.reload(), 3000));
+rfb.addEventListener("clipboard", (e) => { $("txt").value = e.detail.text; $("box").style.display = "block"; });
+$("toggle").onclick = () => { const b = $("box"); b.style.display = b.style.display === "block" ? "none" : "block"; $("txt").focus(); };
+$("send").onclick = () => {
+  const t = $("txt").value;
+  rfb.clipboardPasteFrom(t); // real clipboard via vdagent, if it works
+  for (const ch of t) rfb.sendKey(charToKeysym(ch), null); // typed: guaranteed
+  $("box").style.display = "none"; rfb.focus();
+};
+$("copy").onclick = () => navigator.clipboard?.writeText($("txt").value).catch(() => $("txt").select());
+</script></body></html>

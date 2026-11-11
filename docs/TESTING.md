@@ -36,3 +36,5 @@
 - Task 7 changes: Bazzite's update timer is `uupd.timer` (was daily 04:00, https://github.com/ublue-os/uupd/blob/main/uupd.timer); a drop-in now sets `OnCalendar=weekly` (Persistent=true kept). Enabled by https://github.com/ublue-os/bazzite/blob/main/build_files/bazzite/12-finalize.sh
 - Task 7: `90-mountain.conf` sets `fq` + `bbr`. Bazzite already sets bbr (https://github.com/ublue-os/bazzite/blob/main/system_files/desktop/shared/usr/lib/sysctl.d/75-networking.conf) and no qdisc, so no conflict.
 - Task 7: no services disabled. Bazzite already disables/masks its optional ones (12-finalize.sh, 07-install-packages.sh); nothing left that is clearly useless. VM baseline `free -m` still to be recorded by the owner.
+- New desktop layout applies to new users; existing users: System Settings → Global Theme → Mountain → apply with 'Desktop and window layout' ticked.
+- vm-test and Try Mountain run without a GPU, so Lite mode turns off blur there — judge the glass look on real hardware.
