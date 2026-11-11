@@ -1,4 +1,5 @@
 [KDE]
+SingleClick=false
 LookAndFeelPackage=org.mountain.desktop
 widgetStyle=kvantum
 

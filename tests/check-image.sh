@@ -198,6 +198,22 @@ check_phase16() {
   for n in claude codex gemini copilot; do assert_file /usr/share/applications/mountain-ai-$n.desktop; done
 }
 
+check_phase17() {
+  local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js id
+  assert_file "$L"
+  for id in kickoff icontasks systemtray digitalclock; do
+    [[ -e /usr/share/plasma/plasmoids/org.kde.plasma.$id ]] || fail "plasmoid missing: $id"
+  done
+  # optional applets are guarded by knownWidgetTypes in the layout: report, do not fail
+  for id in $(grep -o 'opt([a-z]*, "[^"]*"' "$L" | sed 's/.*"\(.*\)"//' | sort -u); do
+    [[ -e /usr/share/plasma/plasmoids/$id ]] || echo "NOTE: optional applet not installed: $id"
+  done
+  assert_grep 'mountain-logo' "$L"
+  assert_grep 'ButtonsOnRight=IAX' /etc/xdg/kwinrc
+  assert_grep 'ActiveView=systemsettings_sidebar_mode' /etc/xdg/systemsettingsrc
+  assert_grep 'SingleClick=false' /etc/xdg/kdeglobals
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
