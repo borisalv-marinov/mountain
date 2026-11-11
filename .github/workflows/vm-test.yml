@@ -247,7 +247,7 @@ jobs:
             local t; t=$(waitproc "$3" "$4") && { echo "| $1 | PASS | $3 up in $t |" >> report.md; echo "PASS $1"; } \
               || { echo "| $1 | FAIL | $3 not running after $4 s |" >> report.md; echo "FAIL $1"; [ "$2" = 1 ] && CORE_FAIL=1; }
           }
-          L() { R "$LT WAYLAND_DISPLAY=wayland-0 setsid nohup $* </dev/null >/dev/null 2>&1 &"; } # start in the session
+          L() { R "$LT systemd-run --user --quiet --collect $*"; } # start like the app menu does: with the full session environment
           K() { R "pkill -u looktest $*" || true; sleep 1; }
           latency() { # ms until the screen changes after the Windows key
             local m0 m t0 t
