@@ -13,6 +13,7 @@ ok 'grep -q "<GroupState-Remote-IsHidden>true</GroupState-Remote-IsHidden>" "$f"
 ok 'grep -q "href=\"desktop:/\"" "$f"' "Desktop via desktop:/"
 ok 'grep -q "href=\"file://[^\"]*with%20space[^\"]*/Documents\"" "$f"' "Documents absolute, space encoded"
 ok '[[ $(grep -c "<bookmark " "$f") == 8 ]]' "8 places"
+ok '[[ $(eval "$(grep "^esc()" "$S")"; esc "a<b&c>d") == "a&lt;b&amp;c&gt;d" ]]' "XML escaping"
 echo edited > "$f"; HOME=$H XDG_DATA_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok '[[ $(cat "$f") == edited ]]' "existing file kept"
 rm -rf "$H"; exit $rc

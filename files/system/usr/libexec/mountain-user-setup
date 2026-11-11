@@ -10,7 +10,7 @@ dir() { # xdg key, fallback name
   local d; d=$(xdg-user-dir "$1" 2>/dev/null || true)
   [[ -n $d && $d != "$HOME" ]] && echo "$d" || echo "$HOME/$2"
 }
-esc() { local s=${1//&/&amp;}; s=${s//</&lt;}; echo "${s//>/&gt;}"; }
+esc() { local s=${1//&/"&amp;"}; s=${s//</"&lt;"}; echo "${s//>/"&gt;"}"; } # quoted: bash 5.2+ treats & in replacements as the match
 url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$1"; }
 n=0; places=
 add() { # href title icon
