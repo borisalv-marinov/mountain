@@ -64,14 +64,14 @@ jobs:
           echo "${{ github.token }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           REF="ghcr.io/borisalv-marinov/$IMG:$TAG"
           printf 'mountain:%s\n' "$TRY_PASSWORD" > pw
-          # derived image: user + SDDM autologin into Plasma (the shipped image stays untouched)
+          # derived image: user + autologin (SDDM and Plasma Login Manager) into Plasma (the shipped image stays untouched)
           cat > Containerfile <<EOF
           FROM $REF
           RUN --mount=type=bind,source=pw,target=/pw \
               useradd -m -G wheel mountain && chpasswd < /pw \
            && SESS=\$(ls /usr/share/wayland-sessions | grep -i plasma | head -1) \
            && mkdir -p /etc/sddm.conf.d \
-           && printf '[Autologin]\nUser=mountain\nSession=%s\n' "\$SESS" > /etc/sddm.conf.d/zz-autologin.conf
+           && printf '[Autologin]\nUser=mountain\nSession=%s\n' "\$SESS" | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf
           EOF
           sudo podman build -t localhost/mountain-try:latest .
           rm pw
