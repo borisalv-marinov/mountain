@@ -1,0 +1,8 @@
+{
+    "KPlugin": {
+        "Authors": [{ "Name": "Mountain" }],
+        "Id": "mountain-peaks",
+        "License": "CC-BY-SA-4.0",
+        "Name": "Mountain Peaks"
+    }
+}
