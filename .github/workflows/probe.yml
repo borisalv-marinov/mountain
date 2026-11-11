@@ -9,7 +9,7 @@ jobs:
     steps:
       - run: |
           echo "${{ github.token }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
-          podman run --rm ghcr.io/borisalv-marinov/mountain:latest bash -c '
+          podman pull -q ghcr.io/borisalv-marinov/mountain:latest >/dev/null; podman run --rm ghcr.io/borisalv-marinov/mountain:latest bash -c '
             echo "== autostart dirs"; ls /etc/xdg/autostart /usr/share/autostart /etc/skel/.config/autostart 2>&1
             echo "== files mentioning portal launcher"; grep -rlis "bazzite-portal\|yafti" /etc /usr/share/applications /usr/lib/systemd /usr/share/autostart /usr/libexec /usr/bin 2>/dev/null | head -40
-            echo "== portal desktop files"; ls /usr/share/applications | grep -i -E "portal|yafti"' 2>&1 | head -120
+            echo "== portal desktop files"; ls /usr/share/applications | grep -i -E "portal|yafti"' 2>&1
