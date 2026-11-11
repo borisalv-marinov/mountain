@@ -37,7 +37,7 @@
     <Name>Coding</Name>
     <Directory>mountain-coding.directory</Directory>
     <Include>
-      <Filename>code.desktop</Filename>
+      <Filename>com.microsoft.VSCode.desktop</Filename>
       <Filename>org.kde.konsole.desktop</Filename>
     </Include>
   </Menu>
@@ -65,5 +65,22 @@
       <Filename>com.discordapp.Discord.desktop</Filename>
       <Filename>dev.vencord.Vesktop.desktop</Filename>
     </Include>
+  </Menu>
+  <!-- Windows-familiar names; Help/Waydroid apps stay findable by search -->
+  <Menu>
+    <Name>Utilities</Name>
+    <Directory>mountain-accessories.directory</Directory>
+  </Menu>
+  <Menu>
+    <Name>System</Name>
+    <Directory>mountain-systemtools.directory</Directory>
+  </Menu>
+  <Menu>
+    <Name>Help</Name>
+    <Deleted/>
+  </Menu>
+  <Menu>
+    <Name>Waydroid</Name>
+    <Deleted/>
   </Menu>
 </Menu>

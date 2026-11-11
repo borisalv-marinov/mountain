@@ -1,4 +1,4 @@
-// Top bar (menu, title, CPU/RAM/net, tray, clock) + floating bottom taskbar.
+// Top bar (CPU/RAM, tray, clock) + Windows-style bottom taskbar. Apps keep their menus inside their windows, like Windows.
 // opt() skips applets that are not installed so a missing one never breaks the panel.
 const known = (typeof knownWidgetTypes !== "undefined") ? knownWidgetTypes : null;
 const opt = (p, id) => {
@@ -13,13 +13,9 @@ top.floating = false;
 top.opacity = "translucent";
 top.height = Math.round(gridUnit * 1.6);
 
-opt(top, "org.kde.plasma.appmenu");
-opt(top, "org.kde.plasma.panelspacer");
-opt(top, "org.kde.windowtitle") || opt(top, "org.kde.plasma.windowtitle"); // only one exists, whichever is installed
 opt(top, "org.kde.plasma.panelspacer");
 opt(top, "org.kde.plasma.systemmonitor.cpu");
 opt(top, "org.kde.plasma.systemmonitor.memory");
-opt(top, "org.kde.plasma.systemmonitor.net");
 top.addWidget("org.kde.plasma.systemtray");
 top.addWidget("org.kde.plasma.digitalclock");
 
@@ -35,6 +31,8 @@ panel.hiding = "none";
 const kickoff = panel.addWidget("org.kde.plasma.kickoff");
 kickoff.currentConfigGroup = ["General"];
 kickoff.writeConfig("icon", "mountain-logo");
+kickoff.writeConfig("showActionButtonCaptions", true);
+// pinned apps come from kde-profile/default/xdg/kicker-extra-favoritesrc
 
 const tasks = panel.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];
@@ -44,7 +42,7 @@ tasks.writeConfig("launchers", [
     "applications:dev.vencord.Vesktop.desktop",
     "applications:steam.desktop",
     "applications:com.microsoft.Edge.desktop",
-    "applications:code.desktop",
+    "applications:com.microsoft.VSCode.desktop",
     "applications:org.onlyoffice.desktopeditors.desktop",
     "applications:org.kde.konsole.desktop"
 ]);
@@ -55,5 +53,5 @@ opt(panel, "org.kde.plasma.trash");
 for (const d of desktopsForActivity(currentActivity())) {
     d.wallpaperPlugin = "org.kde.image";
     d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
-    d.writeConfig("Image", "file:///usr/share/mountain/wallpaper.svg");
+    d.writeConfig("Image", "file:///usr/share/wallpapers/mountain-peaks/");
 }
