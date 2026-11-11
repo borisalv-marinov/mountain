@@ -27,6 +27,8 @@ jobs:
         run: yamllint -d relaxed recipes/
       - name: Test lite mode
         run: bash tests/test-lite-mode.sh
+      - name: Test AI launcher
+        run: bash tests/test-mountain-ai.sh
       - name: Check Flathub IDs
         run: bash tests/check-flathub-ids.sh
 
@@ -66,7 +68,7 @@ jobs:
     permissions:
       packages: read
     env:
-      MOUNTAIN_PHASE: 14
+      MOUNTAIN_PHASE: 16
     strategy:
       fail-fast: false
       matrix:

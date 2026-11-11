@@ -27,6 +27,8 @@ modules:
         - papirus-icon-theme
         - /usr/bin/rsvg-convert
         - egl-utils
+        - nodejs
+        - npm
 
   - type: script
     scripts:

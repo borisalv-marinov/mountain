@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Code
+Exec=konsole --hold -e /usr/libexec/mountain-ai claude
+Icon=mountain-folder-ai
+Categories=Development;

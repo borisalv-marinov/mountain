@@ -179,6 +179,14 @@ check_phase14() {
   done
 }
 
+check_phase16() {
+  assert_cmd node; assert_cmd npm; assert_cmd konsole
+  assert_file /usr/libexec/mountain-ai
+  [[ -x /usr/libexec/mountain-ai ]] || fail "mountain-ai not executable"
+  local n
+  for n in claude codex gemini copilot; do assert_file /usr/share/applications/mountain-ai-$n.desktop; done
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
