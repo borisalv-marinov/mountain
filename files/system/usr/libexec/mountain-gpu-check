@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Switch between the mountain and mountain-nvidia images when the GPU does not match.
+# Usage: mountain-gpu-check [--dry-run]. Never fails the boot.
+DRY=0; [[ ${1:-} == --dry-run ]] && DRY=1
+STATE_DIR=${MOUNTAIN_STATE_DIR:-/var/lib/mountain}
+MARKER=$STATE_DIR/gpu-switched
+# shellcheck disable=SC1091
+. "${MOUNTAIN_CONFIG:-/usr/share/mountain/config}" || { echo "mountain-gpu-check: no config"; exit 0; }
+
+has_gpu=0; lspci -nn 2>/dev/null | grep -qi '\[10de:' && has_gpu=1
+is_img=0; command -v nvidia-smi >/dev/null 2>&1 && is_img=1
+
+if [[ $has_gpu == "$is_img" ]]; then echo "nothing to do"; exit 0; fi
+if [[ $has_gpu == 1 ]]; then target=$MOUNTAIN_IMAGE_NVIDIA; else target=$MOUNTAIN_IMAGE; fi
+target=$target:latest
+
+if [[ -f $MARKER && $(cat "$MARKER") == "$target" ]]; then echo "already switched"; exit 0; fi
+if [[ $DRY == 1 ]]; then echo "would switch to $target"; exit 0; fi
+
+if bootc switch --enforce-container-sigpolicy "$target"; then
+  mkdir -p "$STATE_DIR" && echo "$target" > "$MARKER"
+else
+  echo "mountain-gpu-check: bootc switch failed, will retry next boot"
+fi
+exit 0

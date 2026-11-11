@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=OnlyOffice
+Exec=flatpak run org.onlyoffice.desktopeditors
+Icon=org.onlyoffice.desktopeditors

@@ -15,8 +15,22 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
   cancel-in-progress: true
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: Check recipe YAML
+        run: yamllint -d relaxed recipes/
+      - name: Check Flathub IDs
+        run: bash tests/check-flathub-ids.sh
+
   bluebuild:
     name: Build Custom Image
+    needs: lint
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,6 +42,7 @@ jobs:
         recipe:
           # !! Add your recipes here
           - recipe.yml
+          - recipe-nvidia.yml
     steps:
       # the build is fully handled by the reusable github action
       - name: Build Custom Image
@@ -40,3 +55,47 @@ jobs:
 
           # enabled by default, disable if your image is small and you want faster builds
           maximize_build_space: true
+
+  test:
+    name: Test Image
+    needs: bluebuild
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    env:
+      MOUNTAIN_PHASE: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [mountain, mountain-nvidia]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Log in to ghcr.io
+        run: echo ${{ github.token }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Install skopeo
+        run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
+      - name: Find image tag
+        id: tag
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ "$BRANCH" = "main" ]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SAFE="${BRANCH//\//-}"
+          ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/${{ matrix.image }}" | jq -r '.Tags[]')
+          TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
+          if [ -z "$TAG" ]; then
+            echo "::error::No image tag contains '$SAFE'. All tags:"
+            echo "$ALL"
+            exit 1
+          fi
+          echo "Using tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Run image tests
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: podman run --rm -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh "$MOUNTAIN_PHASE"

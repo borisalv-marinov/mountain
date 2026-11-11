@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=GeForce NOW
+Exec=flatpak run com.microsoft.Edge --app=https://play.geforcenow.com
+Icon=com.microsoft.Edge

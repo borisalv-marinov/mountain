@@ -1,0 +1,17 @@
+[Plugins]
+blurEnabled=true
+contrastEnabled=true
+wobblywindowsEnabled=false
+magiclampEnabled=true
+squashEnabled=false
+
+[Effect-blur]
+BlurStrength=10
+NoiseStrength=3
+
+[Compositing]
+Enabled=true
+
+[org.kde.kdecoration2]
+ButtonsOnLeft=
+ButtonsOnRight=IAX

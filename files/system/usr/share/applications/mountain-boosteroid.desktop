@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Boosteroid
+Exec=flatpak run com.microsoft.Edge --app=https://cloud.boosteroid.com
+Icon=com.microsoft.Edge
+Categories=Game;

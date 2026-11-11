@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Xbox Cloud Gaming
+Exec=flatpak run com.microsoft.Edge --app=https://www.xbox.com/play
+Icon=com.microsoft.Edge
+Categories=Game;

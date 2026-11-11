@@ -1,0 +1,10 @@
+[KDE]
+LookAndFeelPackage=org.mountain.desktop
+widgetStyle=kvantum
+
+[General]
+ColorScheme=BreezeDark
+AccentColor=61,174,233
+
+[Icons]
+Theme=Papirus-Dark

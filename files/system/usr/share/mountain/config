@@ -1,0 +1,3 @@
+MOUNTAIN_NAME="Mountain"
+MOUNTAIN_IMAGE="ghcr.io/borisalv-marinov/mountain"
+MOUNTAIN_IMAGE_NVIDIA="ghcr.io/borisalv-marinov/mountain-nvidia"

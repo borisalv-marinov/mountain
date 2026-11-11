@@ -1,0 +1,219 @@
+name: vm-test
+on:
+  workflow_dispatch:
+  push: # lets the branch run it before the file exists on main
+    branches: [mountain-phases]
+    paths: ['.github/workflows/vm-test.yml']
+  workflow_run:
+    workflows: [bluebuild]
+    types: [completed]
+    branches: [mountain-phases]
+
+jobs:
+  vm:
+    name: Boot image in VM
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04 # 26.04 denies bib mounts
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [mountain] # NVIDIA can't be tested without a GPU
+    env:
+      IMG: ${{ matrix.image }}
+      BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+    steps:
+      - name: Enable KVM and install tools
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils ovmf imagemagick socat skopeo
+          ls /usr/share/OVMF/ /usr/share/ovmf/ 2>/dev/null || true
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Generate ephemeral credentials
+        run: |
+          mkdir -p "$HOME/vm" && cd "$HOME/vm"
+          ssh-keygen -t ed25519 -N "" -f key -q
+          PW=$(openssl rand -hex 12)
+          echo "::add-mask::$PW"
+          echo "TESTPW=$PW" >> "$GITHUB_ENV"
+
+      - name: Find image tag
+        id: tag
+        run: |
+          SAFE="${BRANCH//\//-}"
+          ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
+          TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
+          [ -n "$TAG" ] || { echo "::error::no tag contains $SAFE"; echo "$ALL"; exit 1; }
+          echo "Using tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build qcow2 with bootc-image-builder
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          cd "$HOME/vm"
+          echo "${{ github.token }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          REF="ghcr.io/borisalv-marinov/$IMG:$TAG"
+          # test-only derived image: enable sshd + key auth (the shipped image stays untouched)
+          cat > Containerfile <<EOF
+          FROM $REF
+          COPY key.pub /etc/ssh/authorized_keys.d/root
+          COPY key.pub /etc/ssh/authorized_keys.d/tester
+          RUN systemctl enable sshd \
+           && chmod 755 /etc/ssh/authorized_keys.d && chmod 644 /etc/ssh/authorized_keys.d/* \
+           && printf 'AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.d/%%u\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/90-test.conf
+          EOF
+          sudo podman build -t localhost/mountain-test:latest .
+          {
+            echo '[[customizations.user]]'
+            echo 'name = "tester"'
+            echo "password = \"$TESTPW\""
+            echo "key = \"$(cat key.pub)\""
+            echo 'groups = ["wheel"]'
+          } > config.toml
+          mkdir -p output
+          sudo podman run --rm --privileged --pull=newer \
+            --security-opt label=type:unconfined_t --security-opt apparmor=unconfined \
+            -v "$PWD/config.toml:/config.toml:ro" \
+            -v "$PWD/output:/output" \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type qcow2 --rootfs btrfs --local localhost/mountain-test:latest
+          sudo chown -R "$USER" output
+          mv output/qcow2/disk.qcow2 disk.qcow2
+          sudo podman rmi -af >/dev/null 2>&1 || true
+          qemu-img resize disk.qcow2 64G
+          df -h /
+
+      - name: Boot VM
+        run: |
+          cd "$HOME/vm"
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd vars.fd
+          date +%s > boot_start
+          qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35 \
+            -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+            -drive if=pflash,format=raw,file=vars.fd \
+            -drive file=disk.qcow2,if=virtio \
+            -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
+            -device virtio-vga -display none \
+            -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0 \
+            -monitor unix:/tmp/qmon,server,nowait -serial file:serial.log -daemonize
+
+      - name: Run tests
+        run: |
+          cd "$HOME/vm"
+          SSHO="-i $PWD/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes"
+          set +e # a failing check must not abort the run
+          R() { ssh $SSHO root@127.0.0.1 "$@"; } # everything runs as root over ssh
+          TU() { printf 'sudo -u tester -i bash -c %q' "$1"; } # wrap a command to run as tester
+          wait_ssh() {
+            local end=$(( $(date +%s) + $1 ))
+            while [ "$(date +%s)" -lt "$end" ]; do R true 2>/dev/null && return 0; sleep 10; done
+            return 1
+          }
+          printf '# VM test report (%s)\n\n| Check | Result | Evidence |\n|---|---|---|\n' "$IMG" > report.md
+          CORE_FAIL=0
+          chk() { # name core(0/1, 2=INFO only) cmd expected-regex
+            local out rc ev r
+            for _ in 1 2 3; do out=$(R "$3" 2>&1); rc=$?; [ $rc -ne 255 ] && break; sleep 10; done
+            echo "$out" | grep -Eq -- "$4" || rc=1
+            ev=$(echo "$out" | head -3 | tr '\n|' ' /' | cut -c1-80)
+            if [ "$2" = 2 ]; then r=INFO
+            elif [ $rc -eq 0 ]; then r=PASS
+            else r=FAIL; [ "$2" = 1 ] && CORE_FAIL=1; fi
+            echo "| $1 | $r | \`$ev\` |" >> report.md
+            echo "$r $1"
+          }
+
+          if ! wait_ssh 600; then
+            echo "| SSH up within 10 min | FAIL | never came up |" >> report.md
+            tail -50 serial.log >> report.md || true
+            cat report.md >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::SSH never came up"; exit 1
+          fi
+          BOOT=$(( $(date +%s) - $(cat boot_start) ))
+          echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
+          # bib's config.toml user was not created, so make it (gets /etc/skel)
+          R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
+
+          chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
+          chk "hostname" 0 "hostname" '^mountain$'
+          chk "mountain config" 1 "cat /usr/share/mountain/config" 'MOUNTAIN_NAME="Mountain"'
+          chk "bootc status" 0 "bootc status 2>&1 | head -8" 'kind: BootcHost'
+          chk "rpm code python3 git" 1 "rpm -q --qf '%{NAME}\n' code python3 git | grep -cE '^(code|python3|git)\$'" '^3$'
+          chk "hello.py (tester)" 1 "$(TU 'python3 ~/Projects/hello.py')" 'hello'
+          chk "free -m (no desktop)" 0 "free -m" 'Mem:'
+          chk "failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+          chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
+          chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
+          chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
+          chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
+          chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
+          chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'firefox\.desktop'
+          chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
+          chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
+          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^[3-9]'
+          chk "steam gamemoderun" 0 "command -v steam gamemoderun | wc -l" '^2$'
+          chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '.'
+          chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
+
+          # first-boot flatpaks, up to 25 min
+          FP="dev.vencord.Vesktop com.discordapp.Discord com.microsoft.Edge org.onlyoffice.desktopeditors com.heroicgameslauncher.hgl org.mozilla.firefox"
+          M=x
+          FPEND=$(( $(date +%s) + 1500 ))
+          while [ "$(date +%s)" -lt "$FPEND" ]; do
+            L=$(R "flatpak list --app --columns=application" 2>/dev/null)
+            M=""; for a in $FP; do echo "$L" | grep -qx "$a" || M="$M $a"; done
+            [ -z "$M" ] && break; sleep 15
+          done
+          if [ -z "$M" ]; then echo "| flatpaks | PASS | all 6 present |" >> report.md
+          else echo "| flatpaks | FAIL | missing:$M |" >> report.md; fi
+
+          # desktop: autologin a fresh user, 3 screenshots
+          SESS=$(R "ls /usr/share/wayland-sessions | grep -i plasma | head -1")
+          echo "session file: $SESS"
+          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
+          sleep 120
+          LT='sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest)'
+          shot() { echo "screendump /tmp/$1.ppm" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 2; convert /tmp/$1.ppm "$1.png" || true; }
+          chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" 'looktest'
+          shot desk1
+          chk "free -m (desktop)" 0 "free -m" 'Mem:'
+          chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" 'Audio'
+          echo "sendkey meta_l" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 3; shot desk2
+          echo "sendkey esc" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null
+          R "$LT WAYLAND_DISPLAY=wayland-0 setsid nohup dolphin </dev/null >/dev/null 2>&1 &"
+          sleep 15; shot desk3
+          chk "dolphin running" 0 "pgrep -u looktest -x dolphin" '^[0-9]+$'
+          chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+
+          R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
+          for n in 1 2; do
+            R "systemctl reboot" || true
+            sleep 30
+            if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+            else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
+          done
+
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CORE_FAIL" = 1 ]; then echo "::error::core check failed"; exit 1; fi
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-test-report
+          path: |
+            /home/runner/vm/report.md
+            /home/runner/vm/*.png
+            /home/runner/vm/serial.log

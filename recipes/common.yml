@@ -1,0 +1,53 @@
+---
+modules:
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  - type: script
+    scripts:
+      - branding.sh
+      - kde-defaults.sh
+
+  - type: dnf
+    repos:
+      files:
+        - https://packages.microsoft.com/yumrepos/vscode/config.repo
+      keys:
+        - https://packages.microsoft.com/keys/microsoft.asc
+    install:
+      packages:
+        - code
+        - python3
+        - python3-pip
+        - git
+        - kvantum
+        - kvantum-data
+        - papirus-icon-theme
+        - /usr/bin/rsvg-convert
+
+  - type: script
+    scripts:
+      - kvantum-glass.sh
+      - sddm-background.sh
+
+  - type: default-flatpaks
+    configurations:
+      - notify: true
+        scope: system
+        install:
+          - dev.vencord.Vesktop
+          - com.discordapp.Discord
+          - com.microsoft.Edge
+          - org.onlyoffice.desktopeditors
+          - com.heroicgameslauncher.hgl
+          - org.mozilla.firefox
+      - scope: user
+
+  - type: systemd
+    system:
+      enabled:
+        - mountain-gpu-check.service
+
+  - type: signing

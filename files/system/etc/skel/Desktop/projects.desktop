@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Projects
+Exec=sh -c 'exec dolphin "$HOME/Projects"'
+Icon=folder
