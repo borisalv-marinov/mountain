@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=First Login Setup
+Exec=/usr/libexec/mountain-user-setup
+X-KDE-autostart-phase=0
+NoDisplay=true

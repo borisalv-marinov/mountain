@@ -1,5 +1,6 @@
 [KDE]
 SingleClick=false
+DoubleClickInterval=500
 LookAndFeelPackage=org.mountain.desktop
 widgetStyle=kvantum
 

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# First login: File Explorer sidebar like Windows "Quick access" (standard folders, Trash; no Network/Recent/Tags).
+# Never touches an existing places file. HOME and the template path can be overridden for tests.
+set -euo pipefail
+out=${XDG_DATA_HOME:-$HOME/.local/share}/user-places.xbel
+tpl=${MOUNTAIN_PLACES_TEMPLATE:-/usr/share/mountain/user-places.xbel.in}
+[[ -e $out ]] && exit 0
+xdg-user-dirs-update >/dev/null 2>&1 || true
+dir() { # xdg key, fallback name
+  local d; d=$(xdg-user-dir "$1" 2>/dev/null || true)
+  [[ -n $d && $d != "$HOME" ]] && echo "$d" || echo "$HOME/$2"
+}
+esc() { local s=${1//&/&amp;}; s=${s//</&lt;}; echo "${s//>/&gt;}"; }
+url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$1"; }
+n=0; places=
+add() { # href title icon
+  places+=" <bookmark href=\"$(esc "$1")\">
+  <title>$(esc "$2")</title>
+  <info>
+   <metadata owner=\"http://freedesktop.org\"><bookmark:icon name=\"$3\"/></metadata>
+   <metadata owner=\"http://www.kde.org\"><ID>mountain/$n</ID><isSystemItem>true</isSystemItem></metadata>
+  </info>
+ </bookmark>
+"; n=$((n+1)); }
+add "$(url "$HOME")" Home user-home
+add "desktop:/" Desktop user-desktop # desktop:/ shows shortcut names without ".desktop"
+add "$(url "$(dir DOCUMENTS Documents)")" Documents folder-documents
+add "$(url "$(dir DOWNLOAD Downloads)")" Downloads folder-downloads
+add "$(url "$(dir PICTURES Pictures)")" Pictures folder-pictures
+add "$(url "$(dir MUSIC Music)")" Music folder-music
+add "$(url "$(dir VIDEOS Videos)")" Videos folder-videos
+add "trash:/" "Recycle Bin" user-trash
+mkdir -p "$(dirname "$out")"
+python3 - "$tpl" "$out" "$places" <<'PY'
+import sys
+t, o, p = sys.argv[1:]
+open(o, "w").write(open(t).read().replace("@PLACES@", p))
+PY
