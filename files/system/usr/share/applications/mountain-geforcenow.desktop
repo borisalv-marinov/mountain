@@ -2,5 +2,5 @@
 Type=Application
 Name=GeForce NOW
 Exec=flatpak run com.microsoft.Edge --app=https://play.geforcenow.com
-Icon=com.microsoft.Edge
+Icon=/usr/share/icons/Papirus/64x64/apps/geforcenow.svg
 Categories=Game;

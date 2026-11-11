@@ -160,6 +160,25 @@ check_phase13() {
   assert_cmd eglinfo
 }
 
+check_phase14() {
+  command -v xmllint >/dev/null 2>&1 || fail "xmllint missing (add libxml2 to recipes/common.yml)"
+  local f i d
+  for f in /usr/share/icons/hicolor/scalable/apps/mountain-{logo,boosteroid}.svg /usr/share/icons/hicolor/scalable/places/mountain-folder-{cloudgaming,games,launchers,browsers,coding,ai,office,chat}.svg; do
+    assert_file "$f"
+    xmllint --noout "$f" || fail "invalid svg: $f"
+  done
+  for f in /usr/share/applications/mountain-*.desktop /etc/skel/Desktop/*.desktop; do
+    i=$(sed -n 's/^Icon=//p' "$f" | head -1)
+    [[ -n "$i" ]] || continue
+    case "$i" in
+      /*) [[ -f "$i" ]] || fail "$f: icon missing: $i" ;;
+      com.*|org.*|dev.*|io.*) ;; # flatpak ids arrive at first boot
+      *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) 2>/dev/null | head -1)
+         [[ -n "$d" ]] || fail "$f: icon not found: $i" ;;
+    esac
+  done
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

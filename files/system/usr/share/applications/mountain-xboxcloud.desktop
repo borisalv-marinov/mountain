@@ -2,5 +2,5 @@
 Type=Application
 Name=Xbox Cloud Gaming
 Exec=flatpak run com.microsoft.Edge --app=https://www.xbox.com/play
-Icon=com.microsoft.Edge
+Icon=/usr/share/icons/Papirus/64x64/apps/xbox.svg
 Categories=Game;
