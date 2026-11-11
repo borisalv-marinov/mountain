@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { charToKeysym } from "./keysym.mjs";
+assert.equal(charToKeysym("a"), 0x61);
+assert.equal(charToKeysym("A"), 0x41);
+assert.equal(charToKeysym("\n"), 0xff0d);
+assert.equal(charToKeysym("\t"), 0xff09);
+assert.equal(charToKeysym("ä"), 0xe4);
+assert.equal(charToKeysym("€"), 0x010020ac);
+assert.equal(charToKeysym("😀"), 0x0101f600);
+console.log("keysym ok");

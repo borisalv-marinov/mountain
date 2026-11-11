@@ -29,6 +29,8 @@ jobs:
         run: bash tests/test-lite-mode.sh
       - name: Test AI launcher
         run: bash tests/test-mountain-ai.sh
+      - name: Test Try Mountain keysyms
+        run: node try/keysym.test.mjs
       - name: Check Flathub IDs
         run: bash tests/check-flathub-ids.sh
 
