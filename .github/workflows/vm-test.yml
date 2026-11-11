@@ -163,7 +163,7 @@ jobs:
           chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
           chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
           chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
-          chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'firefox\.desktop'
+          chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
           chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
           chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
           chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^[3-9]'

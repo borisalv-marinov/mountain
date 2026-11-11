@@ -36,6 +36,7 @@ modules:
     scripts:
       - kvantum-glass.sh
       - sddm-background.sh
+      - app-icons.sh
 
   - type: default-flatpaks
     configurations:
