@@ -26,6 +26,7 @@ modules:
         - kvantum-data
         - papirus-icon-theme
         - /usr/bin/rsvg-convert
+        - egl-utils
 
   - type: script
     scripts:

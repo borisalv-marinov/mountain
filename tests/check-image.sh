@@ -148,6 +148,18 @@ check_phase12() {
   assert_file /etc/skel/Projects/hello.py
 }
 
+check_phase13() {
+  local f
+  for f in org.kde.kdeconnect.daemon geoclue-demo-agent org.kde.kunifiedpush-distributor org.gnome.SettingsDaemon.DiskUtilityNotify; do
+    assert_grep '^Hidden=true$' "/etc/xdg/autostart/$f.desktop"
+  done
+  assert_grep '^Indexing-Enabled=false$' /etc/xdg/baloofilerc
+  assert_grep '^InputMethod=$' /etc/xdg/kwinrc
+  [[ -x /usr/libexec/mountain-lite-mode ]] || fail "mountain-lite-mode not executable"
+  assert_file /etc/xdg/autostart/mountain-lite-mode.desktop
+  assert_cmd eglinfo
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

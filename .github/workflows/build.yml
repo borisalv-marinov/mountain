@@ -25,6 +25,8 @@ jobs:
         run: pip install yamllint
       - name: Check recipe YAML
         run: yamllint -d relaxed recipes/
+      - name: Test lite mode
+        run: bash tests/test-lite-mode.sh
       - name: Check Flathub IDs
         run: bash tests/check-flathub-ids.sh
 
@@ -64,7 +66,7 @@ jobs:
     permissions:
       packages: read
     env:
-      MOUNTAIN_PHASE: 12
+      MOUNTAIN_PHASE: 13
     strategy:
       fail-fast: false
       matrix:
