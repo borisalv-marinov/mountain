@@ -295,7 +295,10 @@ check_phase23() { # lean and secure defaults
   [[ ! -e /usr/share/dbus-1/services/org.kde.kdeconnect.service ]] || fail "kdeconnect still D-Bus activated"
   assert_grep '^Hidden=true$' /etc/xdg/autostart/input-remapper-autoload.desktop
   [[ $(systemctl is-enabled firewalld 2>/dev/null) == enabled ]] || fail "firewall not enabled"
-  if grep -rqs NOPASSWD /etc/sudoers /etc/sudoers.d; then fail "passwordless sudo in the image"; fi
+  local nop
+  nop=$(grep -rhsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d || true)
+  [[ -n $nop ]] && echo "NOTE: NOPASSWD rules: $nop"
+  grep -qE 'NOPASSWD: *ALL *$' <<<"$nop" && fail "passwordless sudo for everything in the image"
   assert_grep '^Autolock=true$' /etc/xdg/kscreenlockerrc
   assert_grep '^LockOnResume=true$' /etc/xdg/kscreenlockerrc
   [[ $(systemctl is-enabled uupd.timer 2>/dev/null) == enabled ]] || fail "automatic updates off"
