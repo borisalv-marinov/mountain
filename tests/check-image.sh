@@ -205,7 +205,7 @@ check_phase17() {
     [[ -e /usr/share/plasma/plasmoids/org.kde.plasma.$id ]] || fail "plasmoid missing: $id"
   done
   # optional applets are guarded by knownWidgetTypes in the layout: report, do not fail
-  for id in $(grep -o 'opt([a-z]*, "[^"]*"' "$L" | sed 's/.*"\(.*\)"//' | sort -u); do
+  for id in $(grep -o 'opt([A-Za-z_]*, *"[^"]*"' "$L" | grep -o '"[^"]*"' | tr -d '"' | sort -u); do
     [[ -e /usr/share/plasma/plasmoids/$id ]] || echo "NOTE: optional applet not installed: $id"
   done
   assert_grep 'mountain-logo' "$L"
