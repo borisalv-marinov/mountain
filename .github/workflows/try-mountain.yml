@@ -69,7 +69,7 @@ jobs:
           mkdir -p "$HOME/vm" && cd "$HOME/vm"
           echo "${{ github.token }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           REF="ghcr.io/borisalv-marinov/$IMG:$TAG"
-          printf 'mountain:%s\n' "$TRY_PASSWORD" > pw
+          echo 'mountain:123' > pw # desktop password for this throwaway try VM (owner's choice)
           # ready signal: prints MOUNTAIN-READY on the serial port once the default flatpaks are installed
           cat > ready.sh <<'SH'
           #!/bin/bash
@@ -135,7 +135,7 @@ jobs:
             -drive if=pflash,format=raw,file=vars.fd \
             -drive file=disk.qcow2,if=virtio \
             -nic user,model=virtio-net-pci \
-            -device virtio-vga -vnc 127.0.0.1:0,password=on \
+            -device VGA,edid=on,xres=1600,yres=900 -vnc 127.0.0.1:0,password=on \
             -device qemu-xhci -device usb-tablet \
             -chardev qemu-vdagent,id=vdagent,name=vdagent,clipboard=on -device virtio-serial-pci -device virtserialport,chardev=vdagent,name=com.redhat.spice.0 \
             -monitor unix:/tmp/qmon,server,nowait -serial file:serial.log -daemonize
