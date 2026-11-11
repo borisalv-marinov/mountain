@@ -69,7 +69,7 @@ Branch `probe-v3`, workflow `probe.yml` (deleted afterwards). Findings (image `m
 - `/etc/xdg/kcm-about-distrorc` = Bazzite logo/name; os-release `LOGO=bazzite-logo`, `BOOTLOADER_NAME="Bazzite Stable (…)"`.
 - Plymouth theme `bgrt` uses `/usr/share/plymouth/themes/spinner/watermark.png` (Bazzite's); initramfs at `/usr/lib/modules/*/initramfs.img`.
 - hicolor icon cache already contains our icons (cache theory ruled out); We10X ships `start-here*.svg` (Windows-style) in `status/*`.
-- `/usr/share/wallpapers/Mountain` already exists (KDE's own) → our package is `/usr/share/wallpapers/MountainPeaks`.
+- `/usr/share/wallpapers/Mountain` already exists (KDE's own) → our package is `/usr/share/wallpapers/mountain-peaks`.
 - PAM `plasmalogin` and `plasmalogin-autologin` both load pam_kwallet; no `/etc/sudoers.d`; firewalld enabled; `kunifiedpush-distributor.service` wanted by graphical-session.target; kio workers `desktop`, `applications` present.
 
 ### Task 1: Mountain logo everywhere
@@ -92,10 +92,10 @@ Branch `probe-v3`, workflow `probe.yml` (deleted afterwards). Findings (image `m
 ### Task 2: Line-art mountain wallpaper (dark + light), login and lock screen
 
 **Files:**
-- Create: `tools/wallpaper.py` (generator, not used at build), `files/system/usr/share/wallpapers/MountainPeaks/metadata.json`, `.../contents/images/mountain-dark.svg` is NOT shipped — the build renders PNGs from `files/system/usr/share/mountain/wallpaper.svg` (dark) and `wallpaper-light.svg`
-- Modify: `files/system/usr/share/mountain/wallpaper.svg`, `files/scripts/sddm-background.sh` (render 1920×1080, 2560×1440, 3840×2160 into `contents/images/` from light and `contents/images_dark/` from dark; keep `/usr/share/mountain/wallpaper.png` = dark 1920), layout.js (`Image` = `file:///usr/share/wallpapers/MountainPeaks/`), create `files/system/etc/xdg/kscreenlockerrc` (`[Greeter][Wallpaper][org.kde.image][General] Image=file:///usr/share/wallpapers/MountainPeaks/`, `[Daemon] Autolock=true Timeout=10 LockOnResume=true`)
+- Create: `tools/wallpaper.py` (generator, not used at build), `files/system/usr/share/wallpapers/mountain-peaks/metadata.json`, `.../contents/images/mountain-dark.svg` is NOT shipped — the build renders PNGs from `files/system/usr/share/mountain/wallpaper.svg` (dark) and `wallpaper-light.svg`
+- Modify: `files/system/usr/share/mountain/wallpaper.svg`, `files/scripts/sddm-background.sh` (render 1920×1080, 2560×1440, 3840×2160 into `contents/images/` from light and `contents/images_dark/` from dark; keep `/usr/share/mountain/wallpaper.png` = dark 1920), layout.js (`Image` = `file:///usr/share/wallpapers/mountain-peaks/`), create `files/system/etc/xdg/kscreenlockerrc` (`[Greeter][Wallpaper][org.kde.image][General] Image=file:///usr/share/wallpapers/mountain-peaks/`, `[Daemon] Autolock=true Timeout=10 LockOnResume=true`)
 
-- [ ] Step 1: phase 20 test: the 6 PNGs exist with the right sizes (`file` output), `metadata.json` valid JSON with `"Id": "MountainPeaks"`, kscreenlockerrc lines, layout.js points at the package, phases 10/12 still pass.
+- [ ] Step 1: phase 20 test: the 6 PNGs exist with the right sizes (`file` output), `metadata.json` valid JSON with `"Id": "mountain-peaks"`, kscreenlockerrc lines, layout.js points at the package, phases 10/12 still pass.
 - [ ] Step 2: design (frontend-design skill): only thin lines — 40–70 stacked ridgelines forming peaks, each occluding the ones behind, a central twin peak echoing the logo; dark: deep navy → indigo background, lines pale cyan/white at 1.2–2 px (4K units) with depth fade; light: mist white background, slate lines. Generator prints the SVG; commit both SVGs (< 300 KB each).
 - [ ] Step 3: render + view the PNGs locally; commit `feat: line-art mountain wallpaper (dark/light), login and lock screen`.
 

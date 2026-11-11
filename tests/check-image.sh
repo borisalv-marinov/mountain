@@ -226,6 +226,81 @@ check_phase18() {
   assert_file /usr/share/icons/We10X-dark/index.theme
 }
 
+check_phase19() { # Mountain logo everywhere
+  local logo=/usr/share/icons/hicolor/scalable/apps/mountain-logo.svg f n=0 k
+  assert_grep '^LOGO=mountain-logo$' /usr/lib/os-release
+  grep -q '^BOOTLOADER_NAME="Bazzite' /usr/lib/os-release && fail "boot menu still says Bazzite"
+  k=/usr/share/kde-settings/kde-profile/default/xdg/kcm-about-distrorc
+  assert_grep "^LogoPath=$logo$" "$k"
+  [[ ! -e /etc/xdg/kcm-about-distrorc ]] || fail "Bazzite about page config still in /etc/xdg"
+  while IFS= read -r f; do
+    case $(readlink -f "$f") in "$logo"|/usr/share/icons/breeze*) n=$((n+1)) ;; *) fail "Windows-style icon left: $f" ;; esac
+  done < <(find /usr/share/icons/We10X* \( -name 'start-here*' -o -name 'distributor-logo*' -o -name 'applications-all*' \))
+  (( n > 0 )) || fail "no We10X logo icons replaced"
+  grep -aq mountain-logo /usr/share/icons/hicolor/icon-theme.cache || fail "hicolor cache lacks mountain-logo"
+  cmp -s /usr/share/mountain/watermark.png /usr/share/plymouth/themes/spinner/watermark.png || fail "plymouth watermark not ours"
+  if command -v lsinitrd >/dev/null 2>&1; then
+    [[ $(lsinitrd -f usr/share/plymouth/themes/spinner/watermark.png /usr/lib/modules/*/initramfs.img | md5sum) == "$(md5sum < /usr/share/mountain/watermark.png)" ]] || fail "initramfs has the old boot watermark"
+  else echo "NOTE: lsinitrd missing, initramfs watermark not checked"; fi
+}
+
+check_phase20() { # line-art wallpaper, login and lock screen
+  local w=/usr/share/wallpapers/mountain-peaks s d
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="mountain-peaks"' "$w/metadata.json" || fail "bad wallpaper metadata"
+  for d in images images_dark; do for s in 1920x1080 2560x1440 3840x2160; do
+    assert_file "$w/contents/$d/$s.png"
+    file "$w/contents/$d/$s.png" | grep -q "${s%x*} x ${s#*x}" || fail "wrong size: $d/$s.png"
+  done; done
+  assert_file /usr/share/mountain/wallpaper-light.svg
+  assert_grep 'mountain-peaks' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  assert_grep '^Image=file:///usr/share/wallpapers/mountain-peaks/$' /etc/xdg/kscreenlockerrc
+}
+
+check_phase21() { # Windows-like start menu and names
+  local a=/usr/share/applications L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js f
+  assert_grep '^Name=Settings$' $a/systemsettings.desktop
+  assert_grep '^Name=File Explorer$' $a/org.kde.dolphin.desktop
+  assert_grep '^Name=Task Manager$' $a/org.kde.plasma-systemmonitor.desktop
+  assert_grep '^Name=Terminal$' $a/org.kde.konsole.desktop
+  for f in kvantummanager org.kde.kwalletmanager org.kde.khelpcenter; do
+    [[ -f $a/$f.desktop ]] && assert_grep '^NoDisplay=true$' $a/$f.desktop
+  done
+  for f in /etc/xdg/menus/applications-merged/mountain.menu /etc/xdg/menus/plasma-applications-merged/mountain.menu; do
+    assert_grep mountain-accessories.directory "$f"; assert_grep '<Deleted/>' "$f"
+  done
+  assert_file /usr/share/desktop-directories/mountain-accessories.directory
+  assert_grep 'systemsettings.desktop' /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc
+  grep -qE 'appmenu|systemmonitor\.net|windowtitle|code\.desktop' "$L" && fail "layout still has macOS-style bits or a stale VS Code id"
+  assert_file $a/com.microsoft.VSCode.desktop
+}
+
+check_phase22() { # files open in the right app; File Explorer feel
+  local id
+  for id in $(sed -n 's/^[^=]*=\([^;]*\);.*/\1/p' /etc/xdg/mimeapps.list | sort -u); do
+    case $id in org.onlyoffice.*|org.mozilla.*) assert_grep "${id%.desktop}" /usr/share/bluebuild/default-flatpaks/configuration.yaml ;;
+      *) assert_file "/usr/share/applications/$id" ;; esac
+  done
+  [[ -x /usr/libexec/mountain-user-setup ]] || fail "mountain-user-setup not executable"
+  assert_file /usr/share/mountain/user-places.xbel.in
+  assert_file /etc/xdg/autostart/mountain-user-setup.desktop
+  assert_file /usr/lib/udev/rules.d/90-mountain-hide-system.rules
+  assert_grep '^Name=This PC$' /etc/skel/Desktop/files.desktop
+  assert_grep '^DoubleClickInterval=500$' /etc/xdg/kdeglobals
+  assert_grep '^BrowseThroughArchives=true$' /etc/xdg/dolphinrc
+}
+
+check_phase23() { # lean and secure defaults
+  [[ $(systemctl is-enabled input-remapper.service 2>/dev/null) == disabled ]] || fail "input-remapper still enabled"
+  [[ -L /etc/systemd/user/kunifiedpush-distributor.service && $(readlink /etc/systemd/user/kunifiedpush-distributor.service) == /dev/null ]] || fail "kunifiedpush not masked"
+  [[ ! -e /usr/share/dbus-1/services/org.kde.kdeconnect.service ]] || fail "kdeconnect still D-Bus activated"
+  assert_grep '^Hidden=true$' /etc/xdg/autostart/input-remapper-autoload.desktop
+  [[ $(systemctl is-enabled firewalld 2>/dev/null) == enabled ]] || fail "firewall not enabled"
+  if grep -rqs NOPASSWD /etc/sudoers /etc/sudoers.d; then fail "passwordless sudo in the image"; fi
+  assert_grep '^Autolock=true$' /etc/xdg/kscreenlockerrc
+  assert_grep '^LockOnResume=true$' /etc/xdg/kscreenlockerrc
+  [[ $(systemctl is-enabled uupd.timer 2>/dev/null) == enabled ]] || fail "automatic updates off"
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"
