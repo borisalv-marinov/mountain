@@ -148,7 +148,7 @@ jobs:
           QS
           date +%s > boot_start
           sudo podman run -d --name qemu --privileged --network host --device /dev/kvm -v "$HOME/vm:/vm" -v /tmp:/tmp quay.io/fedora/fedora:latest bash /vm/qemu.sh
-          for _ in $(seq 150); do [ -e /tmp/qmon ] && break; sleep 2; done
+          for _ in $(seq 450); do [ -e /tmp/qmon ] && break; sleep 2; done # dnf in the container can be slow on a bad mirror
           [ -e /tmp/qmon ] || { sudo podman logs qemu; tail -30 dnf.log; echo "::error::qemu did not start"; exit 1; }
           sleep 2
           # VNC passwords are max 8 characters
