@@ -14,7 +14,7 @@ Enabled=true
 
 [org.kde.kdecoration2]
 library=org.kde.kwin.aurorae.v2
-theme=__aurorae__svg__MountainGlass
+theme=__aurorae__svg__BlackGlass
 BorderSize=Tiny
 ButtonsOnLeft=
 ButtonsOnRight=IAX

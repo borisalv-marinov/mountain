@@ -180,7 +180,7 @@ jobs:
           chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
           chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
-          chk "Kvantum MountainGlass" 0 "$(TU 'grep -rh MountainGlass /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=MountainGlass'
+          chk "Kvantum BlackGlass" 0 "$(TU 'grep -rh BlackGlass /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=BlackGlass'
           chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
           chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^([3-9]|[1-9][0-9])$'
           chk "steam" 0 "command -v steam" 'steam'  # gamemode is removed upstream on purpose

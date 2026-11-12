@@ -1,5 +1,5 @@
 [kdeglobals][General]
-ColorScheme=MountainGlass
+ColorScheme=BlackGlass
 
 [kdeglobals][KDE]
 widgetStyle=kvantum
@@ -12,7 +12,7 @@ name=mountain-glass
 
 [kwinrc][org.kde.kdecoration2]
 library=org.kde.kwin.aurorae.v2
-theme=__aurorae__svg__MountainGlass
+theme=__aurorae__svg__BlackGlass
 BorderSize=Tiny
 
 [kcminputrc][Mouse]

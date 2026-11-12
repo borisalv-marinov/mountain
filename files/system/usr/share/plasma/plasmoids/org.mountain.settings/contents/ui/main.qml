@@ -159,7 +159,7 @@ PlasmoidItem {
 
     function setColorMode(mode) {
         colorMode = mode;
-        run(mode === "Light" ? "plasma-apply-colorscheme BreezeLight" : "plasma-apply-colorscheme MountainGlass");
+        run(mode === "Light" ? "plasma-apply-colorscheme BreezeLight" : "plasma-apply-colorscheme BlackGlass");
     }
 
     preferredRepresentation: fullRepresentation

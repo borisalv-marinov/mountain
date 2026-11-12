@@ -42,7 +42,7 @@ Brief: `docs/superpowers/prompts/2026-11-12-mountain-v5-black-glass-master-promp
 5. **Quick settings:** our tray plasmoid with Windows 11 tiles and sliders on the Plasma backends above. The stock
    network, volume, battery, Bluetooth and power applets move into the tray's hidden list (still reachable with ^).
 6. **Look:** our own Plasma theme "Mountain Glass" (SVG, blur masks), colour scheme "Mountain Glass" (WCAG AA checked),
-   Aurorae window decoration "Mountain Glass", Kvantum "MountainGlass" (from GlassDark). Lite mode keeps the same SVGs
+   Aurorae window decoration "Mountain Glass", Kvantum "BlackGlass" (from GlassDark). Lite mode keeps the same SVGs
    with blur off; glass panels are dark enough (≥ 85 % opaque) to read as solid gloss black.
 7. **Wallpaper:** our own SVG "Mountain Silk" (soft white-to-black waves), default for desktop, lock and login.
    The owner's own picture is never committed; `docs/OWNER-GUIDE.md` says how to set it in one step.

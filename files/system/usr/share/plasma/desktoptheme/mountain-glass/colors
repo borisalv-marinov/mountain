@@ -133,7 +133,7 @@ ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
 [General]
-ColorScheme=MountainGlass
+ColorScheme=BlackGlass
 Name=Mountain Glass
 shadeSortColumn=true
 
