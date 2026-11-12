@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Tests Active Protection's "unverified" rule and the review actions (no ClamAV needed).
+S=$(dirname "$0")/../files/system/usr/libexec/mountain-protect
+T=$(mktemp -d); rc=0
+ok() { if eval "$1"; then echo "ok: $2"; else echo "FAIL: $2"; rc=1; fi; }
+eval "$(sed -n '/^is_unverified()/,/^}/p' "$S")"
+allowed=$T/allowed
+mkdir -p "$T/.config/autostart"
+printf '#!/bin/sh\necho hi\n' > "$T/run-me"; echo text > "$T/notes.txt"; echo x > "$T/setup.exe"; printf '[Desktop Entry]\n' > "$T/.config/autostart/evil.desktop"
+ok '[[ $(is_unverified "$T/run-me") == script ]]' "a script with a shebang is unverified"
+ok '[[ $(is_unverified "$T/setup.exe") == "program or script" ]]' "an .exe is unverified"
+ok '[[ $(is_unverified "$T/.config/autostart/evil.desktop") == "starts at sign-in" ]]' "a new autostart entry is flagged"
+ok '! is_unverified "$T/notes.txt" >/dev/null' "a text file is fine"
+sha256sum "$T/run-me" | cut -d' ' -f1 > "$allowed"
+ok '! is_unverified "$T/run-me" >/dev/null' "an allowed file is no longer flagged"
+H=$T/home; mkdir -p "$H"; printf '%s\tscript\n' "$T/setup.exe" > /dev/null
+ok '! HOME=$H XDG_DATA_HOME= bash "$S" delete "$T/notes.txt" 2>/dev/null && [[ -e $T/notes.txt ]]' "delete refuses files not in the review list"
+rm -rf "$T"; exit $rc

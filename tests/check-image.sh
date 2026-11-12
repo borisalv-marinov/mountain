@@ -595,7 +595,17 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   for n in quick full scan-new scan-notify quarantine-restore allow profile usb; do assert_grep "$n" $x/mountain-security; done
   assert_grep 'Exec=/usr/libexec/mountain-security scan-notify %F' /usr/share/kio/servicemenus/mountain-scan.desktop
   assert_grep 'PathChanged=%h/Downloads' /usr/lib/systemd/user/mountain-scan-downloads.path
-  [[ $(systemctl --global is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] || fail "Downloads watcher off"
+  [[ $(systemctl --global is-enabled mountain-protect.service 2>/dev/null) == enabled ]] || fail "Active Protection off"
+  [[ $(systemctl --global is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] && fail "two Downloads scanners"
+  assert_cmd inotifywait
+  assert_grep '^MemoryHigh=150M$' /usr/lib/systemd/user/mountain-protect.service
+  [[ -x /usr/libexec/mountain-protect ]] && bash -n /usr/libexec/mountain-protect || fail "mountain-protect"
+  grep -q 'Steam' /usr/libexec/mountain-protect && grep -qE 'rec=.*Steam' /usr/libexec/mountain-protect && fail "Active Protection watches games"
+  desktop-file-validate /usr/share/applications/org.mountain.protection.desktop || fail "Active Protection launcher"
+  assert_file /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/ProtectionPage.qml
+  assert_grep '^deny = 5$' /etc/security/faillock.conf
+  grep -qs pam_faillock /etc/pam.d/system-auth || echo "NOTE: pam_faillock not in system-auth (vm-test brute-force step shows the effect)"
+  assert_grep 'repair-etc)' /usr/libexec/mountain-security
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /etc/firewalld/zones/mountain-home.xml || fail "bad home zone"
   grep -q 'port ' /etc/firewalld/zones/mountain-home.xml && fail "home profile opens ports"
   assert_grep '^Storage=none$' /usr/lib/systemd/coredump.conf.d/60-mountain.conf

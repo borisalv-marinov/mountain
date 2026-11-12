@@ -43,6 +43,7 @@ modules:
         - spectacle # Snipping Tool (Win+Shift+S)
         - usbguard # USB protection, opt-in (Security > Device security)
         - kdialog # Win+X menu
+        - inotify-tools # Active Protection watcher
         - efibootmgr # Restart into Windows
         - kio-gdrive # Google Drive in File Explorer after signing in under Online accounts
         - clamav # virus scan on demand (Settings > Privacy & security)
@@ -91,7 +92,7 @@ modules:
         - ModemManager.service # mobile-broadband modems only
     user:
       enabled:
-        - mountain-scan-downloads.path # scan new downloads with the definitions you have (no downloads)
+        - mountain-protect.service # Active Protection: real-time, local-only, light (watcher only; scans on demand)
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
 

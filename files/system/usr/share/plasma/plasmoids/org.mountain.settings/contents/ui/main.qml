@@ -196,7 +196,7 @@ PlasmoidItem {
             if (sourceName === app.modelCmd) {
                 app.modelName = out;
             } else if (sourceName === app.pageCmd) {
-                if (app.categories.some(c => c.id === out)) {
+                if (out === "protection" || app.categories.some(c => c.id === out)) {
                     app.page = out;
                 }
             } else if (sourceName === app.colorCmd) {
@@ -417,7 +417,7 @@ PlasmoidItem {
                 id: pageLoader
                 width: Math.min(flick.width - 32, 1000)
                 height: item ? item.implicitHeight : 0
-                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "privacy" ? "SecurityPage.qml" : "ListPage.qml"
+                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : "ListPage.qml"
                 onSourceChanged: flick.contentY = 0
             }
         }

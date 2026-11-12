@@ -22,6 +22,9 @@ sed -i -E 's/^Example/#Example/' /etc/freshclam.conf
 rm -f /etc/cron.d/clamav-update /etc/cron.d/clamav-freshclam
 systemctl disable clamav-freshclam.service clamav-freshclam-once.timer 2>/dev/null || true
 command -v clamscan freshclam >/dev/null
+# sign-in brute force: faillock locks the account for 5 minutes after 5 wrong passwords
+if authselect current >/dev/null 2>&1; then authselect enable-feature with-faillock >/dev/null; fi
+printf '\n# Mountain: lock for 5 minutes after 5 wrong passwords\ndeny = 5\nunlock_time = 300\n' >> /etc/security/faillock.conf
 # fonts outside KDE (GTK, Electron, Flatpak) render like KDE apps: RGB subpixel, slight hinting (Fedora's default)
 c=/usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf
 [[ -e $c ]] && ln -sf "$c" /etc/fonts/conf.d/10-sub-pixel-rgb.conf

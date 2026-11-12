@@ -654,7 +654,7 @@ jobs:
           chk "virus scan finds the test file and quarantines it" 0 "test ! -e ~looktest/Downloads/eicar.com && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo quarantined" '^quarantined$'
           chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
           chk "nothing scans or downloads in the background" 0 "pgrep -l -x 'clamd|freshclam|clamscan|clamonacc' || echo none" '^none$'
-          chk "Downloads watcher is on" 0 "$LT systemctl --user is-enabled mountain-scan-downloads.path" '^enabled$'
+          chk "Active Protection is on" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/new-download.com')"
           for _ in $(seq 40); do R "test -e ~looktest/Downloads/new-download.com" || break; sleep 3; done
           chk "a new download with a threat is quarantined automatically" 0 "test ! -e ~looktest/Downloads/new-download.com && ls ~looktest/.local/share/mountain/quarantine | grep -q new-download && echo quarantined" '^quarantined$'
@@ -663,6 +663,32 @@ jobs:
           chk "quarantine restore" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore eicar.com && test -e ~looktest/Downloads/eicar.com && echo restored" '^restored$'
           R "rm -f ~looktest/Downloads/eicar.com"
           chk "scan history" 2 "tail -3 ~looktest/.local/share/mountain/scan-history | paste -sd';'" 'scan'
+          # Active Protection: /tmp, a USB drive, an attachment-like path; unverified scripts and autostart entries; its cost
+          apwait() { for _ in $(seq 40); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /tmp/apa-tmp.com')"; apwait /tmp/apa-tmp.com
+          chk "Active Protection: a threat in /tmp is caught" 0 "test ! -e /tmp/apa-tmp.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-tmp && echo caught" '^caught$'
+          R "truncate -s 64M /var/tmp/usb.img && mkfs.vfat -n USBTEST /var/tmp/usb.img >/dev/null && mkdir -p /run/media/looktest/USBTEST && mount -o loop,uid=\$(id -u looktest) /var/tmp/usb.img /run/media/looktest/USBTEST"
+          R "mount | grep -q USBTEST || mount -o loop,uid=\$(id -u looktest) /var/tmp/usb.img /run/media/looktest/USBTEST"; sleep 3
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /run/media/looktest/USBTEST/game-crack.com')"; apwait /run/media/looktest/USBTEST/game-crack.com
+          chk "Active Protection: a threat on a USB drive is caught" 0 "test ! -e /run/media/looktest/USBTEST/game-crack.com && ls ~looktest/.local/share/mountain/quarantine | grep -q game-crack && echo caught" '^caught$'
+          R "umount /run/media/looktest/USBTEST; rm -f /var/tmp/usb.img"
+          R "$(TL 'mkdir -p ~/Downloads/attachments; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/attachments/invoice.pdf.com')"; apwait /home/looktest/Downloads/attachments/invoice.pdf.com
+          chk "Active Protection: an email-attachment-like threat is caught" 0 "test ! -e ~looktest/Downloads/attachments/invoice.pdf.com && ls ~looktest/.local/share/mountain/quarantine | grep -q invoice && echo caught" '^caught$'
+          R "$(TL 'printf "#!/bin/sh\necho installing\n" > ~/Downloads/install.sh; printf "[Desktop Entry]\nType=Application\nName=Updater\nExec=sh -c true\n" > ~/.config/autostart/updater.desktop')"; sleep 15
+          AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
+          chk "Active Protection: an unsigned script is flagged unverified" 0 "echo '$(grep -c 'ap_unverified=.*install.sh|script' <<<"$AP")'" '^1$'
+          chk "Active Protection: a new autostart entry is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*updater.desktop|starts at sign-in' <<<"$AP")'" '^1$'
+          chk "Active Protection status" 2 "echo '$(grep -E '^ap_(checked|threats)' <<<"$AP" | paste -sd' ')'" '.'
+          L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
+          R "$(TL '/usr/libexec/mountain-protect allow /home/looktest/Downloads/install.sh; /usr/libexec/mountain-protect delete /home/looktest/.config/autostart/updater.desktop')"
+          chk "Active Protection: Allow and Delete work" 0 "test -e ~looktest/Downloads/install.sh && test ! -e ~looktest/.config/autostart/updater.desktop && echo ok" '^ok$'
+          APM=$(R "$LT systemctl --user show mountain-protect.service -p MemoryCurrent --value")
+          A0=$(R "$LT systemctl --user show mountain-protect.service -p CPUUsageNSec --value"); sleep 30; A1=$(R "$LT systemctl --user show mountain-protect.service -p CPUUsageNSec --value")
+          APC=$(awk -v a="$A0" -v b="$A1" 'BEGIN{printf "%.2f", (b-a)/30e9*100}')
+          [ "${APM:-999999999}" -le 157286400 ] && r=PASS || r=FAIL; echo "| Active Protection idle RAM <= 150 MB | $r | $((${APM:-0}/1048576)) MB |" >> report.md
+          awk -v c="$APC" 'BEGIN{exit !(c < 1)}' && r=PASS || r=FAIL; echo "| Active Protection idle CPU ~0 % | $r | ${APC} % over 30 s |" >> report.md
+          R "$LT systemctl --user stop mountain-protect.service"; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
+          R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
           L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans; K -f org.mountain.settings
           R "rm -f /var/lib/clamav/mountain-test.hdb"
           # firewall: a service listening on 8765 answers inside the VM but not from outside
@@ -700,6 +726,45 @@ jobs:
           chk "sudo always asks for a password" 0 "grep -rsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d || echo none" '^none$'
           chk "polkit rules that skip the password" 2 "grep -ls 'Result.YES' /etc/polkit-1/rules.d/* /usr/share/polkit-1/rules.d/* 2>/dev/null | paste -sd' '" '.'
           chk "kernel lockdown (off by default: game drivers)" 2 "cat /sys/kernel/security/lockdown" '.'
+          
+          # Part H: attack test (red team) inside this test VM only. The attacker sits in a network namespace on a veth,
+          # so its traffic reaches the PC through firewalld's default zone, like another computer on the same network.
+          R "ip netns add attacker && ip link add vatk type veth peer name vatk0 && ip link set vatk0 netns attacker && ip addr add 10.99.0.1/24 dev vatk && ip link set vatk up && ip netns exec attacker ip addr add 10.99.0.2/24 dev vatk0 && ip netns exec attacker ip link set vatk0 up"
+          chk "attack: the attacker's network lands in zone" 2 "firewall-cmd --get-zone-of-interface=vatk 2>/dev/null || firewall-cmd --get-default-zone" '.'
+          OPEN=$(R "ip netns exec attacker bash -c 'for p in \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
+          [ "$OPEN" = 22 ] && r=PASS || r=FAIL; echo "| attack: port scan from the network (22 is this test's own SSH) | $r | open: ${OPEN:-none} |" >> report.md; echo "$r port scan"
+          R "useradd -G wheel rtadmin && echo rtadmin:Rt-Admin-2026 | chpasswd"
+          R "printf '#!/bin/sh\necho wrongpass\n' > /tmp/rt-wrong.sh; printf '#!/bin/sh\necho $LPW\n' > /tmp/rt-right.sh; chmod 755 /tmp/rt-wrong.sh /tmp/rt-right.sh"
+          SSHA="ip netns exec attacker env SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w ssh -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5"
+          R "for i in 1 2 3 4 5 6; do SSH_ASKPASS=/tmp/rt-wrong.sh $SSHA looktest@10.99.0.1 true </dev/null >/dev/null 2>&1; done; true"
+          chk "attack: password brute force locks the account" 0 "SSH_ASKPASS=/tmp/rt-right.sh $SSHA looktest@10.99.0.1 echo GOT-IN </dev/null 2>/dev/null || echo locked-out" '^locked-out$'
+          chk "attack: lockout recorded" 2 "faillock --user looktest | tail -3 | paste -sd' '" '.'
+          R "faillock --user looktest --reset; rm -f /tmp/rt-wrong.sh /tmp/rt-right.sh"
+          chk "attack: admin (wheel) sudo without a password is refused" 0 "sudo -u rtadmin sudo -n true 2>&1 || echo refused" 'refused|password is required'
+          chk "attack: polkit admin action without a password is refused" 0 "sudo -u rtadmin pkexec true 2>&1 || echo refused" 'refused|Not authorized|authentication agent'
+          chk "attack: writing the system (/usr) is impossible, even as root" 0 "touch /usr/bin/rt-test 2>&1 || echo read-only" 'read-only|Read-only'
+          chk "attack: no SUID programs where users can write" 0 "find /var/home /tmp /var/tmp -xdev -perm -4000 -type f 2>/dev/null | wc -l" '^0$'
+          chk "attack: SUID programs in the system (audit)" 2 "find /usr -xdev -perm -4000 -type f 2>/dev/null | sort | xargs -n1 basename | paste -sd' '" '.'
+          chk "attack: SELinux stays enforcing" 0 "getenforce" '^Enforcing$'
+          chk "attack: SELinux denials this boot" 2 "journalctl -b --no-pager | grep -c 'avc:  denied'" '.'
+          R "userdel -r rtadmin" 2>/dev/null || true
+          # a web download of the EICAR test file (best effort: needs the internet)
+          R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"
+          echo "| attack: web download of a threat | INFO | $r |" >> report.md
+          # a Flatpak app tries to read SSH keys
+          R "$(TL 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo fake-key > ~/.ssh/id_test')"
+          chk "attack: a Flatpak can't read ~/.ssh" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/.ssh/id_test 2>&1 | tail -1" 'No such file'
+          # fake ransomware: encrypt a folder, then restore it from Previous versions
+          R "$(TL 'mkdir -p ~/Documents/rt && for i in 1 2 3; do echo precious-$i > ~/Documents/rt/f$i.txt; done')"; sleep 61
+          R "systemctl start mountain-snapshot.service"; SNAP2=$(R "ls /var/home/.snapshots | tail -1")
+          R "$(TL 'for f in ~/Documents/rt/*.txt; do openssl enc -aes-256-cbc -pbkdf2 -k ransom -in "$f" -out "$f.locked" && rm "$f"; done')"
+          chk "attack: ransomware encrypted the test folder" 2 "ls ~looktest/Documents/rt | paste -sd' '" 'locked'
+          chk "attack: ransomware recovery from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP2/looktest/Documents/rt/*.txt ~/Documents/rt/ && rm ~/Documents/rt/*.locked && cat ~/Documents/rt/f2.txt")" '^precious-2$'
+          # broken system file (/etc) and deleted user settings, then recover
+          R "cp -a /etc/xdg/kdeglobals /tmp/kdeglobals.ok; echo garbage > /etc/xdg/kdeglobals"
+          chk "attack: a broken system file is repaired" 0 "/usr/libexec/mountain-security repair-etc xdg/kdeglobals && cmp /etc/xdg/kdeglobals /usr/etc/xdg/kdeglobals && echo repaired" 'repaired$'
+          R "cp -a /tmp/kdeglobals.ok /etc/xdg/kdeglobals"
+          chk "attack: deleted desktop settings come back from Previous versions" 0 "$(TL "rm ~/.config/plasma-org.kde.plasma.desktop-appletsrc && cp /var/home/.snapshots/$SNAP2/looktest/.config/plasma-org.kde.plasma.desktop-appletsrc ~/.config/ && grep -c '^\[Containments\]' ~/.config/plasma-org.kde.plasma.desktop-appletsrc")" '^[1-9]'
 
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
@@ -720,6 +785,7 @@ jobs:
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
           # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
           chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
+          chk "attack: fill the disk" 2 "fallocate -l \$(( \$(df --output=avail -B1 /var | tail -1) - 64*1024*1024 )) /var/rt-fill; df -h /var | tail -1" '.'
           BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
           printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
 
@@ -730,6 +796,7 @@ jobs:
             if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
               if [ $n = 1 ]; then
                 chk "rollback test: new version booted, previous kept" 0 "grep -o mountain.rollbacktest=1 /proc/cmdline; rpm-ostree status --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"deployments\"]), \"deployments\")'" 'mountain.rollbacktest=1'
+                chk "attack: a full disk still boots" 0 "test -e /var/rt-fill && rm -f /var/rt-fill && echo booted-full" '^booted-full$'
                 chk "Go back to the previous version" 0 "/usr/libexec/mountain-security rollback 2>&1 | tail -1" 'rollback=staged'
               else
                 chk "rollback works: the previous version booted" 0 "grep -q mountain.rollbacktest /proc/cmdline && echo still-new || echo previous" '^previous$'

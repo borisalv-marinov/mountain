@@ -97,6 +97,7 @@ ColumnLayout {
                      + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."
                      + (sec.list("av_history").length ? "\nHistory: " + sec.list("av_history").slice().reverse().join(" · ") : "")
             buttons: [
+                GlassButton { text: "Active Protection"; onClicked: app.page = "protection" },
                 GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
                 GlassButton { text: "Full scan"; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
                 GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") && " + sec.helper + " scan \"$d\"") },

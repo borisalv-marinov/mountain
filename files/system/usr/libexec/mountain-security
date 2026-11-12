@@ -146,6 +146,13 @@ profile() { # home|public for the active connection; Home also allows file shari
   nmcli connection modify "$c" connection.zone "$z" && nmcli connection up "$c" >/dev/null 2>&1; echo "fw_profile=$1"
 }
 
+repair_etc() { # PATH under /etc, e.g. xdg/kdeglobals: put back the image's default (Go back does not undo /etc edits)
+  local p=${1#/etc/}
+  [[ -n $p && $p != *..* && -e /usr/etc/$p ]] || { echo "no image default for /etc/$p" >&2; return 2; }
+  [[ $(id -u) == 0 ]] || exec pkexec /usr/libexec/mountain-security repair-etc "$p"
+  cp -a "/etc/$p" "/etc/$p.broken" 2>/dev/null; cp -a "/usr/etc/$p" "/etc/$p" && echo "repaired=/etc/$p"
+}
+
 reset_pc() { # Reset this PC, keep my files: drop added packages and overrides, back to the plain Mountain image
   rpm-ostree reset || return 1 # asks for the admin password; your files and apps from the App Store stay
   command -v notify-send >/dev/null && notify-send -i system-reboot "Mountain" "Restart to finish resetting this PC. Your files are kept."
@@ -171,5 +178,6 @@ case ${1:-} in
   usb) [[ ${2:-} =~ ^(on|off)$ ]] || exit 2; pkexec /usr/libexec/mountain-usbguard "$2" ;;
   rollback) rollback ;;
   reset) reset_pc ;;
+  repair-etc) repair_etc "${2:-}" ;;
   *) echo "usage: mountain-security status|scan|scan-new|scan-notify|quarantine-*|allow|profile|usb|rollback|reset" >&2; exit 2 ;;
 esac

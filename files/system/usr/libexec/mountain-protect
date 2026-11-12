@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Active Protection: real-time, local-only threat checks that cost almost nothing while idle.
+# A tiny inotify watcher (no signatures in memory) notices new or changed files in Downloads, Desktop, Documents,
+# your home folder's top level, ~/.local/bin, autostart, /tmp, /var/tmp, USB drives and new Flatpak apps; only then
+# does it start a low-priority ClamAV scan in its own unit, which exits when done. Games are never watched.
+# New executables and scripts are listed as "unverified" until you Allow, Quarantine or Delete them.
+#   mountain-protect daemon | status | on | off | allow FILE | quarantine FILE | delete FILE
+set -uo pipefail
+state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
+pdir=$state/protect
+mkdir -p "$pdir"
+unv=$pdir/unverified   # path<TAB>reason
+allowed=$pdir/allowed  # sha256 of files you allowed
+today=$pdir/checked-$(date +%F)
+
+is_unverified() { # FILE -> reason, or nothing
+  local f=$1 head
+  [[ -f $f ]] || return 1
+  grep -qs "^$(sha256sum "$f" 2>/dev/null | cut -d' ' -f1)\$" "$allowed" && return 1
+  case $f in
+    */.config/autostart/*) echo "starts at sign-in"; return 0 ;;
+    *.sh|*.py|*.pl|*.rb|*.desktop|*.AppImage|*.appimage|*.run|*.bin|*.exe|*.msi|*.bat|*.cmd|*.ps1|*.jar|*.deb|*.rpm|*.flatpakref) echo "program or script"; return 0 ;;
+  esac
+  head=$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')
+  [[ $head == 177ELF ]] && { echo "program"; return 0; }
+  [[ $head == '#!'* ]] && { echo "script"; return 0; }
+  [[ -x $f ]] && { echo "executable"; return 0; }
+  return 1
+}
+
+check() { # FILE...: count, flag unverified, scan in a separate low-priority unit
+  local f r out files=()
+  for f in "$@"; do
+    [[ -f $f ]] || continue
+    case $f in *.part|*.crdownload|*.tmp|*/.local/share/mountain/*|/tmp/clamav-*) continue ;; esac
+    files+=("$f"); echo x >> "$today"
+    if r=$(is_unverified "$f"); then
+      grep -qsF "$f	" "$unv" || printf '%s\t%s\n' "$f" "$r" >> "$unv"
+      notify-send -i security-medium "Active Protection" "Unverified ${r}: $(basename "$f"). Review it in Active Protection." 2>/dev/null
+    fi
+  done
+  [[ ${#files[@]} -gt 0 ]] || return 0
+  # scanner temp files go to the runtime dir, not the watched /tmp (no feedback loop)
+  out=$(systemd-run --user --wait --pipe --quiet --collect -p Nice=19 -p IOSchedulingClass=idle -p CPUQuota=50% -p "Environment=TMPDIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
+        /usr/libexec/mountain-security scan --no-update "${files[@]}" 2>/dev/null)
+  if grep -q 'av_result=found' <<<"$out"; then
+    echo x >> "$pdir/threats"
+    notify-send -u critical -i security-low "Active Protection" "Threat blocked: $(grep -m1 ' FOUND$' <<<"$out" | sed 's/: .*//; s|.*/||'). It was moved to quarantine." 2>/dev/null
+    for f in "${files[@]}"; do [[ -e $f ]] || sed -i "\\|^$f	|d" "$unv" 2>/dev/null; done # quarantined: nothing left to review
+  fi
+}
+
+daemon() {
+  # every watcher writes paths into one FIFO; a new USB drive (mount under /run/media) gets its own watcher
+  local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch m
+  local rec=("$HOME/Downloads" "$HOME/Desktop" "$HOME/Documents" "$HOME/.local/bin" "$HOME/.config/autostart" /tmp /var/tmp)
+  mkdir -p "$HOME/Downloads" "$HOME/.local/bin" "$HOME/.config/autostart"
+  rm -f "$fifo"; mkfifo -m 600 "$fifo"; exec 3<>"$fifo"
+  trap 'kill $(jobs -p) 2>/dev/null' EXIT
+  d=(); for f in "${rec[@]}" /run/media/*/*; do [[ -d $f ]] && d+=("$f"); done
+  inotifywait -mrq -e close_write,moved_to --format '%w%f' "${d[@]}" >&3 2>/dev/null &
+  inotifywait -mq -e close_write,moved_to --format '%w%f' "$HOME" >&3 2>/dev/null & # home top level only (never game folders)
+  inotifywait -mq -e create --format 'APP %f' /var/lib/flatpak/app >&3 2>/dev/null &
+  findmnt --poll=mount -n -r -o TARGET 2>/dev/null | sed -u 's/^/MNT /' >&3 &
+  while read -r f <&3; do
+    case $f in
+      "APP "*) echo "$(date '+%F %H:%M') New app installed: ${f#APP }" >> "$state/scan-history"; continue ;;
+      "MNT /run/media/"*)
+        m=$(printf '%b' "${f#MNT }") # findmnt -r escapes spaces as \x20
+        inotifywait -mrq -e close_write,moved_to --format '%w%f' "$m" >&3 2>/dev/null &
+        mapfile -t batch < <(find "$m" -maxdepth 2 -type f 2>/dev/null | head -200) # what is already on the drive
+        [[ ${#batch[@]} -gt 0 ]] && check "${batch[@]}"; continue ;;
+      "MNT "*) continue ;;
+    esac
+    batch=("$f"); while read -r -t 2 f <&3; do [[ $f == MNT* || $f == APP* ]] || batch+=("$f"); done # gather a burst
+    check "${batch[@]}"
+  done
+}
+
+status() {
+  [[ $(systemctl --user is-active mountain-protect.service 2>/dev/null) == active ]] && echo ap=on || echo ap=off
+  echo "ap_checked_today=$(cat "$today" 2>/dev/null | wc -l)"
+  echo "ap_threats=$(cat "$pdir/threats" 2>/dev/null | wc -l)"
+  local p r
+  while IFS=$'\t' read -r p r; do [[ -e $p ]] && echo "ap_unverified=$p|$r"; done < <(cat "$unv" 2>/dev/null)
+  /usr/libexec/mountain-security status | grep -E '^(av_|dl_watch)'
+}
+
+drop() { sed -i "\\|^$1	|d" "$unv" 2>/dev/null; }
+listed() { grep -qsF "$1	" "$unv" || { echo "not in the review list: $1" >&2; exit 2; }; }
+
+case ${1:-} in
+  daemon) daemon ;;
+  status) status ;;
+  on) systemctl --user enable --now mountain-protect.service ;;
+  off) systemctl --user disable --now mountain-protect.service ;;
+  allow) listed "${2:-}"; sha256sum "$2" | cut -d' ' -f1 >> "$allowed"; drop "$2" ;;
+  quarantine) listed "${2:-}"; q=$state/quarantine; mkdir -p "$q"; chmod 700 "$q"; mv -n "$2" "$q/" && chmod 0400 "$q/$(basename "$2")"; drop "$2" ;;
+  delete) listed "${2:-}"; rm -f -- "$2"; drop "$2" ;;
+  check) shift; check "$@" ;;
+  *) echo "usage: mountain-protect daemon|status|on|off|allow FILE|quarantine FILE|delete FILE" >&2; exit 2 ;;
+esac

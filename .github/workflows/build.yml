@@ -37,6 +37,8 @@ jobs:
         run: bash tests/test-taskmanager.sh
       - name: Test Restart into Windows detection
         run: bash tests/test-windows-boot.sh
+      - name: Test Active Protection rules
+        run: bash tests/test-protect.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
       - name: Check Flathub IDs
