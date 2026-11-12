@@ -493,8 +493,9 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
     [[ -d /usr/share/ksysguard/sensorfaces/$n ]] || fail "Task Manager page uses a missing face: $n"
   done
   [[ -x /usr/libexec/mountain-taskmanager ]] || fail "mountain-taskmanager not executable"
-  /usr/libexec/mountain-taskmanager device | head -1 | grep -q $'^id\tPart\tModel$' || fail "Task Manager device list"
-  /usr/libexec/mountain-taskmanager services | head -1 | grep -q $'^id\tName' || fail "Task Manager services list"
+  # capture first: "| head -1" would end the helper with SIGPIPE, which pipefail reports as a failure
+  f=$(/usr/libexec/mountain-taskmanager device); [[ $f == $'id\tPart\tModel\n'* ]] || fail "Task Manager device list"
+  f=$(/usr/libexec/mountain-taskmanager services); [[ $f == $'id\tName'* ]] || fail "Task Manager services list"
   assert_grep 'text: i18n("Task Manager")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/main.qml
   # Security: on-demand ClamAV only (no daemon, timer or cron), Settings page, narrow polkit rule
   assert_cmd clamscan
@@ -573,6 +574,34 @@ PY
   for n in mountain-phonelink mountain-previous-versions; do [[ -x /usr/libexec/$n ]] || fail "$n not executable"; bash -n /usr/libexec/$n || fail "$n syntax"; done
   assert_grep 'reset) reset_pc' /usr/libexec/mountain-security
   for n in kcalc kclock kolourpaint kamoso krecorder skanlite spectacle; do assert_cmd $n; done
+  true
+}
+
+check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow an app, profiles, USB), personalize, Alt+F4, Win+X
+  local x=/usr/libexec n
+  for n in mountain-windows-boot mountain-usbguard mountain-personalize mountain-winx; do
+    [[ -x $x/$n ]] || fail "$n not executable"; bash -n $x/$n || fail "$n syntax"
+  done
+  assert_cmd efibootmgr
+  assert_cmd usbguard
+  assert_cmd kdialog
+  [[ $(systemctl is-enabled usbguard.service 2>/dev/null) == enabled ]] && fail "USB protection must be opt-in (gaming peripherals)"
+  python3 -c 'import sys,xml.etree.ElementTree as E; r=E.parse(sys.argv[1]).getroot(); a=r.find("action"); assert a.find("defaults/allow_active").text=="yes" and a.find("annotate").text=="/usr/libexec/mountain-windows-boot"' /usr/share/polkit-1/actions/org.mountain.windows-boot.policy || fail "Restart into Windows policy"
+  assert_grep 'mountain-windows-boot check' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml
+  assert_grep 'Restart into Windows' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml
+  for n in quick full scan-new scan-notify quarantine-restore allow profile usb; do assert_grep "$n" $x/mountain-security; done
+  assert_grep 'Exec=/usr/libexec/mountain-security scan-notify %F' /usr/share/kio/servicemenus/mountain-scan.desktop
+  assert_grep 'PathChanged=%h/Downloads' /usr/lib/systemd/user/mountain-scan-downloads.path
+  [[ $(systemctl --global is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] || fail "Downloads watcher off"
+  python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /etc/firewalld/zones/mountain-home.xml || fail "bad home zone"
+  grep -q 'port ' /etc/firewalld/zones/mountain-home.xml && fail "home profile opens ports"
+  assert_grep '^Storage=none$' /usr/lib/systemd/coredump.conf.d/60-mountain.conf
+  assert_grep 'registerShortcut("MountainAltF4"' /usr/share/kwin/scripts/mountain-altf4/contents/code/main.js
+  assert_grep '^mountain-altf4Enabled=true$' /etc/xdg/kwinrc
+  assert_grep '^Window Close=none,' /etc/xdg/kglobalshortcutsrc
+  assert_grep '^X-KDE-Shortcuts=Meta+X$' /usr/share/applications/mountain-winx.desktop
+  assert_grep 'GTA Online and FiveM' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml
+  assert_grep 'mountain-personalize glass toggle' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml
   true
 }
 

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Win+X: the Windows power-user menu.
+pick=$(kdialog --title "Mountain" --geometry 320x420 --menu "Quick links" \
+  apps "Installed apps" tm "Task Manager" settings "Settings" files "File Explorer" term "Terminal" \
+  security "Security" run "Run" desktop "Desktop" power "Shut down or sign out") || exit 0
+case $pick in
+  apps) exec /usr/libexec/mountain-settings-open apps ;;
+  tm) exec plasma-systemmonitor ;;
+  settings) exec plasmawindowed org.mountain.settings ;;
+  files) exec dolphin ;;
+  term) exec konsole ;;
+  security) exec /usr/libexec/mountain-settings-open privacy ;;
+  run) exec krunner ;;
+  desktop) exec dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.showDesktop boolean:true ;;
+  power) exec dbus-send --session --type=method_call --dest=org.kde.LogoutPrompt /LogoutPrompt org.kde.LogoutPrompt.promptAll ;;
+esac

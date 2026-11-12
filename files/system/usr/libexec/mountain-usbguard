@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# USB protection (opt-in, run as root through pkexec): on = allow every device plugged in now (your mouse, keyboard,
+# controllers, headset), block new unknown ones until you allow them; off = all USB devices work again.
+set -euo pipefail
+case ${1:-} in
+  on) install -d -m 0700 /etc/usbguard; usbguard generate-policy > /etc/usbguard/rules.conf; chmod 0600 /etc/usbguard/rules.conf
+      systemctl enable --now usbguard.service; echo usb=on ;;
+  off) systemctl disable --now usbguard.service; echo usb=off ;;
+  *) echo "usage: mountain-usbguard on|off" >&2; exit 2 ;;
+esac

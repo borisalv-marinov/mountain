@@ -1,0 +1,12 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Authors": [{ "Name": "Mountain" }],
+        "Description": "Alt+F4 closes the window; on the desktop it opens the shut down dialog, like Windows",
+        "EnabledByDefault": true,
+        "Id": "mountain-altf4",
+        "License": "GPL-3.0-or-later",
+        "Name": "Alt+F4 like Windows"
+    },
+    "X-Plasma-API": "javascript"
+}

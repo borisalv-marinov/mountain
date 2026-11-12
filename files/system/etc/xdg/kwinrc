@@ -1,4 +1,5 @@
 [Plugins]
+mountain-altf4Enabled=true
 blurEnabled=true
 contrastEnabled=true
 wobblywindowsEnabled=false

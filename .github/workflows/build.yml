@@ -35,6 +35,8 @@ jobs:
         run: node try/keysym.test.mjs
       - name: Test Task Manager helper
         run: bash tests/test-taskmanager.sh
+      - name: Test Restart into Windows detection
+        run: bash tests/test-windows-boot.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
       - name: Check Flathub IDs
@@ -76,7 +78,7 @@ jobs:
     permissions:
       packages: read
     env:
-      MOUNTAIN_PHASE: 30
+      MOUNTAIN_PHASE: 31
     strategy:
       fail-fast: false
       matrix:

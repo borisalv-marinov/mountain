@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Settings > Personalization extras, applied live:
+#   mountain-personalize glass on|off|toggle      transparency effects (blur) on the taskbar, start menu and flyouts
+#   mountain-personalize align center|left|toggle taskbar alignment
+#   mountain-personalize startmenu pins|default|recommended   Windows' "More pins / Default / More recommendations"
+set -euo pipefail
+js() { dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:$1" >/dev/null; }
+case ${1:-}:${2:-toggle} in
+  glass:on|glass:off|glass:toggle)
+    v=${2:-toggle}; cur=$(kreadconfig6 --file kwinrc --group Plugins --key blurEnabled --default true)
+    [[ $v == toggle ]] && { [[ $cur == true ]] && v=off || v=on; }
+    b=$([[ $v == on ]] && echo true || echo false)
+    kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled "$b"; kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled "$b"
+    dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
+    echo "glass=$v" ;;
+  align:center|align:left|align:toggle)
+    # the two spacers before the start button centre it; left alignment collapses them
+    js "const p = panels().find(x => x.location === 'bottom'); if (p) { const w = p.widgets(); const want = '${2:-toggle}';
+      const s = w.slice(0, w.findIndex(x => x.type !== 'org.kde.plasma.panelspacer')).filter(x => x.type === 'org.kde.plasma.panelspacer');
+      s.forEach(x => x.currentConfigGroup = ['General']);
+      const centred = s.some(x => x.readConfig('expanding', false) === true || String(x.readConfig('expanding', 'false')) === 'true');
+      const left = want === 'left' || (want === 'toggle' && centred);
+      s.forEach((x, i) => { x.writeConfig('expanding', !left && i === s.length - 1); x.writeConfig('length', left ? 1 : (i === 0 ? Math.round(gridUnit * 9) : 0)); x.reloadConfig(); }); }"
+    echo "align=${2:-toggle}" ;;
+  startmenu:pins|startmenu:default|startmenu:recommended)
+    r=$(case $2 in pins) echo 4 ;; default) echo 3 ;; recommended) echo 2 ;; esac)
+    js "for (const p of panels()) for (const w of p.widgets('menu.11.enhanced')) { w.currentConfigGroup = ['General']; w.writeConfig('numberRows', $r); w.reloadConfig(); }"
+    echo "startmenu=$2" ;;
+  *) echo "usage: mountain-personalize glass on|off|toggle | align center|left|toggle | startmenu pins|default|recommended" >&2; exit 2 ;;
+esac

@@ -22,6 +22,9 @@ ColumnLayout {
         exec.connectSource(cmd + " 2>&1 # " + Date.now()); // waits for the command; unique so it can run again
     }
     function v(k, d) { return s[k] !== undefined ? s[k] : (d || ""); }
+    function list(k) { return Array.isArray(s[k]) ? s[k] : []; }
+    readonly property string helper: "/usr/libexec/mountain-security"
+    function q(x) { return "'" + String(x).split("'").join("'\\''") + "'"; }
 
     P5Support.DataSource {
         id: exec
@@ -31,10 +34,12 @@ ColumnLayout {
             disconnectSource(source);
             const out = data["stdout"] || "";
             if (source === sec.statusCmd) {
-                const m = {};
+                const m = { fw_app: [], av_history: [], av_q: [] };
                 for (const l of out.split("\n")) {
                     const i = l.indexOf("=");
-                    if (i > 0) m[l.slice(0, i)] = l.slice(i + 1);
+                    if (i <= 0) continue;
+                    const k = l.slice(0, i), val = l.slice(i + 1);
+                    if (Array.isArray(m[k])) m[k].push(val); else m[k] = val;
                 }
                 sec.s = m;
                 return;
@@ -88,9 +93,13 @@ ColumnLayout {
             details: (sec.v("av_last", "never") === "never" ? "No scan yet." : "Last scan: " + sec.v("av_last") + (sec.v("av_result") === "found" ? " · " + sec.v("av_found") + " found" : sec.v("av_result") === "clean" ? " · no threats" : ""))
                      + "\nDefinitions: " + (sec.v("av_defs") === "none" ? "not downloaded yet" : sec.v("av_defs"))
                      + " · In quarantine: " + sec.v("av_quarantine", "0")
-                     + "\nScans and definition downloads run only when you click Scan now. Nothing runs in the background, and games are never scanned."
+                     + "\nDefinitions download only when you click a scan button. New files in Downloads are checked with the definitions you have"
+                     + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."
+                     + (sec.list("av_history").length ? "\nHistory: " + sec.list("av_history").slice().reverse().join(" · ") : "")
             buttons: [
-                GlassButton { text: "Scan now"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", "/usr/libexec/mountain-security scan") },
+                GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
+                GlassButton { text: "Full scan"; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
+                GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") && " + sec.helper + " scan \"$d\"") },
                 GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }
@@ -118,8 +127,11 @@ ColumnLayout {
             details: sec.v("fw") === "on"
                      ? "Firewall is on (zone " + sec.v("fw_zone") + "). Open to the network: " + (sec.v("fw_open") || "nothing") + "."
                      : "Firewall is off. Other devices could reach services on this PC."
+            details2: sec.v("fw") === "on" ? "Network profile: " + (sec.v("fw_profile") === "home" ? "Home (other PCs can find this one)" : "Public (hidden from other devices)") : ""
             buttons: [
-                GlassButton { visible: sec.v("fw") !== "on"; text: "Turn on"; highlighted: true; onClicked: sec.start("fix", "systemctl start firewalld") }
+                GlassButton { visible: sec.v("fw") !== "on"; text: "Turn on"; highlighted: true; onClicked: sec.start("fix", "systemctl start firewalld") },
+                GlassButton { visible: sec.v("fw") === "on"; text: "Home network"; highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
+                GlassButton { visible: sec.v("fw") === "on"; text: "Public network"; highlighted: sec.v("fw_profile") !== "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile public") }
             ]
         }
         SecurityCard {
@@ -143,7 +155,9 @@ ColumnLayout {
                      + " · TPM: " + (sec.v("tpm") === "yes" ? "yes" : "no")
                      + " · SELinux: " + sec.v("selinux", "?")
                      + "\nKernel lockdown: " + sec.v("lockdown", "?") + " (off by default so game drivers load) · Disk encryption: " + (sec.v("encrypted") === "yes" ? "on" : "off")
+                     + "\nUSB protection: " + (sec.v("usb") === "on" ? "on: new USB devices are blocked until you allow them" : "off (turning it on keeps everything plugged in now working)")
             buttons: [
+                GlassButton { text: sec.v("usb") === "on" ? "Turn off USB protection" : "Turn on USB protection"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " usb " + (sec.v("usb") === "on" ? "off" : "on")) },
                 GlassButton { visible: sec.v("selinux") !== "Enforcing"; text: "Turn on SELinux"; highlighted: true; onClicked: sec.start("fix", "pkexec setenforce 1") },
                 GlassButton { visible: sec.v("sb") === "off" || sec.v("encrypted") === "no"; text: "How to turn these on"; onClicked: Qt.openUrlExternally(sec.guide + "#secure-boot-and-disk-encryption") }
             ]
@@ -158,7 +172,9 @@ ColumnLayout {
                      + "\n" + (sec.v("rollback") === "yes" ? "The previous version is kept: you can go back at any time, here or in the boot menu." : "No previous version yet (it appears after your first update).")
             buttons: [
                 GlassButton { text: "Check for updates"; onClicked: app.run("kstart --application io.github.rfrench3.bazzite-updater") },
-                GlassButton { text: "Go back to the previous version"; enabled: sec.v("rollback") === "yes" && sec.running === ""; onClicked: sec.start("rollback", "/usr/libexec/mountain-security rollback") }
+                GlassButton { text: "Go back to the previous version"; enabled: sec.v("rollback") === "yes" && sec.running === ""; onClicked: sec.start("rollback", "/usr/libexec/mountain-security rollback") },
+                GlassButton { text: "Reset this PC"; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-security reset") },
+                GlassButton { visible: sec.v("windows") === "yes"; text: "Restart into Windows"; onClicked: app.run("/usr/libexec/mountain-windows-boot go") }
             ]
         }
         SecurityCard {
@@ -168,12 +184,61 @@ ColumnLayout {
             title: "Account protection"
             level: sec.v("password") === "none" ? 2 : (sec.v("screenlock") === "false" ? 1 : 0)
             details: "Password: " + (sec.v("password") === "set" ? "set" : sec.v("password") === "none" ? "none — anyone can use this PC" : "unknown")
-                     + " · Screen lock: " + (sec.v("screenlock") === "false" ? "off" : "on")
+                     + " · Screen lock: " + (sec.v("screenlock") === "false" ? "off" : "on, after " + sec.v("autolock_min", "5") + " minutes")
                      + "\nAdmin tasks always ask for your password."
             buttons: [
                 GlassButton { visible: sec.v("password") === "none"; text: "Set a password"; highlighted: true; onClicked: app.openKcm("kcm_users") },
                 GlassButton { visible: sec.v("screenlock") === "false"; text: "Turn on screen lock"; onClicked: sec.start("fix", "kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock true") }
             ]
+        }
+    }
+
+    GText {
+        Layout.topMargin: 14
+        visible: sec.list("fw_app").length > 0
+        text: "Allow an app through the firewall"
+        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
+        font.weight: Font.DemiBold
+    }
+    Repeater {
+        model: sec.list("fw_app") // service:yes|no:name
+        delegate: GlassCard {
+            required property string modelData
+            readonly property var f: modelData.split(":")
+            Layout.fillWidth: true
+            padding: 12
+            RowLayout {
+                Layout.fillWidth: true
+                GText { Layout.fillWidth: true; text: f.slice(2).join(":") }
+                GText { text: f[1] === "yes" ? "Allowed" : "Blocked"; dim: true }
+                GlassButton {
+                    text: f[1] === "yes" ? "Block" : "Allow"
+                    enabled: sec.running === ""
+                    Accessible.name: text + " " + f.slice(2).join(":")
+                    onClicked: sec.start("fix", sec.helper + " allow " + f[0] + (f[1] === "yes" ? " off" : " on"))
+                }
+            }
+        }
+    }
+    GText {
+        Layout.topMargin: 14
+        visible: sec.list("av_q").length > 0
+        text: "Quarantine"
+        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
+        font.weight: Font.DemiBold
+    }
+    Repeater {
+        model: sec.list("av_q")
+        delegate: GlassCard {
+            required property string modelData
+            Layout.fillWidth: true
+            padding: 12
+            RowLayout {
+                Layout.fillWidth: true
+                GText { Layout.fillWidth: true; text: modelData }
+                GlassButton { text: "Restore"; Accessible.name: "Restore " + modelData; onClicked: sec.start("fix", sec.helper + " quarantine-restore " + sec.q(modelData)) }
+                GlassButton { text: "Delete"; Accessible.name: "Delete " + modelData; onClicked: sec.start("fix", sec.helper + " quarantine-delete " + sec.q(modelData)) }
+            }
         }
     }
 

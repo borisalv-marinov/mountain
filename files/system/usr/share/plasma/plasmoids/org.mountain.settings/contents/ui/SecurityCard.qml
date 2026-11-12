@@ -9,6 +9,7 @@ GlassCard {
     property string title: ""
     property int level: 0 // 0 good, 1 recommended, 2 needed
     property string details: ""
+    property string details2: ""
     property alias buttons: row.data // the one-click fixes: buttons: [ GlassButton {...} ]
     padding: 16
     Accessible.role: Accessible.Grouping
@@ -47,6 +48,14 @@ GlassCard {
             GText {
                 Layout.fillWidth: true
                 text: card.details
+                dim: true
+                wrapMode: Text.WordWrap
+                elide: Text.ElideNone
+            }
+            GText {
+                Layout.fillWidth: true
+                visible: card.details2 !== ""
+                text: card.details2
                 dim: true
                 wrapMode: Text.WordWrap
                 elide: Text.ElideNone

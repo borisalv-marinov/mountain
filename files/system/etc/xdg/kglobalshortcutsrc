@@ -4,6 +4,8 @@
 Switch to Next Keyboard Layout=Meta+Space,Meta+Alt+K,Switch to Next Keyboard Layout
 
 [kwin]
+Window Close=none,Alt+F4,Close Window
+MountainAltF4=Alt+F4,Alt+F4,Close window, or shut down from the desktop
 Overview=Meta+Tab	Meta+W,Meta+W,Toggle Overview
 Edit Tiles=Meta+Z	Meta+T,Meta+T,Toggle Tiles Editor
 

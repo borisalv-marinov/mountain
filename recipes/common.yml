@@ -41,6 +41,9 @@ modules:
         - krecorder # Sound Recorder
         - skanlite # Scanner
         - spectacle # Snipping Tool (Win+Shift+S)
+        - usbguard # USB protection, opt-in (Security > Device security)
+        - kdialog # Win+X menu
+        - efibootmgr # Restart into Windows
         - kio-gdrive # Google Drive in File Explorer after signing in under Online accounts
         - clamav # virus scan on demand (Settings > Privacy & security)
         - clamav-update # freshclam, run only when you click Scan now
@@ -87,6 +90,8 @@ modules:
         - rpm-ostree-countme.timer # usage counting ping
         - ModemManager.service # mobile-broadband modems only
     user:
+      enabled:
+        - mountain-scan-downloads.path # scan new downloads with the definitions you have (no downloads)
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
 

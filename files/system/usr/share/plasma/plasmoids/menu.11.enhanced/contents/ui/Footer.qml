@@ -19,6 +19,7 @@ import org.kde.plasma.components as PlasmaComponents3
 
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.sessions
+import org.kde.plasma.plasma5support as P5Support
 
 RowLayout{
 
@@ -29,6 +30,33 @@ RowLayout{
 
     SessionManagement {
         id: sessionManager
+    }
+    // Mountain: Windows 11 account menu (click your name) and power menu; "Restart into Windows" only with a Windows boot entry
+    property bool windowsBoot: false
+    P5Support.DataSource {
+        id: winCheck
+        engine: "executable"
+        connectedSources: ["/usr/libexec/mountain-windows-boot check"]
+        onNewData: (source, data) => { windowsBoot = data["exit code"] === 0; disconnectSource(source); }
+    }
+    PlasmaComponents3.Menu {
+        id: accountMenu
+        PlasmaComponents3.MenuItem { text: i18n("Change account settings"); icon.name: "user-identity"; onClicked: logic.runCommand("systemsettings kcm_users") }
+        PlasmaComponents3.MenuItem { text: i18n("Lock"); icon.name: "system-lock-screen"; visible: sessionManager.canLock; onClicked: sessionManager.lock() }
+        PlasmaComponents3.MenuItem { text: i18n("Sign out"); icon.name: "system-log-out"; onClicked: sessionManager.requestLogout() }
+    }
+    PlasmaComponents3.Menu {
+        id: powerMenu
+        PlasmaComponents3.MenuItem { text: i18n("Sleep"); icon.name: "system-suspend"; onClicked: sessionManager.suspend() }
+        PlasmaComponents3.MenuItem { text: i18n("Shut down"); icon.name: "system-shutdown"; onClicked: sessionManager.requestShutdown() }
+        PlasmaComponents3.MenuItem { text: i18n("Restart"); icon.name: "system-reboot"; onClicked: sessionManager.requestReboot() }
+        PlasmaComponents3.MenuItem {
+            text: i18n("Restart into Windows")
+            icon.name: "system-reboot"
+            visible: windowsBoot
+            height: visible ? implicitHeight : 0
+            onClicked: logic.runCommand("/usr/libexec/mountain-windows-boot go")
+        }
     }
 
     RowLayout{
@@ -52,7 +80,7 @@ RowLayout{
             MouseArea {
                 cursorShape: Qt.PointingHandCursor
                 anchors.fill: parent
-                onClicked: logic.runCommand("systemsettings kcm_users")
+                onClicked: accountMenu.popup()
             }
         }
 
@@ -66,7 +94,7 @@ RowLayout{
             MouseArea {
                 cursorShape: Qt.PointingHandCursor
                 anchors.fill: parent
-                onClicked: logic.runCommand("systemsettings kcm_users")
+                onClicked: accountMenu.popup()
             }
         }   
     }
@@ -106,54 +134,13 @@ RowLayout{
     PlasmaComponents3.ToolButton {
         icon.width: 24
         icon.height: 24
-        icon.name: "system-lock-screen"
-        
+        icon.name: "system-shutdown"
         Layout.rightMargin: 10
+        Accessible.name: i18n("Power")
         PlasmaComponents3.ToolTip.delay: 1000
         PlasmaComponents3.ToolTip.timeout: 1000
         PlasmaComponents3.ToolTip.visible: hovered
-        PlasmaComponents3.ToolTip.text: i18n("Logout")
-        visible: sessionManager.canLock
-        
-        onClicked: sessionManager.requestLogout()
-    }
-    
-    PlasmaComponents3.ToolButton {
-        icon.width: 24
-        icon.height: 24
-        icon.name:  "system-suspend"
-        Layout.rightMargin: 10
-        PlasmaComponents3.ToolTip.delay: 1000
-        PlasmaComponents3.ToolTip.timeout: 1000
-        PlasmaComponents3.ToolTip.visible: hovered
-        PlasmaComponents3.ToolTip.text: i18n("Sleep")
-        
-        onClicked: sessionManager.suspend()
-    }
-
-    PlasmaComponents3.ToolButton {
-        icon.width: 24
-        icon.height: 24
-        icon.name:  "system-reboot"
-        Layout.rightMargin: 10
-        PlasmaComponents3.ToolTip.delay: 1000
-        PlasmaComponents3.ToolTip.timeout: 1000
-        PlasmaComponents3.ToolTip.visible: hovered
-        PlasmaComponents3.ToolTip.text: i18n("Restart")
-        
-        onClicked: sessionManager.requestReboot()
-    }
-    
-    PlasmaComponents3.ToolButton {
-        icon.width: 24
-        icon.height: 24
-        icon.name:  "system-shutdown"
-        Layout.rightMargin: 10
-        PlasmaComponents3.ToolTip.delay: 1000
-        PlasmaComponents3.ToolTip.timeout: 1000
-        PlasmaComponents3.ToolTip.visible: hovered
-        PlasmaComponents3.ToolTip.text: i18n("Shutdown")
-        
-        onClicked: sessionManager.requestShutdown()
+        PlasmaComponents3.ToolTip.text: i18n("Power")
+        onClicked: powerMenu.popup()
     }
 }

@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Data and actions behind Settings > Privacy & security (the Windows Security style page). Runs as the signed-in user.
 #   mountain-security status          key=value lines for every card
-#   mountain-security scan [DIR...]   update virus definitions, then scan (default: your home folder); found files go to quarantine
+#   mountain-security scan quick|full|DIR...   update virus definitions, then scan; found files go to quarantine
+#   mountain-security scan-new        scan new files in Downloads with the definitions you have (the Downloads watcher)
+#   mountain-security scan-notify F.. right-click "Scan with Mountain Security": scan, then a notification
+#   mountain-security quarantine-list | quarantine-restore NAME | quarantine-delete NAME
+#   mountain-security allow SERVICE on|off   firewall "Allow an app" (asks for the admin password)
+#   mountain-security profile home|public    network profile of the active connection (zone mountain-home / mountain)
+#   mountain-security usb on|off             USB protection (USBGuard, opt-in; keeps the devices plugged in now)
 #   mountain-security rollback        go back to the previous Mountain version at the next restart
 #   mountain-security reset           Reset this PC, keep my files (removes system changes made on this PC)
 # Definitions download only here (Scan now / Update definitions): no background downloads (owner's rule).
@@ -10,6 +16,8 @@ state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
 quarantine=$state/quarantine
 db=${MOUNTAIN_CLAMAV_DB:-/var/lib/clamav}
 snaps=${MOUNTAIN_SNAP_DIR:-/var/home/.snapshots}
+# "Allow an app" list: firewalld service -> name shown in Security
+apps="steam-streaming:Steam Remote Play|steam-lan-transfer:Steam game transfers on your network|kdeconnect:Phone Link|samba:Share files with this PC|rdp:Remote Desktop"
 
 newest_def() { local f; f=$(ls -t "$db"/*.c[lv]d "$db"/*.[hn]db 2>/dev/null | head -1); [[ -n $f ]] && date -r "$f" '+%Y-%m-%d %H:%M'; }
 
@@ -21,7 +29,21 @@ status() {
   if firewall-cmd --state >/dev/null 2>&1; then
     v=$(firewall-cmd --get-default-zone 2>/dev/null); echo "fw=on"; echo "fw_zone=$v"
     echo "fw_open=$(firewall-cmd --zone="$v" --list-services --list-ports 2>/dev/null | tr '\n' ' ' | xargs)"
+    v=$(nmcli -t -f DEVICE connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
+    v=$(firewall-cmd --get-zone-of-interface="$v" 2>/dev/null || firewall-cmd --get-default-zone 2>/dev/null)
+    [[ $v == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$v"
+    local s on; IFS='|' read -ra list <<<"$apps"
+    for s in "${list[@]}"; do
+      on=no; firewall-cmd --zone="$v" --query-service="${s%%:*}" >/dev/null 2>&1 && on=yes
+      echo "fw_app=${s%%:*}:$on:${s#*:}"
+    done
   else echo "fw=off"; fi
+  [[ $(systemctl is-active usbguard 2>/dev/null) == active ]] && echo usb=on || echo usb=off
+  /usr/libexec/mountain-windows-boot check >/dev/null 2>&1 && echo windows=yes || echo windows=no
+  echo "autolock_min=$(kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout --default 5 2>/dev/null)"
+  [[ $(systemctl --user is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] && echo dl_watch=on || echo dl_watch=off
+  tail -5 "$state/scan-history" 2>/dev/null | sed 's/^/av_history=/'
+  find "$quarantine" -maxdepth 1 -type f -printf 'av_q=%f\n' 2>/dev/null | head -20
   v=0; for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
     grep -qs '!home' "/var/lib/flatpak/overrides/$a" && v=$((v+1))
   done; echo "flatpak_tight=$v/5"
@@ -50,13 +72,18 @@ print("rollback=" + ("yes" if any(not x.get("booted") and not x.get("staged") fo
   else echo "snapshots=off"; fi
 }
 
-scan() {
-  local rc out found now
-  [[ $# -gt 0 ]] || set -- "$HOME"
-  mkdir -p "$quarantine" && chmod 700 "$quarantine"
+scan() { # [--no-update] quick|full|DIR...
+  local rc out found now kind update=1
+  [[ ${1:-} == --no-update ]] && { update=0; shift; }
+  case ${1:-full} in
+    quick) kind=Quick; set -- "$HOME/Downloads" "$HOME/Desktop" "$HOME/Documents" ;;
+    full) kind=Full; set -- "$HOME" ;;
+    *) kind=Custom ;;
+  esac
+  mkdir -p "$quarantine" "$state" && chmod 700 "$quarantine"
   now=$(date '+%Y-%m-%d %H:%M')
   # allowed without a password for signed-in users (polkit rule 60-mountain.rules); a failed download keeps the old definitions
-  systemctl start mountain-virus-definitions.service 2>/dev/null || echo "note=definitions update failed, scanning with the ones you have"
+  [[ $update == 1 ]] && { systemctl start mountain-virus-definitions.service 2>/dev/null || echo "note=definitions update failed, scanning with the ones you have"; }
   if [[ -z $(newest_def) ]]; then
     printf 'av_last=%s\nav_result=no-definitions\n' "$now" > "$state/last-scan"; echo "av_result=no-definitions"; return 1
   fi
@@ -64,15 +91,57 @@ scan() {
   out=$(nice -n 19 ionice -c3 clamscan -r -i --database="$db" --move="$quarantine" \
         --exclude-dir='/\.local/share/Steam' --exclude-dir='/\.steam' --exclude-dir='/Games' \
         --exclude-dir='/\.var/app/com\.valvesoftware\.Steam' --exclude-dir='/\.var/app/com\.heroicgameslauncher\.hgl' \
-        --exclude-dir='/\.local/share/lutris' --exclude-dir='/\.local/share/mountain/quarantine' "$@" 2>&1)
+        --exclude-dir='/\.local/share/lutris' --exclude-dir='/\.local/share/mountain/quarantine' \
+        --exclude='\.(part|crdownload|tmp)$' "$@" 2>&1)
   rc=$?
   find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
   found=$(awk -F': *' '/^Infected files:/ {print $2}' <<<"$out")
   case $rc in 0) r=clean ;; 1) r=found ;; *) r=error ;; esac
   printf 'av_last=%s\nav_result=%s\nav_found=%s\n' "$now" "$r" "${found:-0}" > "$state/last-scan"
+  echo "$now $kind scan: $r${found:+, $found found}" >> "$state/scan-history"
   echo "av_result=$r"; echo "av_found=${found:-0}"
   grep ' FOUND$' <<<"$out" | head -20
   [[ $r == error ]] && return 2 || return 0
+}
+
+scan_new() { # the Downloads watcher: only files changed since the last run, never downloads definitions
+  local stamp=$state/downloads-scanned files
+  [[ -z $(newest_def) ]] && exit 0 # no definitions yet: nothing to scan with (Scan now fetches them)
+  mkdir -p "$state"; [[ -e $stamp ]] || touch -d '1 hour ago' "$stamp"
+  mapfile -t files < <(find "$HOME/Downloads" -maxdepth 2 -type f -newer "$stamp" ! -name '*.part' ! -name '*.crdownload' 2>/dev/null)
+  touch "$stamp"; [[ ${#files[@]} -gt 0 ]] || exit 0
+  out=$(scan --no-update "${files[@]}")
+  grep -q 'av_result=found' <<<"$out" && notify-send -u critical -i security-low "Mountain Security" "A threat was found in Downloads and moved to quarantine." 2>/dev/null
+  echo "$out"
+}
+
+scan_notify() { # right-click > Scan with Mountain Security
+  local out; out=$(scan --no-update "$@")
+  case $out in
+    *av_result=found*) notify-send -u critical -i security-low "Mountain Security" "Threat found and moved to quarantine." ;;
+    *av_result=clean*) notify-send -i security-high "Mountain Security" "No threats found." ;;
+    *) notify-send -i security-medium "Mountain Security" "No virus definitions yet: open Security and click Scan now." ;;
+  esac 2>/dev/null
+  echo "$out"
+}
+
+qname() { [[ $1 =~ ^[^/]+$ && -e $quarantine/$1 ]] || { echo "not in quarantine: $1" >&2; exit 2; }; }
+
+allow() { # SERVICE on|off: only the services in the "Allow an app" list
+  local svc=${1:-} want=${2:-} z
+  [[ "|$apps" == *"|$svc:"* ]] || { echo "not in the list: $svc" >&2; return 2; }
+  [[ $want == on || $want == off ]] || return 2
+  for z in mountain mountain-home; do
+    firewall-cmd --permanent --zone=$z "--$([[ $want == on ]] && echo add || echo remove)-service=$svc" >/dev/null || return 1
+  done
+  firewall-cmd --reload >/dev/null && echo "fw_app=$svc:$( [[ $want == on ]] && echo yes || echo no)"
+}
+
+profile() { # home|public for the active connection; Home also allows file sharing discovery and Phone Link
+  local z c; case ${1:-} in home) z=mountain-home ;; public) z=mountain ;; *) return 2 ;; esac
+  c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
+  [[ -n $c ]] || { echo "no network connection" >&2; return 1; }
+  nmcli connection modify "$c" connection.zone "$z" && nmcli connection up "$c" >/dev/null 2>&1; echo "fw_profile=$1"
 }
 
 reset_pc() { # Reset this PC, keep my files: drop added packages and overrides, back to the plain Mountain image
@@ -90,7 +159,15 @@ rollback() {
 case ${1:-} in
   status) status ;;
   scan) shift; scan "$@" ;;
+  scan-new) scan_new ;;
+  scan-notify) shift; scan_notify "$@" ;;
+  quarantine-list) ls -1 "$quarantine" 2>/dev/null ;;
+  quarantine-restore) qname "${2:-}"; mkdir -p "$HOME/Downloads"; chmod 0600 "$quarantine/$2"; mv -n "$quarantine/$2" "$HOME/Downloads/" ;;
+  quarantine-delete) qname "${2:-}"; rm -f "$quarantine/$2" ;;
+  allow) allow "${2:-}" "${3:-}" ;;
+  profile) profile "${2:-}" ;;
+  usb) [[ ${2:-} =~ ^(on|off)$ ]] || exit 2; pkexec /usr/libexec/mountain-usbguard "$2" ;;
   rollback) rollback ;;
   reset) reset_pc ;;
-  *) echo "usage: mountain-security status|scan [DIR...]|rollback" >&2; exit 2 ;;
+  *) echo "usage: mountain-security status|scan|scan-new|scan-notify|quarantine-*|allow|profile|usb|rollback|reset" >&2; exit 2 ;;
 esac

@@ -413,6 +413,16 @@ jobs:
             IFS=: read n app <<<"$t"; L "$app"; wchk "app $n ($app) opens" 0 "$app" 20; sleep 5; shot "app-$(tr ' A-Z' '-a-z' <<<"$n")"; K -x "$app"
           done
           L /usr/libexec/mountain-phonelink; wchk "Phone Link opens" 0 kdeconnect-app 25; sleep 5; shot app-phone-link; K -x kdeconnect-app; K -x kdeconnectd
+          QM key meta_l x; wchk "shortcut Win+X (quick links)" 0 kdialog 15; sleep 3; shot shortcut-win-x; QM key esc; sleep 1; K -x kdialog
+          L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
+          chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
+          QM key meta_l d; sleep 2; QM key alt f4; sleep 3; shot shortcut-altf4-desktop; QM key esc; sleep 2
+          chk "shortcut Alt+F4 on the desktop asks to shut down" 2 "pgrep -u looktest -f ksmserver-logout-greeter >/dev/null && echo dialog || echo none" '.'
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align left"; sleep 3; shot taskbar-left
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align center"; sleep 3
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass off"; sleep 3; QM key meta_l; sleep 3; shot start-menu-glass-off; QM key esc
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass on"; sleep 2
+          chk "personalize: glass back on" 0 "$(TL 'kreadconfig6 --file kwinrc --group Plugins --key blurEnabled')" '^true$'
           
           # 3. double-click the first desktop icon (folder AI)
           QM dclick $((58*W/1280)) $((75*H/800))
@@ -643,6 +653,16 @@ jobs:
           chk "virus scan finds the test file and quarantines it" 0 "test ! -e ~looktest/Downloads/eicar.com && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo quarantined" '^quarantined$'
           chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
           chk "nothing scans or downloads in the background" 0 "pgrep -l -x 'clamd|freshclam|clamscan|clamonacc' || echo none" '^none$'
+          chk "Downloads watcher is on" 0 "$LT systemctl --user is-enabled mountain-scan-downloads.path" '^enabled$'
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/new-download.com')"
+          for _ in $(seq 40); do R "test -e ~looktest/Downloads/new-download.com" || break; sleep 3; done
+          chk "a new download with a threat is quarantined automatically" 0 "test ! -e ~looktest/Downloads/new-download.com && ls ~looktest/.local/share/mountain/quarantine | grep -q new-download && echo quarantined" '^quarantined$'
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Documents/right-click.com')"
+          chk "right-click Scan with Mountain Security" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security scan-notify /home/looktest/Documents/right-click.com" 'av_result=found'
+          chk "quarantine restore" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore eicar.com && test -e ~looktest/Downloads/eicar.com && echo restored" '^restored$'
+          R "rm -f ~looktest/Downloads/eicar.com"
+          chk "scan history" 2 "tail -3 ~looktest/.local/share/mountain/scan-history | paste -sd';'" 'scan'
+          L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans; K -f org.mountain.settings
           R "rm -f /var/lib/clamav/mountain-test.hdb"
           # firewall: a service listening on 8765 answers inside the VM but not from outside
           L "python3 -m http.server 8765 --directory /tmp"; sleep 3
@@ -650,6 +670,19 @@ jobs:
           FWR=$(curl -s -o /dev/null -w '%{http_code}' -m 8 http://127.0.0.1:8765/ 2>/dev/null)
           [ "$FWR" = 000 ] && r=PASS || r=FAIL; echo "| firewall blocks an incoming port (8765 from outside) | $r | http ${FWR:-none} |" >> report.md; echo "$r firewall"
           K -f "http.server 8765"
+          chk "Allow an app: Steam Remote Play listed" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^fw_app=steam-streaming'" 'fw_app=steam-streaming:yes'
+          chk "Allow an app: block and allow again" 0 "/usr/libexec/mountain-security allow rdp on; firewall-cmd --zone=mountain --query-service=rdp; /usr/libexec/mountain-security allow rdp off; firewall-cmd --zone=mountain --query-service=rdp || echo blocked-again" 'blocked-again'
+          chk "network profile Home, then Public" 0 "/usr/libexec/mountain-security profile home >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1; /usr/libexec/mountain-security profile public >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1" 'mountain-home'
+          chk "USB protection on keeps the plugged-in mouse, then off" 0 "/usr/libexec/mountain-usbguard on >/dev/null && usbguard list-devices | grep -c allow; /usr/libexec/mountain-usbguard off >/dev/null; systemctl is-active usbguard || true" 'inactive'
+          chk "core dumps off" 0 "systemd-analyze cat-config systemd/coredump.conf | grep -E '^Storage='" 'Storage=none'
+          # Restart into Windows: hidden without a Windows boot entry; with a fake one it sets a one-time boot
+          chk "Restart into Windows hidden without Windows" 0 "/usr/libexec/mountain-windows-boot check || echo hidden" '^hidden$'
+          R "efibootmgr --create --disk /dev/vda --part 1 --label 'Windows Boot Manager' --loader '\\EFI\\Microsoft\\Boot\\bootmgfw.efi' >/dev/null"
+          WINE=$(R "/usr/libexec/mountain-windows-boot check")
+          chk "Restart into Windows shown with a Windows entry" 0 "echo entry=$WINE" '^entry=[0-9A-F]{4}$'
+          QM key meta_l; sleep 3; QM click $((975*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu-windows; QM key esc; QM key esc
+          chk "Restart into Windows sets a one-time boot" 0 "/usr/libexec/mountain-windows-boot go --no-restart; efibootmgr | grep BootNext" "BootNext: $WINE"
+          R "efibootmgr --delete-bootnext >/dev/null; efibootmgr --bootnum $WINE --delete-bootnum >/dev/null" || true
           # Flatpak sandbox: a chat app can't read Documents; a game launcher keeps its access
           R "$(TL 'mkdir -p ~/Documents; echo secret > ~/Documents/private.txt')"
           chk "Flatpak sandbox: Discord can't read Documents" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/Documents/private.txt 2>&1 | tail -1" 'No such file'

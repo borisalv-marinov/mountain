@@ -78,7 +78,13 @@ PlasmoidItem {
             { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock wallpaper" },
             { t: "Fonts", d: "Font family and size", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text font" },
             { t: "Icons", d: "Icon theme", i: "preferences-desktop-icons", kcm: "kcm_icons", k: "icons" },
-            { t: "Cursors", d: "Mouse pointer style and size", i: "preferences-desktop-cursors", kcm: "kcm_cursortheme", k: "pointer cursor" }
+            { t: "Cursors", d: "Mouse pointer style and size", i: "preferences-desktop-cursors", kcm: "kcm_cursortheme", k: "pointer cursor" },
+            { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "preferences-desktop-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
+            { t: "Taskbar alignment", d: "Click to switch between centre and left", i: "preferences-desktop", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
+            { t: "Start menu: more pins", d: "Four rows of pinned apps, fewer recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
+            { t: "Start menu: default", d: "Three rows of pins and recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu default", k: "start menu layout default" },
+            { t: "Start menu: more recommendations", d: "Two rows of pins, more recent files", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu recommended", k: "start menu layout recommended recent" },
+            { t: "Top bar", d: "Click to add or remove a top bar with CPU and memory", i: "view-split-top-bottom", cmd: "/usr/libexec/mountain-topbar toggle", k: "top bar panel" }
         ] },
         { id: "apps", name: "Apps", icon: "applications-all", items: [
             { t: "Default apps", d: "Browser, mail, music, video", i: "preferences-desktop-default-applications", kcm: "kcm_componentchooser", k: "default browser" },
@@ -99,6 +105,8 @@ PlasmoidItem {
         { id: "gaming", name: "Gaming", icon: "applications-games", items: [
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad controller joystick" },
             { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
+            { t: "GTA Online and FiveM", d: "They block Linux on purpose. Use Restart into Windows (power menu) or cloud gaming", i: "dialog-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
+            { t: "Check game support", d: "See if a game runs on Mountain (opens ProtonDB and Are We Anti-Cheat Yet)", i: "help-browser", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
             { t: "Game overlay", d: "Press Win+G in a game for FPS and performance (MangoHud)", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
             { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", kcm: "kcm_kscreen", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },

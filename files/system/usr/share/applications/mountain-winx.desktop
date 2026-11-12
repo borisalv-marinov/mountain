@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Quick links
+Comment=The Win+X menu
+Exec=/usr/libexec/mountain-winx
+Icon=view-list-symbolic
+NoDisplay=true
+X-KDE-Shortcuts=Meta+X
