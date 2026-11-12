@@ -51,7 +51,7 @@ PlasmoidItem {
             { t: "Storage", d: "Drives and partitions", i: "drive-harddisk", info: "kcm_block_devices", k: "disk drive space ssd" },
             { t: "Multitasking", d: "Virtual desktops", i: "preferences-desktop-virtual", kcm: "kcm_kwin_virtualdesktops", k: "workspaces desktops" },
             { t: "Screen edges", d: "Hot corners and edge actions", i: "preferences-system-windows", kcm: "kcm_kwinscreenedges", k: "corners snap" },
-            { t: "Window switching", d: "Alt+Tab appearance", i: "preferences-system-windows", kcm: "kcm_kwin_taskswitching", k: "alt tab task switcher" },
+            { t: "Window switching", d: "Alt+Tab appearance", i: "preferences-system-windows", kcm: "kcm_kwintabbox", k: "alt tab task switcher" },
             { t: "About", d: "Device specifications, PC name", i: "help-about", kcm: "kcm_about-distro", k: "pc name hostname rename specs version" }
         ] },
         { id: "devices", name: "Bluetooth & devices", icon: "preferences-system-bluetooth", items: [
@@ -65,7 +65,6 @@ PlasmoidItem {
         { id: "network", name: "Network & internet", icon: "preferences-system-network", items: [
             { t: "Wi-Fi & network", d: "Wi-Fi, Ethernet, VPN, hotspot", i: "network-wireless", kcm: "kcm_networkmanagement", k: "wifi wireless ethernet vpn internet" },
             { t: "Proxy", d: "Proxy server for apps", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
-            { t: "Firewall", d: "Allow or block connections", i: "security-high", kcm: "kcm_firewall", k: "firewall ufw" }
         ] },
         { id: "personalization", name: "Personalization", icon: "preferences-desktop-theme", items: [
             { t: "Background", d: "Pictures, slideshow, solid colour", i: "preferences-desktop-wallpaper", kcm: "kcm_wallpaper", k: "wallpaper background picture" },
@@ -105,7 +104,6 @@ PlasmoidItem {
         { id: "privacy", name: "Privacy & security", icon: "preferences-security", items: [
             { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock password security" },
             { t: "Recent files", d: "Remember recently used files", i: "document-open-recent", kcm: "kcm_recentFiles", k: "history recent activity" },
-            { t: "Firewall", d: "Allow or block connections", i: "security-high", kcm: "kcm_firewall", k: "firewall" },
             { t: "App permissions", d: "What Flatpak apps may access", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" }
         ] },
         { id: "updates", name: "Updates", icon: "system-software-update", items: [

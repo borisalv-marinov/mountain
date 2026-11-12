@@ -433,7 +433,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
     compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/*/$id.so" >/dev/null || compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/$id.so" >/dev/null \
       || [[ -e /usr/share/applications/$id.desktop ]] || missing="$missing $id"
   done
-  echo "NOTE: settings pages without a KDE module:${missing:- none}"
+  [[ -z $missing ]] || fail "Settings pages without a KDE module:$missing"
   for id in kcm_kscreen kcm_pulseaudio kcm_bluetooth kcm_networkmanagement kcm_wallpaper kcm_colors kcm_users kcm_clock kcm_access; do
     [[ " $missing " == *" $id "* ]] && fail "Settings page has no module: $id"
   done
