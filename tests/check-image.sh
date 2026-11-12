@@ -603,6 +603,11 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   assert_grep '^X-KDE-Shortcuts=Meta+X$' /usr/share/applications/mountain-winx.desktop
   assert_grep 'GTA Online and FiveM' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml
   assert_grep 'mountain-personalize glass toggle' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml
+  # Windows 11 tokens: one accent blue, 32 px title bar, Body 10.5 pt / Caption 9 pt
+  assert_grep '^AccentColor=0,120,212$' /etc/xdg/kdeglobals
+  assert_grep '^highlight.color=#0078D4$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  assert_grep '^TitleHeight=32$' /usr/share/aurorae/themes/BlackGlass/BlackGlassrc
+  assert_grep '^font=Noto Sans,10.5,' /etc/xdg/kdeglobals
   true
 }
 

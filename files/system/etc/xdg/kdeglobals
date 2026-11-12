@@ -8,11 +8,19 @@ widgetStyle=kvantum
 
 [General]
 ColorScheme=BlackGlass
+# Windows 11 type ramp (Body 14 px, Caption 12 px) on Noto Sans
+font=Noto Sans,10.5,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+menuFont=Noto Sans,10.5,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+toolBarFont=Noto Sans,10.5,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+smallestReadableFont=Noto Sans,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 # sharp text at 100 % and 125 %: slight hinting, RGB subpixel
 XftAntialias=true
 XftHintStyle=hintslight
 XftSubPixel=rgb
-AccentColor=61,174,233
+AccentColor=0,120,212
 
 [Icons]
 Theme=We10X-dark
+
+[WM]
+activeFont=Noto Sans,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
