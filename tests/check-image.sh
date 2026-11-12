@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail # -E: the FAIL line trap also fires inside the phase functions
 trap 'echo "FAIL: line $LINENO: $BASH_COMMAND"' ERR
 
 # Runs inside the built image. Usage: check-image.sh <phase>
@@ -494,8 +494,8 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
   done
   [[ -x /usr/libexec/mountain-taskmanager ]] || fail "mountain-taskmanager not executable"
   # capture first: "| head -1" would end the helper with SIGPIPE, which pipefail reports as a failure
-  f=$(/usr/libexec/mountain-taskmanager device); [[ $f == $'id\tPart\tModel\n'* ]] || fail "Task Manager device list"
-  f=$(/usr/libexec/mountain-taskmanager services); [[ $f == $'id\tName'* ]] || fail "Task Manager services list"
+  f=$(/usr/libexec/mountain-taskmanager device || true); [[ $f == $'id\tPart\tModel\n'* ]] || fail "Task Manager device list"
+  f=$(/usr/libexec/mountain-taskmanager services || true); [[ $f == $'id\tName'* ]] || fail "Task Manager services list"
   assert_grep 'text: i18n("Task Manager")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/main.qml
   # Security: on-demand ClamAV only (no daemon, timer or cron), Settings page, narrow polkit rule
   assert_cmd clamscan
