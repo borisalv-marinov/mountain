@@ -597,7 +597,7 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /etc/firewalld/zones/mountain-home.xml || fail "bad home zone"
   grep -q 'port ' /etc/firewalld/zones/mountain-home.xml && fail "home profile opens ports"
   assert_grep '^Storage=none$' /usr/lib/systemd/coredump.conf.d/60-mountain.conf
-  assert_grep 'registerShortcut("MountainAltF4"' /usr/share/kwin/scripts/mountain-altf4/contents/code/main.js
+  assert_grep 'registerShortcut("WindowsAltF4"' /usr/share/kwin/scripts/mountain-altf4/contents/code/main.js
   assert_grep '^mountain-altf4Enabled=true$' /etc/xdg/kwinrc
   assert_grep '^Window Close=none,' /etc/xdg/kglobalshortcutsrc
   assert_grep '^X-KDE-Shortcuts=Meta+X$' /usr/share/applications/mountain-winx.desktop

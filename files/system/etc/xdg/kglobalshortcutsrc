@@ -1,11 +1,11 @@
-# Mountain: Windows 11 keyboard shortcuts (defaults for every account; Settings > Keyboard can change them).
+# Windows 11 keyboard shortcuts (defaults for every account; Settings > Keyboard can change them).
 # Format: action=active shortcuts (tab-separated),default,friendly name
 [KDE Keyboard Layout Switcher]
 Switch to Next Keyboard Layout=Meta+Space,Meta+Alt+K,Switch to Next Keyboard Layout
 
 [kwin]
 Window Close=none,Alt+F4,Close Window
-MountainAltF4=Alt+F4,Alt+F4,Close window, or shut down from the desktop
+WindowsAltF4=Alt+F4,Alt+F4,Close window, or shut down from the desktop
 Overview=Meta+Tab	Meta+W,Meta+W,Toggle Overview
 Edit Tiles=Meta+Z	Meta+T,Meta+T,Toggle Tiles Editor
 
