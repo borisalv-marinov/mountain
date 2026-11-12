@@ -26,15 +26,17 @@ status() {
   [[ -r $state/last-scan ]] && cat "$state/last-scan" || echo "av_last=never"
   v=$(newest_def); echo "av_defs=${v:-none}"
   echo "av_quarantine=$(find "$quarantine" -type f 2>/dev/null | wc -l)"
-  if firewall-cmd --state >/dev/null 2>&1; then
-    v=$(firewall-cmd --get-default-zone 2>/dev/null); echo "fw=on"; echo "fw_zone=$v"
-    echo "fw_open=$(firewall-cmd --zone="$v" --list-services --list-ports 2>/dev/null | tr '\n' ' ' | xargs)"
-    v=$(nmcli -t -f DEVICE connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
-    v=$(firewall-cmd --get-zone-of-interface="$v" 2>/dev/null || firewall-cmd --get-default-zone 2>/dev/null)
-    [[ $v == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$v"
-    local s on; IFS='|' read -ra list <<<"$apps"
+  # read without admin rights (firewall-cmd queries need polkit): the unit, the default zone and the zone files
+  if [[ $(systemctl is-active firewalld 2>/dev/null) == active ]]; then
+    v=$(sed -n 's/^DefaultZone=//p' /etc/firewalld/firewalld.conf 2>/dev/null); echo "fw=on"; echo "fw_zone=${v:-mountain}"
+    local c z zf s on; c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
+    z=$(nmcli -g connection.zone connection show "$c" 2>/dev/null); z=${z:-${v:-mountain}}
+    [[ $z == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$z"
+    zf=/etc/firewalld/zones/$z.xml; [[ -r $zf ]] || zf=/usr/lib/firewalld/zones/$z.xml
+    echo "fw_open=$(grep -oE '<(service name|port port)="[^"]*"' "$zf" 2>/dev/null | sed -E 's/.*="//; s/"$//' | paste -sd' ')"
+    IFS='|' read -ra list <<<"$apps"
     for s in "${list[@]}"; do
-      on=no; firewall-cmd --zone="$v" --query-service="${s%%:*}" >/dev/null 2>&1 && on=yes
+      on=no; grep -q "<service name=\"${s%%:*}\"/>" "$zf" 2>/dev/null && on=yes
       echo "fw_app=${s%%:*}:$on:${s#*:}"
     done
   else echo "fw=off"; fi

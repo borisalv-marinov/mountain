@@ -9,5 +9,20 @@ WindowsAltF4=Alt+F4,Alt+F4,Close window, or shut down from the desktop
 Overview=Meta+Tab	Meta+W,Meta+W,Toggle Overview
 Edit Tiles=Meta+Z	Meta+T,Meta+T,Toggle Tiles Editor
 
+[services][org.kde.plasma-systemmonitor.desktop]
+_launch=Ctrl+Shift+Esc	Ctrl+Esc
+
+[services][org.mountain.settings.desktop]
+_launch=Meta+I
+
+[services][mountain-winx.desktop]
+_launch=Meta+X
+
+[services][org.kde.dolphin.desktop]
+_launch=Meta+E
+
+[services][org.kde.krunner.desktop]
+_launch=Meta+R	Alt+Space	Alt+F2	Search
+
 [plasmashell]
 next activity=none,Meta+Tab,Walk through activities

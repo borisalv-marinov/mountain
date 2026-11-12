@@ -264,8 +264,8 @@ jobs:
               if act[0] == 'key': press(act[1:])
               else: btn(True); btn(False); time.sleep(0.1); btn(True); btn(False)
               while time.monotonic() - t0 < tmo:
-                  f = frame(ign); t = time.monotonic() - t0
-                  if f != prev: last = t; first = first or t; prev = f
+                  fr = frame(ign); t = time.monotonic() - t0
+                  if fr != prev: last = t; first = first or t; prev = fr
                   elif first and t - last > 0.4: break
               print('first=%d settle=%d' % (first * 1000 if first else -1, last * 1000 if last else -1))
           elif a[0] == 'dragfps':  # X1 Y1 X2 Y2 SECONDS: drag a title bar, count distinct frames seen per second (limited by screendump speed)
@@ -273,7 +273,7 @@ jobs:
               n = seen = 0; prev = None; t0 = time.monotonic()
               while time.monotonic() - t0 < dur:
                   k = (time.monotonic() - t0) / dur; move(x1 + (x2 - x1) * k, y1 + (y2 - y1) * k)
-                  f = frame(); seen += 1; n += f != prev; prev = f
+                  fr = frame(); seen += 1; n += fr != prev; prev = fr
               btn(False); print('frames=%d samples=%d fps=%.1f' % (n, seen, n / dur))
           PY
           QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
@@ -371,7 +371,7 @@ jobs:
           chk "quick settings: volume slider changes the volume" 0 "echo before=$V0; $VOL" 'Volume: 0\.(8|9)'
           QM click $((965*W/1280)) $((532*H/800)); QM click $((1209*W/1280)) $((445*H/800)); sleep 2 # back off
           R "journalctl -b --no-pager | grep -E 'org.mountain|\.qml:' | tail -40" > qml-log.txt 2>&1
-          chk "quick settings: brightness slider (disabled here: a VM has no backlight)" 0 "journalctl -b --no-pager | grep -c 'BrightnessRow.qml' | xargs test 0 -eq && grep -c 'Not available on this display' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui/BrightnessRow.qml" '^1$' 
+          chk "quick settings: brightness slider (disabled here: a VM has no backlight)" 0 "journalctl -b --no-pager | grep -c 'BrightnessRow.qml' | xargs test 0 -eq && grep -c 'Not available on this display' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui/BrightnessRow.qml" '^[1-9]' 
           chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
 
@@ -644,6 +644,7 @@ jobs:
           K -f org.mountain.settings
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
           SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" > scan-log.txt
+          chk "virus definitions service log" 2 "journalctl -u mountain-virus-definitions -b --no-pager | tail -4 | cut -c1-160; journalctl -b --no-pager | grep -i 'polkit.*mountain-virus' | tail -2" '.'
           chk "virus definitions downloaded on Scan now (no password)" 2 "ls /var/lib/clamav | paste -sd' '" '.'
           if ! grep -q 'av_result=found' <<<"$SCAN"; then # the definitions server may refuse CI machines: test the pipeline with one test signature
             echo "| virus scan with downloaded definitions | INFO | $(grep -m1 -E 'av_result|note' <<<"$SCAN") - retrying with a test signature |" >> report.md

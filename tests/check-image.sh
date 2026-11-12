@@ -554,6 +554,8 @@ PY
   assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
   assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/xdg/kglobalshortcutsrc
   assert_grep '^next activity=none,' /etc/xdg/kglobalshortcutsrc
+  assert_grep $'^_launch=Ctrl+Shift+Esc\tCtrl+Esc$' /etc/xdg/kglobalshortcutsrc
+  assert_grep '^\[services\]\[mountain-winx.desktop\]$' /etc/xdg/kglobalshortcutsrc
   assert_grep '^toggle_hud=Super_L+g$' /etc/xdg/MangoHud/MangoHud.conf
   assert_grep '^MANGOHUD=1$' /usr/lib/environment.d/60-mountain-mangohud.conf
   assert_grep '^MANGOHUD_CONFIGFILE=/etc/xdg/MangoHud/MangoHud.conf$' /usr/lib/environment.d/60-mountain-mangohud.conf
@@ -562,7 +564,7 @@ PY
   assert_grep '^LayoutList=us,bg,bg$' /etc/xdg/kxkbrc
   assert_grep '^VariantList=,phonetic,$' /etc/xdg/kxkbrc
   assert_grep '^Options=grp:alt_shift_toggle$' /etc/xdg/kxkbrc
-  { fc-list :lang=bg family; fc-list :charset=439 family; } 2>/dev/null | grep -q . || fail "no font covers Bulgarian ($(fc-list 2>&1 | wc -l) fonts, $(fc-list 2>&1 | grep -ci noto) Noto)"
+  n=$(fc-list :lang=bg family 2>/dev/null || true); [[ -n $n ]] || fail "no font covers Bulgarian" # captured: grep -q would SIGPIPE fc-list under pipefail
   # Windows 11 taskbar: 48 px, not floating, show-desktop corner
   assert_grep 'panel.height = 48' "$L"
   assert_grep 'panel.floating = false' "$L"
