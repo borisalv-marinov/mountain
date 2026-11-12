@@ -20,7 +20,7 @@ for f in /usr/share/pixmaps/{system-logo-white,fedora-logo,fedora-logo-small,fed
   [[ -f $f ]] && rsvg-convert -w 256 -h 256 -o "$f" "$logo"
 done
 for f in /usr/share/pixmaps/{fedora-logo-sprite,fedora_whitelogo}.svg; do [[ -f $f ]] && ln -sf "$logo" "$f"; done
-# Account picture: the logo instead of a letter in a circle (start menu, lock and login screens)
+# Account picture for new users: the logo instead of a letter in a circle (start menu, lock screen)
 rsvg-convert -w 256 -h 256 -o /etc/skel/.face.icon "$logo"
 cp /etc/skel/.face.icon /usr/share/plasma/avatars/Mountain.png
 rm -rf /usr/share/wallpapers/bazzite /usr/share/wallpapers/bazzite-*.png

@@ -54,7 +54,7 @@ check_phase3() {
     assert_file "$f"
     # v4: launched through mountain-webapp (own window class + profile); still Edge with the same URL
     assert_grep "^Exec=/usr/libexec/mountain-webapp ${url%%=*} ${url#*=}\$" "$f"
-    MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp "${url%%=*}" "${url#*=}" | grep -q -- "^flatpak run com.microsoft.Edge .*--app=${url#*=}\$" || fail "mountain-webapp does not open ${url#*=} in Edge"
+    MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp "${url%%=*}" "${url#*=}" | grep -q -- "^flatpak run com.microsoft.Edge --class=mountain-${url%%=*} .*--app=${url#*=}\$" || fail "mountain-webapp does not open ${url#*=} in Edge"
     desktop-file-validate "$f" || fail "invalid desktop file: $f"
   done
 }

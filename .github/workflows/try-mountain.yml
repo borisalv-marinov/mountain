@@ -108,6 +108,7 @@ jobs:
            && mkdir -p /home/mountain/.config && printf '[Daemon]\nAutolock=false\nLockOnResume=false\n' > /home/mountain/.config/kscreenlockerrc \
            && printf '[Wallet]\nEnabled=false\nFirst Use=false\n' > /home/mountain/.config/kwalletrc \
            && mkdir -p /home/mountain/.config/autostart && printf '[Desktop Entry]\nHidden=true\n' > /home/mountain/.config/autostart/mountain-lite-mode.desktop \
+           && mkdir -p /home/mountain/.var/app/com.microsoft.Edge/config && echo --disable-gpu | tee /home/mountain/.var/app/com.microsoft.Edge/config/edge-flags.conf > /home/mountain/.var/app/com.microsoft.Edge/config/msedge-flags.conf && chown -R mountain:mountain /home/mountain/.var \
            && printf '[KDE]\nDoubleClickInterval=800\n' > /home/mountain/.config/kdeglobals \
            && chown -R mountain:mountain /home/mountain/.config \
            && mkdir -p /etc/sddm.conf.d \

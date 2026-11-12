@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# First login: File Explorer sidebar like Windows "Quick access" (standard folders, Trash; no Network/Recent/Tags),
+# First login: File Explorer sidebar like Windows "Quick access" (standard folders, Recent, Trash; no Network/Tags/internal drives),
 # and no "KDE Wallet Service" pop-ups for accounts that sign in automatically (no password, so the wallet can't unlock).
 # Never touches existing files. HOME, the template and the autologin config files can be overridden for tests.
 set -euo pipefail
