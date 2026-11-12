@@ -1,6 +1,11 @@
 name: vm-test
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to test (empty: newest build of this branch)"
+        default: ""
+        type: string
   push: # lets the branch run it before the file exists on main
     branches: [mountain-phases]
     paths: ['.github/workflows/vm-test.yml']
@@ -53,6 +58,7 @@ jobs:
       - name: Find image tag
         id: tag
         run: |
+          [ -n "${{ inputs.tag }}" ] && { echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"; echo "Using tag: ${{ inputs.tag }}"; exit 0; }
           SAFE="${BRANCH//\//-}"
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
           TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
@@ -237,6 +243,10 @@ jobs:
               x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
               for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
               time.sleep(0.2); btn(False)
+          elif a[0] == 'hold':  # press at x1 y1, move to x2 y2 and keep the button down (release with 'up')
+              x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
+              for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
+          elif a[0] == 'up': btn(False)
           PY
           QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
           waitproc() { # NAME SECS (PGF=-f for a pattern): seconds taken or fail
@@ -330,18 +340,23 @@ jobs:
           chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '^moved$'
           K -x dolphin
 
+          # 6b. drag an icon on the desktop: the shot is taken while the mouse button is still down
+          QM hold $((1218*W/1280)) $((80*H/800)) $((700*W/1280)) $((330*H/800)); sleep 1; shot desktop-drag-mid
+          QM up; sleep 2; shot desktop-drag-after
+
           # 7. Steam
           L steam; wchk "steam starts" 1 steam 60; sleep 40; shot steam; K -f steam
 
           # 8. cloud gaming launcher
-          L flatpak run com.microsoft.Edge --app=https://play.geforcenow.com
+          L /usr/libexec/mountain-webapp geforcenow https://play.geforcenow.com  # exactly what the GeForce NOW icon runs
+          L dolphin /home/looktest; sleep 5
           PGF=-f wchk "geforcenow opens Edge" 0 msedge 60; sleep 20; shot geforce-now
           # window classes as KWin sees them (to match launchers to windows)
-          R "printf '%s' 'for (const w of workspace.windowList()) print(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
+          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
           SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wins.js string:wins" | awk '/int32/{print $2}')
           R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 2
           chk "window classes" 2 "journalctl -b --no-pager | grep -o 'WIN|.*' | tail -8 | paste -sd';'" '.'
-          R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge
+          R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge; K -x dolphin
           chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '.'
 
           # 9. AI launchers
