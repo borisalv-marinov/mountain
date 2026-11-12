@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
-# First login: File Explorer sidebar like Windows "Quick access" (standard folders, Trash; no Network/Recent/Tags).
-# Never touches an existing places file. HOME and the template path can be overridden for tests.
+# First login: File Explorer sidebar like Windows "Quick access" (standard folders, Trash; no Network/Recent/Tags),
+# and no "KDE Wallet Service" pop-ups for accounts that sign in automatically (no password, so the wallet can't unlock).
+# Never touches existing files. HOME, the template and the autologin config files can be overridden for tests.
 set -euo pipefail
+cfg=${XDG_CONFIG_HOME:-$HOME/.config}
+autologin_files=${MOUNTAIN_AUTOLOGIN_CONF:-/etc/plasmalogin.conf /etc/sddm.conf /etc/sddm.conf.d/*.conf}
+# shellcheck disable=SC2086
+if [[ ! -e $cfg/kwalletrc ]] && grep -hs '^User=' $autologin_files | grep -qx "User=$(id -un)"; then
+  mkdir -p "$cfg"; printf '[Wallet]
+Enabled=false
+First Use=false
+' > "$cfg/kwalletrc"
+fi
 out=${XDG_DATA_HOME:-$HOME/.local/share}/user-places.xbel
 tpl=${MOUNTAIN_PLACES_TEMPLATE:-/usr/share/mountain/user-places.xbel.in}
 [[ -e $out ]] && exit 0

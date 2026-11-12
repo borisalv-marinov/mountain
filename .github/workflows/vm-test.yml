@@ -154,6 +154,7 @@ jobs:
             echo "::error::SSH never came up"; exit 1
           fi
           BOOT=$(( $(date +%s) - $(cat boot_start) ))
+          sleep 30 # sshd accepts before the system settles; first checks were reset
           echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
           # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
@@ -372,6 +373,7 @@ jobs:
 
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
+          R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
           chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
           LO=fail
