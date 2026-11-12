@@ -3,3 +3,4 @@ SUBSYSTEM=="block", ENV{ID_PART_ENTRY_TYPE}=="c12a7328-f81f-11d2-ba4b-00a0c93ec9
 SUBSYSTEM=="block", ENV{ID_FS_LABEL}=="boot|root|fedora|fedora_fedora|EFI-SYSTEM", ENV{UDISKS_IGNORE}="1"
 # the read-only system image (composefs, erofs on a loop device) showed as an unnamed, 100%-full drive
 SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="erofs", ENV{UDISKS_IGNORE}="1"
+SUBSYSTEM=="block", KERNEL=="loop*", ATTR{ro}=="1", ENV{UDISKS_IGNORE}="1"

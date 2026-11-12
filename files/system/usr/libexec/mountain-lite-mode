@@ -19,4 +19,8 @@ kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false
 kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled false
 kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0
 dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true # qdbus6 is not installed
+# Edge hangs on software rendering (no GPU, e.g. VMs): start it without GPU acceleration
+for f in edge-flags.conf msedge-flags.conf; do
+  d=$HOME/.var/app/com.microsoft.Edge/config; mkdir -p "$d"; grep -qx -- --disable-gpu "$d/$f" 2>/dev/null || echo --disable-gpu >> "$d/$f"
+done
 exit 0
