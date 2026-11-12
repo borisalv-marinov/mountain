@@ -1,5 +1,5 @@
 [Desktop Entry]
 Type=Application
-Name=Files
+Name=This PC
 Exec=dolphin
-Icon=system-file-manager
+Icon=computer

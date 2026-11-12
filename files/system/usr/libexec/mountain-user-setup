@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# First login: File Explorer sidebar like Windows "Quick access" (standard folders, Trash; no Network/Recent/Tags),
+# and no "KDE Wallet Service" pop-ups for accounts that sign in automatically (no password, so the wallet can't unlock).
+# Never touches existing files. HOME, the template and the autologin config files can be overridden for tests.
+set -euo pipefail
+cfg=${XDG_CONFIG_HOME:-$HOME/.config}
+autologin_files=${MOUNTAIN_AUTOLOGIN_CONF:-/etc/plasmalogin.conf /etc/sddm.conf /etc/sddm.conf.d/*.conf}
+# shellcheck disable=SC2086
+# one grep: with -q it succeeds on a match even if some of the listed files don't exist (a pipe + pipefail did not)
+if [[ ! -e $cfg/kwalletrc ]] && grep -qsx "User=$(id -un)" $autologin_files; then
+  mkdir -p "$cfg"; printf '[Wallet]
+Enabled=false
+First Use=false
+' > "$cfg/kwalletrc"
+  # the wallet service may already be running (started by PAM at login): make it re-read the setting
+  for n in org.kde.kwalletd6:/modules/kwalletd6 org.kde.kwalletd5:/modules/kwalletd5; do
+    dbus-send --session --type=method_call --dest="${n%%:*}" "${n#*:}" org.kde.KWallet.reconfigure 2>/dev/null || true
+  done
+fi
+out=${XDG_DATA_HOME:-$HOME/.local/share}/user-places.xbel
+tpl=${MOUNTAIN_PLACES_TEMPLATE:-/usr/share/mountain/user-places.xbel.in}
+[[ -e $out ]] && exit 0
+xdg-user-dirs-update >/dev/null 2>&1 || true
+dir() { # xdg key, fallback name
+  local d; d=$(xdg-user-dir "$1" 2>/dev/null || true)
+  [[ -n $d && $d != "$HOME" ]] && echo "$d" || echo "$HOME/$2"
+}
+esc() { local s=${1//&/"&amp;"}; s=${s//</"&lt;"}; echo "${s//>/"&gt;"}"; } # quoted: bash 5.2+ treats & in replacements as the match
+url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$1"; }
+n=0; places=
+add() { # href title icon
+  places+=" <bookmark href=\"$(esc "$1")\">
+  <title>$(esc "$2")</title>
+  <info>
+   <metadata owner=\"http://freedesktop.org\"><bookmark:icon name=\"$3\"/></metadata>
+   <metadata owner=\"http://www.kde.org\"><ID>mountain/$n</ID><isSystemItem>true</isSystemItem></metadata>
+  </info>
+ </bookmark>
+"; n=$((n+1)); }
+add "$(url "$HOME")" Home user-home
+add "desktop:/" Desktop user-desktop # desktop:/ shows shortcut names without ".desktop"
+add "$(url "$(dir DOCUMENTS Documents)")" Documents folder-documents
+add "$(url "$(dir DOWNLOAD Downloads)")" Downloads folder-downloads
+add "$(url "$(dir PICTURES Pictures)")" Pictures folder-pictures
+add "$(url "$(dir MUSIC Music)")" Music folder-music
+add "$(url "$(dir VIDEOS Videos)")" Videos folder-videos
+add "trash:/" "Recycle Bin" user-trash
+mkdir -p "$(dirname "$out")"
+python3 - "$tpl" "$out" "$places" <<'PY'
+import sys
+t, o, p = sys.argv[1:]
+open(o, "w").write(open(t).read().replace("@PLACES@", p))
+PY

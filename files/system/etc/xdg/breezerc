@@ -1,0 +1,6 @@
+[Common]
+ShadowSize=ShadowLarge
+
+[Windeco]
+TitleAlignment=AlignLeft
+DrawBorderOnMaximizedWindows=false

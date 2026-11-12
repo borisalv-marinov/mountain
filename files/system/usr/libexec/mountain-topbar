@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Turns the top bar (CPU, RAM, tray, clock) off or back on. Usage: mountain-topbar [on|off|toggle]
+set -euo pipefail
+js='
+const want = "@WANT@";
+const tops = panels().filter(p => p.location === "top");
+const on = tops.length > 0;
+if ((want === "off" || want === "toggle") && on) { tops.forEach(p => p.remove()); }
+else if ((want === "on" || want === "toggle") && !on) {
+  const top = new Panel(); top.location = "top"; top.lengthMode = "fill"; top.floating = false;
+  top.opacity = "translucent"; top.height = Math.round(gridUnit * 1.6);
+  for (const id of ["org.kde.plasma.panelspacer", "org.kde.plasma.systemmonitor.cpu", "org.kde.plasma.systemmonitor.memory"])
+    if (knownWidgetTypes.indexOf(id) >= 0) top.addWidget(id);
+  top.addWidget("org.kde.plasma.systemtray"); top.addWidget("org.kde.plasma.digitalclock");
+}'
+want=${1:-toggle}
+[[ $want =~ ^(on|off|toggle)$ ]] || { echo "usage: mountain-topbar [on|off|toggle]" >&2; exit 2; }
+dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:${js//@WANT@/$want}" >/dev/null

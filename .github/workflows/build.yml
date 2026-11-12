@@ -27,6 +27,8 @@ jobs:
         run: yamllint -d relaxed recipes/
       - name: Test lite mode
         run: bash tests/test-lite-mode.sh
+      - name: Test first-login setup
+        run: bash tests/test-user-setup.sh
       - name: Test AI launcher
         run: bash tests/test-mountain-ai.sh
       - name: Test Try Mountain keysyms
@@ -70,7 +72,7 @@ jobs:
     permissions:
       packages: read
     env:
-      MOUNTAIN_PHASE: 18
+      MOUNTAIN_PHASE: 24
     strategy:
       fail-fast: false
       matrix:

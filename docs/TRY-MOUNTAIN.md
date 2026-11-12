@@ -21,3 +21,14 @@ Or just ask Claude to start it for you.
 - No graphics card (games and 3D will be slow or not run).
 - Nothing is saved. When the time is up, everything is wiped. Copy out anything you want to keep first.
 - The link changes every time and only works while the run is going.
+
+## New in v3 — what to try
+
+1. The mouse: it should follow your hand now (the pointer is drawn by your browser).
+2. Click the Mountain logo (bottom left of the taskbar): pinned apps, "All Applications", search. Type `settings` and press Enter.
+3. Double-click **This PC** on the desktop: File Explorer with Home, Desktop, Documents, Downloads, Pictures, Music, Videos, Recycle Bin and a Windows 11 style bar (New, cut/copy/paste/rename/delete, Sort, View, Filter).
+4. Open a photo, a PDF and a text file from File Explorer (double-click). Drag a file onto a folder and pick **Move Here**.
+5. Desktop folders (Cloud Gaming, Games, AI, …): double-click to open. GeForce NOW / Xbox Cloud / Boosteroid open in Edge (slow without a graphics card here).
+6. AI folder: click Claude Code, Codex, Gemini or Copilot. The first click installs it (about a minute), then it opens.
+7. Start menu → **Top Bar On/Off** hides or shows the bar at the top.
+8. No "KDE Wallet" pop-ups, no low-disk warning.

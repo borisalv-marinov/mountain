@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Top Bar On/Off
+Comment=Show or hide the bar with CPU, memory and clock at the top of the screen
+Exec=/usr/libexec/mountain-topbar toggle
+Icon=preferences-desktop-display
+Categories=Settings;DesktopSettings;

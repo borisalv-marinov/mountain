@@ -1,5 +1,8 @@
 [KDE]
 SingleClick=false
+DoubleClickInterval=500
+# snappier: animations at half length (lite mode turns them off)
+AnimationDurationFactor=0.5
 LookAndFeelPackage=org.mountain.desktop
 widgetStyle=kvantum
 

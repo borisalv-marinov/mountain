@@ -36,8 +36,7 @@ jobs:
           echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
           echo "Acquire::Retries \"5\";" | sudo tee /etc/apt/apt.conf.d/80retries
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils ovmf imagemagick socat skopeo
-          ls /usr/share/OVMF/ /usr/share/ovmf/ 2>/dev/null || true
+          sudo apt-get install -y qemu-utils imagemagick socat skopeo
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
@@ -84,6 +83,9 @@ jobs:
             echo "password = \"$TESTPW\""
             echo "key = \"$(cat key.pub)\""
             echo 'groups = ["wheel"]'
+            echo '[[customizations.filesystem]]'
+            echo 'mountpoint = "/"'
+            echo 'minsize = "40 GiB"' # first-boot apps filled the default-size root ("Low Disk Space")
           } > config.toml
           mkdir -p output
           sudo podman run --rm --privileged --pull=newer \
@@ -102,16 +104,22 @@ jobs:
       - name: Boot VM
         run: |
           cd "$HOME/vm"
-          cp /usr/share/OVMF/OVMF_VARS_4M.fd vars.fd
+          cat > qemu.sh <<'QS'
+          #!/bin/bash
+          set -e
+          dnf -y -q install qemu-kvm edk2-ovmf >/vm/dnf.log 2>&1
+          dnf -y -q install qemu-device-display-virtio-gpu qemu-device-display-virtio-vga >>/vm/dnf.log 2>&1 || true
+          D=/usr/share/edk2/ovmf
+          for p in OVMF_CODE_4M.fd:OVMF_VARS_4M.fd OVMF_CODE.fd:OVMF_VARS.fd; do
+            [ -e "$D/${p%:*}" ] && [ -e "$D/${p##*:}" ] && { CODE="$D/${p%:*}"; cp "$D/${p##*:}" /vm/vars.fd; break; }
+          done
+          [ -n "$CODE" ] || { ls -R /usr/share/edk2 >>/vm/dnf.log; exit 1; }
+          exec qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35             -drive if=pflash,format=raw,readonly=on,file="$CODE"             -drive if=pflash,format=raw,file=/vm/vars.fd             -drive file=/vm/disk.qcow2,if=virtio             -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22             -device virtio-vga,xres=1280,yres=800 -display none             -device qemu-xhci -device usb-tablet             -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0             -monitor unix:/tmp/qmon,server,nowait -qmp unix:/tmp/qmp,server,nowait -serial file:/vm/serial.log
+          QS
           date +%s > boot_start
-          qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35 \
-            -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
-            -drive if=pflash,format=raw,file=vars.fd \
-            -drive file=disk.qcow2,if=virtio \
-            -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22 \
-            -device virtio-vga -display none \
-            -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0 \
-            -monitor unix:/tmp/qmon,server,nowait -serial file:serial.log -daemonize
+          sudo podman run -d --name qemu --privileged --network host --device /dev/kvm -v "$HOME/vm:/vm" -v /tmp:/tmp quay.io/fedora/fedora:latest bash /vm/qemu.sh
+          for _ in $(seq 150); do [ -e /tmp/qmon ] && break; sleep 2; done
+          [ -e /tmp/qmon ] || { sudo podman logs qemu; tail -30 dnf.log; echo "::error::qemu did not start"; exit 1; }
 
       - name: Run tests
         run: |
@@ -141,11 +149,12 @@ jobs:
 
           if ! wait_ssh 600; then
             echo "| SSH up within 10 min | FAIL | never came up |" >> report.md
-            tail -50 serial.log >> report.md || true
+            sudo tail -50 serial.log >> report.md || true
             cat report.md >> "$GITHUB_STEP_SUMMARY"
             echo "::error::SSH never came up"; exit 1
           fi
           BOOT=$(( $(date +%s) - $(cat boot_start) ))
+          sleep 30 # sshd accepts before the system settles; first checks were reset
           echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
           # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
@@ -166,7 +175,7 @@ jobs:
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
           chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
           chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
-          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^[3-9]'
+          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^([3-9]|[1-9][0-9])$'
           chk "steam" 0 "command -v steam" 'steam'  # gamemode is removed upstream on purpose
           chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '.'
           chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
@@ -183,29 +192,169 @@ jobs:
           if [ -z "$M" ]; then echo "| flatpaks | PASS | all 6 present |" >> report.md
           else echo "| flatpaks | FAIL | missing:$M |" >> report.md; fi
 
-          # desktop: autologin a fresh user, 3 screenshots
+          # desktop: autologin a fresh user, then exercise real use
           SESS=$(R "ls /usr/share/wayland-sessions | grep -i plasma | head -1")
           echo "session file: $SESS"
-          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
-          sleep 120
           LT='sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest) DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u looktest)/bus'
-          shot() { echo "screendump /tmp/$1.ppm" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 2; convert /tmp/$1.ppm "$1.png" || true; }
+          TL() { printf 'sudo -u looktest -i bash -c %q' "$1"; } # wrap a command to run as looktest
+          Q() { sudo socat - UNIX-CONNECT:/tmp/qmon; }
+          mkdir -p shots; SN=0
+          trap 'echo "::warning::got SIGTERM during: $STEP"' TERM
+          shot() { # NAME: screendump -> shots/NN-NAME.png
+            STEP=$1; echo "step: $1"
+            SN=$((SN+1)); echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
+            sudo cat /tmp/$1.ppm | convert - "$(printf 'shots/%02d-%s.png' $SN "$1")" || true
+          }
+          cat > qmp.py <<'PY'
+          import json, os, socket, sys, time
+          s = socket.socket(socket.AF_UNIX); s.connect('/tmp/qmp'); f = s.makefile('rw')
+          f.readline()
+          def cmd(c, a=None):
+              f.write(json.dumps({'execute': c, 'arguments': a} if a else {'execute': c}) + '\n'); f.flush()
+              while True:
+                  r = json.loads(f.readline())
+                  if 'return' in r or 'error' in r: return r
+          def ev(*e): cmd('input-send-event', {'events': list(e)})
+          def key(k, d): return {'type': 'key', 'data': {'down': d, 'key': {'type': 'qcode', 'data': k}}}
+          def press(ks):
+              ev(*[key(k, True) for k in ks]); ev(*[key(k, False) for k in reversed(ks)])
+          W, H = int(os.environ.get('W', 1280)), int(os.environ.get('H', 800))
+          def move(x, y):
+              ev({'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / W)}}, {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / H)}})
+          def btn(d): ev({'type': 'btn', 'data': {'down': d, 'button': 'left'}})
+          def click(x, y): move(x, y); time.sleep(0.1); btn(True); time.sleep(0.05); btn(False)
+          cmd('qmp_capabilities')
+          a = sys.argv[1:]
+          if a[0] == 'key': press(a[1:])
+          elif a[0] == 'type':
+              names = {' ': 'spc', '.': 'dot', '-': 'minus'}
+              for c in ' '.join(a[1:]):
+                  press([names.get(c, c.lower())]); time.sleep(0.05)
+          elif a[0] == 'click': click(int(a[1]), int(a[2]))
+          elif a[0] == 'dclick': click(int(a[1]), int(a[2])); time.sleep(0.12); click(int(a[1]), int(a[2]))
+          elif a[0] == 'drag':
+              x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
+              for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
+              time.sleep(0.2); btn(False)
+          PY
+          QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
+          waitproc() { # NAME SECS (PGF=-f for a pattern): seconds taken or fail
+            local t0=$(date +%s) end=$(( $(date +%s) + $2 ))
+            while [ "$(date +%s)" -lt "$end" ]; do
+              R "pgrep -u looktest ${PGF:--x} '$1'" >/dev/null 2>&1 && { echo "$(( $(date +%s) - t0 ))s"; return 0; }
+              sleep 1
+            done
+            return 1
+          }
+          wchk() { # name core proc secs
+            local t; t=$(waitproc "$3" "$4") && { echo "| $1 | PASS | $3 up in $t |" >> report.md; echo "PASS $1"; } \
+              || { echo "| $1 | FAIL | $3 not running after $4 s |" >> report.md; echo "FAIL $1"; [ "$2" = 1 ] && CORE_FAIL=1; }
+          }
+          L() { R "$LT systemd-run --user --quiet --collect $*"; } # start like the app menu does: with the full session environment
+          K() { R "pkill -u looktest $*" || true; sleep 1; }
+          latency() { # ms until the screen changes after the Windows key
+            local m0 m t0 t
+            echo "screendump /tmp/lat.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/lat.ppm)
+            t0=$(date +%s%N); QM key meta_l
+            while :; do
+              t=$(( ( $(date +%s%N) - t0 ) / 1000000 ))
+              echo "screendump /tmp/lat.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/lat.ppm)
+              [ "$m" != "$m0" ] && break
+              [ $t -ge 5000 ] && break
+              sleep 0.1
+            done
+            echo $t; QM key esc; sleep 1
+          }
+
+          # 1. login-to-desktop
+          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
+          LT0=$(date +%s); LTD="never"
+          while [ $(( $(date +%s) - LT0 )) -lt 240 ]; do
+            R "$LT dbus-send --session --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.NameHasOwner string:org.kde.plasmashell" 2>/dev/null | grep -q "boolean true" && { LTD=$(( $(date +%s) - LT0 )); break; }
+            sleep 2
+          done
+          echo "| login-to-desktop | INFO | ${LTD}s |" >> report.md
+          sleep 20
+          shot desktop
+          read W H < <(identify -format '%w %h' "$(ls shots/*-desktop.png)"); export W H
           chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" 'looktest'
-          shot desk1
+          RAM=$(R "free -m | awk '/Mem:/{print \$3}'")
           chk "RAM used (desktop)" 0 "free -m | awk '/Mem:/{print \$3\" MB used\"}'" 'MB used'
           chk "autostart entries" 2 "ls /etc/xdg/autostart ~looktest/.config/autostart 2>&1" '.'
           chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" "^PipeWire '"
-          echo "sendkey meta_l" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null; sleep 3; shot desk2
-          echo "sendkey esc" | socat - UNIX-CONNECT:/tmp/qmon >/dev/null
-          R "$LT WAYLAND_DISPLAY=wayland-0 setsid nohup dolphin </dev/null >/dev/null 2>&1 &"
-          sleep 15; shot desk3
           chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
+          chk "wallet off for autologin user" 0 "cat ~looktest/.config/kwalletrc" 'Enabled=false'
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
-          # perf data (non-fatal): full outputs, ~3 min after the session is up
+          # 2. start menu -> settings
+          QM key meta_l; sleep 3; shot start-menu
+          QM type settings; sleep 3; shot search-settings
+          QM key ret
+          wchk "start menu opens System Settings" 1 systemsettings 20; sleep 5; shot settings
+          K -x systemsettings; K -x kdebugsettings
+
+          # 3. double-click the first desktop icon (folder AI)
+          QM dclick $((58*W/1280)) $((75*H/800))
+          wchk "desktop folder opens (dolphin)" 0 dolphin 15; sleep 3; shot folder-open
+          K -x dolphin
+
+          # 4. file explorer
+          L dolphin; sleep 8; shot file-explorer; K -x dolphin
+          L 'dolphin "desktop:/Cloud Gaming"'; sleep 8; shot desktop-folder-names; K -x dolphin
+
+          # 5. open files with the default apps
+          R "$(TL 'mkdir -p ~/Pictures ~/Documents ~/Desktop; cp /usr/share/mountain/wallpaper.png ~/Pictures/photo.png; rsvg-convert -f pdf -o ~/Documents/letter.pdf /usr/share/mountain/wallpaper.svg; echo hello mountain > ~/Documents/notes.txt')"
+          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:kwrite"; do
+            IFS=: read n f app <<<"$t"
+            L xdg-open "$f"; wchk "open $n ($app)" 1 "$app" 20; sleep 5; shot "open-$n"; K -x "$app"
+          done
+          chk "mime video/mp4" 0 "$(TL 'xdg-mime query default video/mp4')" 'org.kde.haruna.desktop'
+          chk "mime audio/mpeg" 0 "$(TL 'xdg-mime query default audio/mpeg')" 'org.kde.haruna.desktop'
+          chk "mime docx" 0 "$(TL 'xdg-mime query default application/vnd.openxmlformats-officedocument.wordprocessingml.document')" 'org.onlyoffice.desktopeditors.desktop'
+          chk "mime zip" 0 "$(TL 'xdg-mime query default application/zip')" 'org.kde.ark.desktop'
+
+          # 6. drag a file between two Dolphin panes (best effort)
+          R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"
+          L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
+          # drag notes.txt (right pane) onto the Office folder (left pane); Enter picks "Move Here"
+          QM drag $((916*W/1280)) $((275*H/800)) $((603*W/1280)) $((580*H/800)); sleep 2; shot drag-menu; QM click $(((603+57)*W/1280)) $(((580+16)*H/800)); sleep 2; shot drag-after
+          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '^moved$'
+          K -x dolphin
+
+          # 7. Steam
+          L steam; wchk "steam starts" 1 steam 60; sleep 40; shot steam; K -f steam
+
+          # 8. cloud gaming launcher
+          L flatpak run com.microsoft.Edge --app=https://play.geforcenow.com
+          PGF=-f wchk "geforcenow opens Edge" 0 msedge 60; sleep 20; shot geforce-now
+          # window classes as KWin sees them (to match launchers to windows)
+          R "printf '%s' 'for (const w of workspace.windowList()) print(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
+          SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wins.js string:wins" | awk '/int32/{print $2}')
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 2
+          chk "window classes" 2 "journalctl -b --no-pager | grep -o 'WIN|.*' | tail -8 | paste -sd';'" '.'
+          R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge
+          chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '.'
+
+          # 9. AI launchers
+          for n in claude codex gemini copilot; do
+            chk "ai $n dry-run" 1 "$(TL "MOUNTAIN_AI_DRYRUN=1 /usr/libexec/mountain-ai $n")" 'Installing'
+          done
+          L 'konsole --hold -e /usr/libexec/mountain-ai codex'; sleep 90; shot ai-codex-install
+          chk "codex installed" 2 "test -e ~looktest/.local/bin/codex && echo yes || echo no" '.'
+          K -x konsole
+
+          # top bar switch
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 3; shot topbar-off
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar on"; sleep 3; shot topbar-on
+
+          # 10. latency
+          LATS=""; for _ in 1 2 3; do LATS="$LATS $(latency)"; sleep 2; done
+          LAT=$(printf '%s\n' $LATS | sort -n | sed -n 2p)
+          echo "| start-menu latency (median of 3) | INFO | ${LAT} ms |" >> report.md
+
+          # perf data (non-fatal) while the session is still up
           mkdir -p perf
           P() { R "$1" > "perf/$2.txt" 2>&1 || true; } # cmd, filename
-          sleep 30
           P "uptime; free -m; cat /proc/pressure/memory /proc/pressure/cpu; ps -eo rss,pcpu,user,comm --sort=-rss | head -40" ps1
           P "top -b -n 2 -d 5 | head -40" top
           sleep 60
@@ -223,6 +372,21 @@ jobs:
           P "ps -eo pid,rss,pcpu,user,args --sort=-rss | head -25 | cut -c1-200" ps-args
           P "$LT systemctl --user list-unit-files --state=enabled --no-pager" user-unit-files
 
+          # 11. logout
+          K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
+          R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
+          chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '.'
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
+          LO=fail
+          for _ in $(seq 30); do
+            R "loginctl list-sessions --no-legend | grep -q looktest" || { LO=ok; break; }
+            sleep 2
+          done
+          if [ $LO = ok ]; then echo "| logout | PASS | session ended |" >> report.md; else echo "| logout | FAIL | looktest session still there |" >> report.md; fi
+          shot after-logout
+          BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
+          printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
+
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
           for n in 1 2; do
             R "systemctl reboot" || true
@@ -230,9 +394,16 @@ jobs:
             if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
+          # clean shutdown: the VM must power itself off
+          R "systemctl poweroff" || true
+          if timeout 180 sudo podman wait qemu >/dev/null 2>&1; then echo "| shutdown | PASS | VM powered off |" >> report.md
+          else echo "| shutdown | FAIL | still running after 180 s |" >> report.md; CORE_FAIL=1; fi
 
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$CORE_FAIL" = 1 ]; then echo "::error::core check failed"; exit 1; fi
+      - name: Fix ownership
+        if: always()
+        run: sudo chown -R "$USER" "$HOME/vm" || true
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
@@ -241,5 +412,6 @@ jobs:
           path: |
             /home/runner/vm/report.md
             /home/runner/vm/*.png
+            /home/runner/vm/shots/*.png
             /home/runner/vm/perf/*.txt
             /home/runner/vm/serial.log

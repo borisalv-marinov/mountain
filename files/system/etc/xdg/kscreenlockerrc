@@ -1,0 +1,11 @@
+[Daemon]
+Autolock=true
+Timeout=10
+LockOnResume=true
+
+[Greeter]
+WallpaperPlugin=org.kde.image
+
+[Greeter][Wallpaper][org.kde.image][General]
+Image=file:///usr/share/wallpapers/mountain-peaks/
+PreviewImage=file:///usr/share/wallpapers/mountain-peaks/contents/images_dark/1920x1080.png

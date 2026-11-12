@@ -31,12 +31,17 @@ modules:
         - nodejs
         - npm
         - libxml2
+        - gwenview
+        - okular
+        - haruna
 
   - type: script
     scripts:
       - kvantum-glass.sh
       - sddm-background.sh
       - app-icons.sh
+      - windows-names.sh
+      - icons-finalize.sh
 
   - type: default-flatpaks
     configurations:
@@ -55,5 +60,15 @@ modules:
     system:
       enabled:
         - mountain-gpu-check.service
+      disabled:
+        - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
+        - uupd.timer # owner's choice: no background updates; "Updates" app runs one on click
+        - dnf-makecache.timer # package metadata refresh, useless on an image-based system
+        - rpm-ostree-countme.timer # usage counting ping
+    user:
+      masked:
+        - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
+
+  - type: initramfs # boot splash watermark lives in the initramfs
 
   - type: signing
