@@ -335,6 +335,17 @@ jobs:
           QM click $((1133*W/1280)) $((768*H/800)); sleep 2; shot quick-settings # the network/volume icons next to the clock
           R "$LT dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile" > qs-profile-before.txt 2>&1
           chk "airplane mode before" 2 "nmcli radio all" '.'
+          PP="dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile | grep -o '\"[a-z-]*\"'"
+          VOL="$LT wpctl get-volume @DEFAULT_AUDIO_SINK@"
+          P0=$(R "$PP"); V0=$(R "$VOL"); A0=$(R "nmcli -t -f WIFI,WWAN radio")
+          QM click $((965*W/1280)) $((572*H/800)); sleep 3 # Energy saver
+          QM click $((1209*W/1280)) $((485*H/800)); sleep 3 # Airplane mode
+          QM click $((1180*W/1280)) $((663*H/800)); sleep 2; shot quick-settings-toggled # volume slider
+          chk "quick settings: Energy saver switches the power profile" 0 "echo before=$P0; $PP" 'power-saver'
+          chk "quick settings: Airplane mode turns radios off" 0 "echo before=$A0; nmcli -t -f WIFI,WWAN radio" 'disabled'
+          chk "quick settings: volume slider changes the volume" 0 "echo before=$V0; $VOL" 'Volume: 0\.(8|9)'
+          QM click $((965*W/1280)) $((572*H/800)); QM click $((1209*W/1280)) $((485*H/800)); sleep 2 # back off
+          R "journalctl -b --no-pager | grep -E 'org.mountain|\.qml:' | tail -40" > qml-log.txt 2>&1
           chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
 
