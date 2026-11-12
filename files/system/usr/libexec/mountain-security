@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Data and actions behind Settings > Privacy & security (the Windows Security style page). Runs as the signed-in user.
+#   mountain-security status          key=value lines for every card
+#   mountain-security scan [DIR...]   update virus definitions, then scan (default: your home folder); found files go to quarantine
+#   mountain-security rollback        go back to the previous Mountain version at the next restart
+# Definitions download only here (Scan now / Update definitions): no background downloads (owner's rule).
+set -uo pipefail
+state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
+quarantine=$state/quarantine
+db=${MOUNTAIN_CLAMAV_DB:-/var/lib/clamav}
+snaps=${MOUNTAIN_SNAP_DIR:-/var/home/.snapshots}
+
+newest_def() { local f; f=$(ls -t "$db"/*.c[lv]d "$db"/*.[hn]db 2>/dev/null | head -1); [[ -n $f ]] && date -r "$f" '+%Y-%m-%d %H:%M'; }
+
+status() {
+  local v
+  [[ -r $state/last-scan ]] && cat "$state/last-scan" || echo "av_last=never"
+  v=$(newest_def); echo "av_defs=${v:-none}"
+  echo "av_quarantine=$(find "$quarantine" -type f 2>/dev/null | wc -l)"
+  if firewall-cmd --state >/dev/null 2>&1; then
+    v=$(firewall-cmd --get-default-zone 2>/dev/null); echo "fw=on"; echo "fw_zone=$v"
+    echo "fw_open=$(firewall-cmd --zone="$v" --list-services --list-ports 2>/dev/null | tr '\n' ' ' | xargs)"
+  else echo "fw=off"; fi
+  v=0; for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
+    grep -qs '!home' "/var/lib/flatpak/overrides/$a" && v=$((v+1))
+  done; echo "flatpak_tight=$v/5"
+  v=$(mokutil --sb-state 2>/dev/null | head -1); case $v in *enabled*) echo sb=on ;; *disabled*) echo sb=off ;; *) echo sb=unsupported ;; esac
+  [[ -e /sys/class/tpm/tpm0 ]] && echo tpm=yes || echo tpm=no
+  echo "selinux=$(getenforce 2>/dev/null || echo unknown)"
+  v=$(grep -o '\[[a-z]*\]' /sys/kernel/security/lockdown 2>/dev/null | tr -d '[]'); echo "lockdown=${v:-unknown}"
+  lsblk -n -o TYPE 2>/dev/null | grep -qx crypt && echo encrypted=yes || echo encrypted=no
+  rpm-ostree status --json 2>/dev/null | python3 -c '
+import json, sys, datetime
+try: d = json.load(sys.stdin)["deployments"]
+except Exception: sys.exit(0)
+b = next((x for x in d if x.get("booted")), d[0] if d else {})
+t = b.get("timestamp")
+print("upd_time=" + (datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d") if t else "unknown"))
+ref = b.get("container-image-reference", "")
+print("upd_signed=" + ("yes" if ref.startswith("ostree-image-signed:") else "no"))
+print("rollback=" + ("yes" if any(not x.get("booted") and not x.get("staged") for x in d) else "no"))'
+  v=$(busctl --system get-property org.freedesktop.Accounts "/org/freedesktop/Accounts/User$(id -u)" org.freedesktop.Accounts.User PasswordMode 2>/dev/null | awk '{print $2}')
+  case $v in 0) echo password=set ;; 2) echo password=none ;; *) echo password=unknown ;; esac
+  v=$(kreadconfig6 --file kscreenlockerrc --group Daemon --key Autolock --default true 2>/dev/null); echo "screenlock=${v:-true}"
+  # Btrfs gives a subvolume's top directory inode 256: snapshots need /var/home to be one
+  if [[ $(stat -c %i "${snaps%/.snapshots}" 2>/dev/null) == 256 ]]; then
+    v=$(ls -1 "$snaps" 2>/dev/null | grep -cE '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$')
+    echo "snapshots=$v"; echo "snapshot_last=$(ls -1 "$snaps" 2>/dev/null | grep -E '^[0-9]{4}-' | sort | tail -1)"
+  else echo "snapshots=off"; fi
+}
+
+scan() {
+  local rc out found now
+  [[ $# -gt 0 ]] || set -- "$HOME"
+  mkdir -p "$quarantine" && chmod 700 "$quarantine"
+  now=$(date '+%Y-%m-%d %H:%M')
+  # allowed without a password for signed-in users (polkit rule 60-mountain.rules); a failed download keeps the old definitions
+  systemctl start mountain-virus-definitions.service 2>/dev/null || echo "note=definitions update failed, scanning with the ones you have"
+  if [[ -z $(newest_def) ]]; then
+    printf 'av_last=%s\nav_result=no-definitions\n' "$now" > "$state/last-scan"; echo "av_result=no-definitions"; return 1
+  fi
+  # games are never scanned: Steam, Proton prefixes, Heroic and Lutris folders (big, slow, and not where downloads land)
+  out=$(nice -n 19 ionice -c3 clamscan -r -i --database="$db" --move="$quarantine" \
+        --exclude-dir='/\.local/share/Steam' --exclude-dir='/\.steam' --exclude-dir='/Games' \
+        --exclude-dir='/\.var/app/com\.valvesoftware\.Steam' --exclude-dir='/\.var/app/com\.heroicgameslauncher\.hgl' \
+        --exclude-dir='/\.local/share/lutris' --exclude-dir='/\.local/share/mountain/quarantine' "$@" 2>&1)
+  rc=$?
+  find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
+  found=$(awk -F': *' '/^Infected files:/ {print $2}' <<<"$out")
+  case $rc in 0) r=clean ;; 1) r=found ;; *) r=error ;; esac
+  printf 'av_last=%s\nav_result=%s\nav_found=%s\n' "$now" "$r" "${found:-0}" > "$state/last-scan"
+  echo "av_result=$r"; echo "av_found=${found:-0}"
+  grep ' FOUND$' <<<"$out" | head -20
+  [[ $r == error ]] && return 2 || return 0
+}
+
+rollback() {
+  rpm-ostree rollback || return 1 # asks for the admin password
+  command -v notify-send >/dev/null && notify-send -i system-software-update "Mountain" "Restart to go back to the previous version."
+  echo "rollback=staged"
+}
+
+case ${1:-} in
+  status) status ;;
+  scan) shift; scan "$@" ;;
+  rollback) rollback ;;
+  *) echo "usage: mountain-security status|scan [DIR...]|rollback" >&2; exit 2 ;;
+esac

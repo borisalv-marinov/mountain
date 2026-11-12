@@ -121,7 +121,7 @@ jobs:
             [ -e "$D/${p%:*}" ] && [ -e "$D/${p##*:}" ] && { CODE="$D/${p%:*}"; cp "$D/${p##*:}" /vm/vars.fd; break; }
           done
           [ -n "$CODE" ] || { ls -R /usr/share/edk2 >>/vm/dnf.log; exit 1; }
-          exec qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35             -drive if=pflash,format=raw,readonly=on,file="$CODE"             -drive if=pflash,format=raw,file=/vm/vars.fd             -drive file=/vm/disk.qcow2,if=virtio             -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22             -device virtio-vga,xres=1280,yres=800 -display none             -device qemu-xhci -device usb-tablet             -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0             -monitor unix:/tmp/qmon,server,nowait -qmp unix:/tmp/qmp,server,nowait -serial file:/vm/serial.log
+          exec qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35             -drive if=pflash,format=raw,readonly=on,file="$CODE"             -drive if=pflash,format=raw,file=/vm/vars.fd             -drive file=/vm/disk.qcow2,if=virtio             -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22,hostfwd=tcp:127.0.0.1:8765-:8765             -device virtio-vga,xres=1280,yres=800 -display none             -device qemu-xhci -device usb-tablet             -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0             -monitor unix:/tmp/qmon,server,nowait -qmp unix:/tmp/qmp,server,nowait -serial file:/vm/serial.log
           QS
           date +%s > boot_start
           sudo podman run -d --name qemu --privileged --network host --device /dev/kvm -v "$HOME/vm:/vm" -v /tmp:/tmp quay.io/fedora/fedora:latest bash /vm/qemu.sh
@@ -165,6 +165,8 @@ jobs:
           echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
           # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
+          # the installer makes /var/home a Btrfs subvolume (Previous versions need it); bootc-image-builder does not, so do it here
+          R "btrfs subvolume show /var/home >/dev/null 2>&1 || { mv /var/home /var/home.old && btrfs subvolume create /var/home && cp -a /var/home.old/. /var/home/ && rm -rf /var/home.old && restorecon -R /var/home; }; stat -c %i /var/home"
 
           chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
           chk "hostname" 0 "hostname" '^mountain$'
@@ -229,6 +231,11 @@ jobs:
           def move(x, y):
               ev({'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / W)}}, {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / H)}})
           def btn(d): ev({'type': 'btn', 'data': {'down': d, 'button': 'left'}})
+          def frame(ign=0):  # md5 of a screendump without the bottom IGN rows (taskbar: clock, launch feedback)
+              import hashlib
+              cmd('screendump', {'filename': '/tmp/qm.ppm'}); d = open('/tmp/qm.ppm', 'rb').read()
+              h = d.split(b'\n', 3); w = int(h[1].split()[0]); body = h[3]
+              return hashlib.md5(body[:len(body) - ign * w * 3]).digest()
           def click(x, y): move(x, y); time.sleep(0.1); btn(True); time.sleep(0.05); btn(False)
           cmd('qmp_capabilities')
           a = sys.argv[1:]
@@ -250,6 +257,24 @@ jobs:
           elif a[0] == 'fdrag':  # select an icon, then drag it at once (no pause) and keep the button down
               x1, y1, x2, y2 = map(int, a[1:5]); click(x1, y1); time.sleep(0.05); btn(True)
               for i in range(1, 6): move(x1 + (x2 - x1) * i / 5, y1 + (y2 - y1) * i / 5); time.sleep(0.03)
+          elif a[0] == 'measure':  # IGNORE_BOTTOM_PX TIMEOUT_MS key K.. | dclick X Y: ms from the input to the first changed frame, and until frames settle
+              ign, tmo, act = int(a[1]), int(a[2]) / 1000, a[3:]
+              if act[0] == 'dclick': move(int(act[1]), int(act[2])); time.sleep(0.4)
+              prev = frame(ign); t0 = time.monotonic(); first = last = None
+              if act[0] == 'key': press(act[1:])
+              else: btn(True); btn(False); time.sleep(0.1); btn(True); btn(False)
+              while time.monotonic() - t0 < tmo:
+                  f = frame(ign); t = time.monotonic() - t0
+                  if f != prev: last = t; first = first or t; prev = f
+                  elif first and t - last > 0.4: break
+              print('first=%d settle=%d' % (first * 1000 if first else -1, last * 1000 if last else -1))
+          elif a[0] == 'dragfps':  # X1 Y1 X2 Y2 SECONDS: drag a title bar, count distinct frames seen per second (limited by screendump speed)
+              x1, y1, x2, y2 = map(int, a[1:5]); dur = float(a[5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
+              n = seen = 0; prev = None; t0 = time.monotonic()
+              while time.monotonic() - t0 < dur:
+                  k = (time.monotonic() - t0) / dur; move(x1 + (x2 - x1) * k, y1 + (y2 - y1) * k)
+                  f = frame(); seen += 1; n += f != prev; prev = f
+              btn(False); print('frames=%d samples=%d fps=%.1f' % (n, seen, n / dur))
           PY
           QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
           waitproc() { # NAME SECS (PGF=-f for a pattern): seconds taken or fail
@@ -282,7 +307,7 @@ jobs:
 
           # 1. lock screen at start: no autologin, like the shipped image and Try Mountain
           LPW=glasstest2026
-          R "userdel tester; useradd -m -c 'Look Test' looktest; echo looktest:$LPW | chpasswd; systemctl restart display-manager" # one account on the sign-in screen, like a fresh PC
+          R "userdel tester; useradd -m -c 'Look Test' looktest; echo looktest:$LPW | chpasswd; install -d -o looktest -g looktest ~looktest/.config ~looktest/.config/autostart ~looktest/.local ~looktest/.local/bin; cp /usr/bin/sleep ~looktest/.local/bin/mtm-autostart-test; printf '[Desktop Entry]\nType=Application\nName=Startup test\nExec=/home/looktest/.local/bin/mtm-autostart-test 99999\n' > ~looktest/.config/autostart/mtm-autostart-test.desktop; chown -R looktest: ~looktest/.config ~looktest/.local; systemctl restart display-manager" # one account on the sign-in screen, like a fresh PC
           sleep 30; W=1280; H=800; shot login-lock # clock and date only
           QM click 640 200; sleep 2; shot login-hello # "Hello, <name>", picture, password box
           QM type wrongpass; QM key ret; sleep 5; shot login-wrong
@@ -338,14 +363,15 @@ jobs:
           PP="dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile | grep -o '\"[a-z-]*\"'"
           VOL="$LT wpctl get-volume @DEFAULT_AUDIO_SINK@"
           P0=$(R "$PP"); V0=$(R "$VOL"); A0=$(R "nmcli -t -f WIFI,WWAN radio")
-          QM click $((965*W/1280)) $((572*H/800)); sleep 3 # Energy saver
-          QM click $((1209*W/1280)) $((485*H/800)); sleep 3 # Airplane mode
+          QM click $((965*W/1280)) $((532*H/800)); sleep 3 # Energy saver
+          QM click $((1209*W/1280)) $((445*H/800)); sleep 3 # Airplane mode
           QM click $((1180*W/1280)) $((663*H/800)); sleep 2; shot quick-settings-toggled # volume slider
           chk "quick settings: Energy saver switches the power profile" 0 "echo before=$P0; $PP" 'power-saver'
           chk "quick settings: Airplane mode turns radios off" 0 "echo before=$A0; nmcli -t -f WIFI,WWAN radio" 'disabled'
           chk "quick settings: volume slider changes the volume" 0 "echo before=$V0; $VOL" 'Volume: 0\.(8|9)'
-          QM click $((965*W/1280)) $((572*H/800)); QM click $((1209*W/1280)) $((485*H/800)); sleep 2 # back off
+          QM click $((965*W/1280)) $((532*H/800)); QM click $((1209*W/1280)) $((445*H/800)); sleep 2 # back off
           R "journalctl -b --no-pager | grep -E 'org.mountain|\.qml:' | tail -40" > qml-log.txt 2>&1
+          chk "quick settings: brightness slider (disabled here: a VM has no backlight)" 0 "journalctl -b --no-pager | grep -c 'BrightnessRow.qml' | xargs test 0 -eq && grep -c 'Not available on this display' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui/BrightnessRow.qml" '^1$' 
           chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
 
@@ -475,12 +501,69 @@ jobs:
           opent "Settings" "plasmawindowed org.mountain.settings" org.mountain.settings
           opent "Terminal" konsole konsole
           opent "VS Code" code '/usr/share/code/code'
-          # Alt+Tab between two windows
-          L dolphin; sleep 6; L konsole; sleep 6
-          echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm); t0=$(date +%s%N); QM key alt tab
-          while :; do t=$(( ( $(date +%s%N) - t0 ) / 1000000 )); echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm); [ "$m" != "$m0" ] && break; [ $t -ge 5000 ] && break; sleep 0.05; done
-          echo "| Alt+Tab | INFO | ${t} ms |" >> report.md; ALTTAB=$t
+          opent "Task Manager" plasma-systemmonitor plasma-systemmonitor
+          # v5.1 speed: ms from the input (QEMU's clock, no harness start-up counted) to the first changed frame; taskbar rows ignored
+          MS() { QM measure 60 "$@" | tail -1; } # -> first=MS settle=MS
+          num() { sed -n 's/.*first=\([0-9-]*\).*/\1/p' <<<"$1"; }
+          R "$(TL 'mkdir -p ~/Speed/Folder; cp /usr/share/mountain/wallpaper.png ~/Speed/photo.png; rsvg-convert -f pdf -o ~/Speed/letter.pdf /usr/share/mountain/wallpaper.svg; echo speed > ~/Speed/notes.txt; for i in 1 2 3 4 5 6; do cp ~/Speed/photo.png ~/Speed/Folder/picture-$i.png; done')"
+          L dolphin /home/looktest/Speed; sleep 8; shot speed-folder
+          SPEED=""
+          for t in "photo:photo:gwenview" "pdf:letter:okular" "text:notes:code"; do
+            IFS=: read n sel app <<<"$t"
+            for w in cold warm; do
+              QM type $sel; sleep 2 # File Explorer's type-ahead selects the file; Enter opens it like a double-click
+              r=$(MS 20000 key ret); sleep 4; [ $w = warm ] && shot "speed-open-$n"; K -x "$app"; sleep 3
+              echo "| open $n from File Explorer ($w) | INFO | $r |" >> report.md; SPEED="$SPEED $n-$w=$(num "$r")"
+            done
+          done
+          for w in cold warm; do
+            QM type folder; sleep 2
+            r=$(MS 5000 key ret); echo "| open a folder in File Explorer ($w) | INFO | $r |" >> report.md; SPEED="$SPEED folder-$w=$(num "$r")"
+            sleep 2; r=$(MS 5000 key alt left); echo "| back to the parent folder ($w) | INFO | $r |" >> report.md; SPEED="$SPEED back-$w=$(num "$r")"; sleep 2
+          done
+          L konsole; sleep 6
+          r=$(MS 3000 key alt tab); ALTTAB=$(num "$r"); echo "| Alt+Tab | INFO | $r |" >> report.md
+          sleep 1; r=$(MS 3000 key meta_l pgup); echo "| maximize animation | INFO | $r |" >> report.md; SPEED="$SPEED maximize=$(num "$r")"
+          sleep 1; r=$(MS 3000 key meta_l pgdn); echo "| minimize animation | INFO | $r |" >> report.md; SPEED="$SPEED minimize=$(num "$r")"
+          # frame pacing while dragging a window (KWin's FPS overlay in the screenshot)
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect string:showfps" >/dev/null 2>&1
+          QM key meta_l pgup; sleep 2; r=$(QM dragfps $((640*W/1280)) 12 $((500*W/1280)) $((300*H/800)) 3 | tail -1)
+          echo "| frames seen while dragging a window | INFO | $r |" >> report.md; sleep 1; shot drag-showfps
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect string:showfps" >/dev/null 2>&1
           K -x dolphin; K -x konsole
+          echo "| speed numbers | INFO |$SPEED alttab=$ALTTAB |" >> report.md
+          # real-PC budgets for reference (this VM renders in software): open <= 500 ms warm, folder <= 150 ms, Alt+Tab <= 100 ms
+          for kv in $SPEED alttab=$ALTTAB; do
+            k=${kv%%=*}; v=${kv#*=}; case $k in folder-*|back-*) b=150 ;; *-warm) b=500 ;; alttab) b=100 ;; *) continue ;; esac
+            [ "${v:--1}" -ge 0 ] && [ "$v" -le $b ] && r=met || r=over
+            echo "| real-PC budget $k <= $b ms | INFO | $v ms ($r) |" >> report.md
+          done
+          
+          # Task Manager: Ctrl+Shift+Esc, every tab, End task, Startup apps
+          R "$(TL 'cp /usr/bin/sleep ~/.local/bin/endtasktest')"; L /home/looktest/.local/bin/endtasktest 99999
+          QM key ctrl shift esc; wchk "Ctrl+Shift+Esc opens Task Manager" 0 plasma-systemmonitor 15; sleep 6; shot taskmanager
+          chk "Task Manager RAM" 2 "ps -o rss=,comm= -C plasma-systemmonitor | awk '{print int(\$1/1024)\" MB\"}'" '.'
+          for pg in Processes Performance "App history" "Startup apps" Users Details Services; do
+            K -x plasma-systemmonitor; L "plasma-systemmonitor --page-name '$pg'"; sleep 8; shot "taskmanager-$(tr ' A-Z' '-a-z' <<<"$pg")"
+          done
+          # End task: Details is open; search the test process, click its row, Delete, confirm
+          QM key meta_l pgup; sleep 2; QM type endtasktest; sleep 3; QM click $((500*W/1280)) $((125*H/800)); sleep 1; shot taskmanager-endtask-select
+          QM key delete; sleep 2; shot taskmanager-endtask-confirm; QM key ret; sleep 3
+          chk "Task Manager: End task ends the process" 0 "pgrep -u looktest -x endtasktest || echo ended" '^ended$'
+          K -x endtasktest
+          chk "startup test app ran at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' >/dev/null && echo running" '^running$'
+          chk "Startup apps tab lists it" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'mtm-autostart-test.desktop'
+          R "$(TL '/usr/libexec/mountain-taskmanager startup-set mtm-autostart-test.desktop off')"
+          K -x plasma-systemmonitor; L "plasma-systemmonitor --page-name 'Startup apps'"; sleep 8; shot taskmanager-startup-disabled
+          chk "Task Manager services list" 2 "$(TL '/usr/libexec/mountain-taskmanager services | head -4 | tr "\t" " "')" 'Running'
+          chk "Task Manager device names" 2 "$(TL '/usr/libexec/mountain-taskmanager device | tr "\t" " " | paste -sd";"')" 'Processor'
+          K -x plasma-systemmonitor
+          # sharpness at 1920x1080 (screenshots only)
+          KS="$LT WAYLAND_DISPLAY=wayland-0 kscreen-doctor"
+          OUT=$(R "$KS -o" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
+          R "$KS output.$OUT.mode.1920x1080@60" >/dev/null 2>&1; sleep 6; shot fhd-desktop
+          L dolphin; sleep 7; shot fhd-file-explorer; K -x dolphin
+          R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
 
           # perf data (non-fatal) while the session is still up
           mkdir -p perf
@@ -501,6 +584,47 @@ jobs:
           P "flatpak list --app; flatpak ps; rpm -q kdeconnect plasma-discover baloo input-remapper geoclue2 2>&1; balooctl6 status 2>&1" misc
           P "ps -eo pid,rss,pcpu,user,args --sort=-rss | head -25 | cut -c1-200" ps-args
           P "$LT systemctl --user list-unit-files --state=enabled --no-pager" user-unit-files
+          
+          # Security page, on-demand virus scan, firewall, Flatpak sandbox, snapshots, accounts
+          U() { R "$LT systemd-run --user --wait --pipe --quiet --collect $*"; } # like an app started from the desktop
+          L "/usr/libexec/mountain-settings-open privacy"; PGF=-f wchk "Security entry opens Settings on Privacy & security" 0 org.mountain.settings 20; sleep 8; shot security-page
+          chk "security status" 2 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | paste -sd' '" '.'
+          chk "Security: firewall on, SELinux enforcing" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep -E '^(fw|selinux)=' | paste -sd' '" 'fw=on selinux=Enforcing'
+          K -f org.mountain.settings
+          R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
+          SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" > scan-log.txt
+          chk "virus definitions downloaded on Scan now (no password)" 2 "ls /var/lib/clamav | paste -sd' '" '.'
+          if ! grep -q 'av_result=found' <<<"$SCAN"; then # the definitions server may refuse CI machines: test the pipeline with one test signature
+            echo "| virus scan with downloaded definitions | INFO | $(grep -m1 -E 'av_result|note' <<<"$SCAN") - retrying with a test signature |" >> report.md
+            R "printf '44d88612fea8a8f36de82e1278abb02f:68:Eicar-Test-Signature\n' > /var/lib/clamav/mountain-test.hdb"
+            SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" >> scan-log.txt
+          fi
+          chk "virus scan finds the test file and quarantines it" 0 "test ! -e ~looktest/Downloads/eicar.com && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo quarantined" '^quarantined$'
+          chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
+          chk "nothing scans or downloads in the background" 0 "pgrep -l -x 'clamd|freshclam|clamscan|clamonacc' || echo none" '^none$'
+          R "rm -f /var/lib/clamav/mountain-test.hdb"
+          # firewall: a service listening on 8765 answers inside the VM but not from outside
+          L "python3 -m http.server 8765 --directory /tmp"; sleep 3
+          chk "test service answers inside the VM" 0 "curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:8765/" '^200$'
+          FWR=$(curl -s -o /dev/null -w '%{http_code}' -m 8 http://127.0.0.1:8765/ 2>/dev/null)
+          [ "$FWR" = 000 ] && r=PASS || r=FAIL; echo "| firewall blocks an incoming port (8765 from outside) | $r | http ${FWR:-none} |" >> report.md; echo "$r firewall"
+          K -f "http.server 8765"
+          # Flatpak sandbox: a chat app can't read Documents; a game launcher keeps its access
+          R "$(TL 'mkdir -p ~/Documents; echo secret > ~/Documents/private.txt')"
+          chk "Flatpak sandbox: Discord can't read Documents" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/Documents/private.txt 2>&1 | tail -1" 'No such file'
+          chk "Flatpak overrides (Discord)" 2 "cat /var/lib/flatpak/overrides/com.discordapp.Discord | paste -sd' '" '.'
+          chk "Heroic (games) keeps its access" 2 "$LT HOME=/home/looktest flatpak run --command=cat com.heroicgameslauncher.hgl /home/looktest/Documents/private.txt 2>&1 | tail -1" '.'
+          # snapshots: delete a file, copy it back from Previous versions
+          R "$(TL 'echo precious > ~/Documents/precious.txt')"
+          chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service && ls /var/home/.snapshots | tail -1" '^[0-9]{4}-'
+          SNAP=$(R "ls /var/home/.snapshots | tail -1")
+          R "$(TL 'rm ~/Documents/precious.txt')"
+          chk "deleted file restored from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP/looktest/Documents/precious.txt ~/Documents/ && cat ~/Documents/precious.txt")" '^precious$'
+          chk "snapshots are read-only for programs" 0 "$(TL "touch /var/home/.snapshots/$SNAP/looktest/x 2>/dev/null && echo writable || echo blocked")" '^blocked$'
+          L "dolphin /var/home/.snapshots/$SNAP/looktest/Documents"; sleep 7; shot previous-versions; K -x dolphin
+          chk "sudo always asks for a password" 0 "grep -rs NOPASSWD /etc/sudoers /etc/sudoers.d || echo none" '^none$'
+          chk "polkit rules that skip the password" 2 "grep -ls 'Result.YES' /etc/polkit-1/rules.d/* /usr/share/polkit-1/rules.d/* 2>/dev/null | paste -sd' '" '.'
+          chk "kernel lockdown (off by default: game drivers)" 2 "cat /sys/kernel/security/lockdown" '.'
 
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
@@ -514,6 +638,13 @@ jobs:
           done
           if [ $LO = ok ]; then echo "| logout | PASS | session ended |" >> report.md; else echo "| logout | FAIL | looktest session still there |" >> report.md; fi
           shot after-logout
+          # Startup apps: the switched-off test app must not start at the next sign-in
+          sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
+          for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20; shot relogin-desktop
+          chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off" '^off$'
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
+          # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
+          chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
           BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
           printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
 
@@ -522,6 +653,12 @@ jobs:
             R "systemctl reboot" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null # drop the shared connection
             sleep 30
             if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+              if [ $n = 1 ]; then
+                chk "rollback test: new version booted, previous kept" 0 "grep -o mountain.rollbacktest=1 /proc/cmdline; rpm-ostree status --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"deployments\"]), \"deployments\")'" 'mountain.rollbacktest=1'
+                chk "Go back to the previous version" 0 "/usr/libexec/mountain-security rollback 2>&1 | tail -1" 'rollback=staged'
+              else
+                chk "rollback works: the previous version booted" 0 "grep -q mountain.rollbacktest /proc/cmdline && echo still-new || echo previous" '^previous$'
+              fi
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
           # clean shutdown: the VM must power itself off

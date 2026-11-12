@@ -38,6 +38,8 @@ PlasmoidItem {
 
     readonly property string modelCmd: "cat /sys/devices/virtual/dmi/id/product_name"
     readonly property string colorCmd: "kreadconfig6 --file kdeglobals --group General --key ColorScheme"
+    // a launcher can ask for a start page (mountain-settings-open PAGE), e.g. the Security start-menu entry
+    readonly property string pageCmd: "f=\"$XDG_RUNTIME_DIR/mountain-settings-page\"; cat \"$f\" 2>/dev/null; rm -f \"$f\""
 
     // Windows 11 categories and their sub-pages. kcm = System Settings module id,
     // info = Info Center module id, cmd = shell command, k = extra search keywords.
@@ -104,10 +106,12 @@ PlasmoidItem {
         { id: "privacy", name: "Privacy & security", icon: "preferences-security", items: [
             { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock password security" },
             { t: "Recent files", d: "Remember recently used files", i: "document-open-recent", kcm: "kcm_recentFiles", k: "history recent activity" },
-            { t: "App permissions", d: "What Flatpak apps may access", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" }
+            { t: "App permissions", d: "What Flatpak apps may access", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" },
+            { t: "Virus & threat protection", d: "Scan now, quarantine, Previous versions", i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
         ] },
         { id: "updates", name: "Updates", icon: "system-software-update", items: [
             { t: "Check for updates", d: "Updates are manual: open the Updates app and run it when you choose", i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
+            { t: "Go back to the previous version", d: "Undo the last update: Mountain restarts into the version you had before", i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
             { t: "All settings (advanced)", d: "Every KDE setting in System Settings", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
         ] }
     ]
@@ -147,6 +151,8 @@ PlasmoidItem {
             KCMUtils.KCMLauncher.openInfoCenter(it.info);
         } else if (it.cmd) {
             run(it.cmd);
+        } else if (it.page) {
+            page = it.page; // the search box clears itself on a page change
         }
     }
 
@@ -174,6 +180,10 @@ PlasmoidItem {
             const out = (data["stdout"] || "").trim();
             if (sourceName === app.modelCmd) {
                 app.modelName = out;
+            } else if (sourceName === app.pageCmd) {
+                if (app.categories.some(c => c.id === out)) {
+                    app.page = out;
+                }
             } else if (sourceName === app.colorCmd) {
                 app.colorMode = out.indexOf("Light") >= 0 ? "Light" : "Dark";
             }
@@ -184,6 +194,7 @@ PlasmoidItem {
     Component.onCompleted: {
         exec.connectSource(modelCmd);
         exec.connectSource(colorCmd);
+        exec.connectSource(pageCmd);
     }
 
     // plasmawindowed only honours the minimum size; open at the preferred size the first time
@@ -259,6 +270,10 @@ PlasmoidItem {
                         }
                     }
                     Keys.onEscapePressed: text = ""
+                    Connections {
+                        target: app
+                        function onPageChanged() { searchInput.text = ""; }
+                    }
 
                     GText {
                         anchors.verticalCenter: parent.verticalCenter
@@ -383,7 +398,7 @@ PlasmoidItem {
                 id: pageLoader
                 width: Math.min(flick.width - 32, 1000)
                 height: item ? item.implicitHeight : 0
-                source: app.query !== "" || app.page !== "home" ? "ListPage.qml" : "HomePage.qml"
+                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "privacy" ? "SecurityPage.qml" : "ListPage.qml"
                 onSourceChanged: flick.contentY = 0
             }
         }

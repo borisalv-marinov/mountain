@@ -1,0 +1,9 @@
+[Unit]
+Description=Mountain: read-only snapshot of the home folders (Previous versions)
+RequiresMountsFor=/var/home
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/mountain-snapshot
+Nice=19
+IOSchedulingClass=idle

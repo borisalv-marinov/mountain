@@ -1,5 +1,5 @@
 // Screen brightness on powerdevil's org.kde.ScreenBrightness (daemon/dbus/org.kde.ScreenBrightness*.xml);
-// hidden when no display is controllable (e.g. most VMs and desktop monitors without DDC).
+// shown disabled with "Not available on this display" when nothing is controllable (most VMs, monitors without DDC/CI).
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -26,7 +26,7 @@ RowLayout {
     }
     readonly property int maximum: Number(display.properties?.MaxBrightness ?? 0)
 
-    visible: displayName !== "" && maximum > 0
+    readonly property bool available: displayName !== "" && maximum > 0
     spacing: Kirigami.Units.smallSpacing
 
     Kirigami.Icon {
@@ -39,12 +39,16 @@ RowLayout {
         Accessible.ignored: true
     }
     PC3.Slider {
+        id: slider
         Layout.fillWidth: true
+        enabled: row.available
+        opacity: enabled ? 1 : 0.35
         from: 0
         to: row.maximum
         stepSize: Math.max(1, Math.round(row.maximum / 100))
         value: Number(display.properties?.Brightness ?? 0)
         Accessible.name: i18n("Brightness")
+        Accessible.description: row.available ? "" : unavailable.text
         onMoved: DBus.SessionBus.asyncCall({
             service: "org.kde.ScreenBrightness",
             path: display.path,
@@ -54,6 +58,13 @@ RowLayout {
             signature: "(iu)",
         })
     }
+    PC3.Label {
+        id: unavailable
+        visible: !row.available
+        text: i18n("Not available on this display")
+        color: "#C4C8CF" // 9.8:1 on the slider card
+        font: Kirigami.Theme.smallFont
+    }
     // keeps the slider aligned with the volume slider, which has two buttons on the right
-    Item { Layout.preferredWidth: 2 * 32 + parent.spacing }
+    Item { visible: row.available; Layout.preferredWidth: 2 * 32 + parent.spacing }
 }

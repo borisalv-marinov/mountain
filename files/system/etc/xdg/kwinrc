@@ -2,8 +2,8 @@
 blurEnabled=true
 contrastEnabled=true
 wobblywindowsEnabled=false
-magiclampEnabled=true
-squashEnabled=false
+magiclampEnabled=false
+squashEnabled=true
 
 [Effect-blur]
 BlurStrength=10

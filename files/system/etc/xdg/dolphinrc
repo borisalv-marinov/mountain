@@ -1,5 +1,6 @@
 [General]
 BrowseThroughArchives=true
 ShowFullPath=false
-AlwaysShowTabBar=true
+AlwaysShowTabBar=false
+ShowStatusBar=FullWidth
 RememberOpenedTabs=false

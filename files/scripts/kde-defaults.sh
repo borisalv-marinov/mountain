@@ -6,6 +6,6 @@ source /usr/share/mountain/config
 p=/usr/share/kde-settings/kde-profile/default/xdg
 [[ -f $p/plasmarc ]] && sed -i "/^name=/d" "$p/plasmarc"
 for f in "$p/kdeglobals" "$p/kwinrc"; do
-  [[ -f $f ]] && sed -i -E '/^(LookAndFeelPackage|ColorScheme|AccentColor|widgetStyle|blurEnabled|contrastEnabled|wobblywindowsEnabled|magiclampEnabled|squashEnabled|BlurStrength|NoiseStrength|ButtonsOnLeft|ButtonsOnRight|library|theme|BorderSize)=/d' "$f"
+  [[ -f $f ]] && sed -i -E '/^(LookAndFeelPackage|ColorScheme|AccentColor|widgetStyle|blurEnabled|contrastEnabled|wobblywindowsEnabled|magiclampEnabled|squashEnabled|BlurStrength|NoiseStrength|ButtonsOnLeft|ButtonsOnRight|library|theme|BorderSize|XftAntialias|XftHintStyle|XftSubPixel)=/d' "$f"
 done
 sed -i "s|@MOUNTAIN_NAME@|${MOUNTAIN_NAME}|g" /usr/share/plasma/look-and-feel/org.mountain.desktop/metadata.json

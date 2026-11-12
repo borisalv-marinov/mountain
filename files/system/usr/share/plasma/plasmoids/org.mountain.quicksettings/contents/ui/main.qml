@@ -165,7 +165,6 @@ PlasmoidItem {
                 Loader {
                     source: "BrightnessRow.qml"
                     Layout.fillWidth: true
-                    visible: status === Loader.Ready && item.visible
                 }
                 Loader {
                     id: volumeRow

@@ -328,8 +328,8 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   assert_grep '^Name=App Store$' /usr/share/applications/io.github.kolunmi.Bazaar.desktop
   assert_grep '^Name=Welcome$' /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
   grep -qE '^(Name|Comment|GenericName)(\[|=).*Bazzite' /usr/share/applications/io.github.{kolunmi.Bazaar,ublue_os.yafti_gtk,rfrench3.bazzite-updater}.desktop && fail "Bazzite name left in a renamed app"
-  assert_grep '^AlwaysShowTabBar=true$' /etc/xdg/dolphinrc
-  grep -q '^ShowStatusBar=FullWidth' /etc/xdg/dolphinrc && fail "full-width status bar shows the image's 0 B free"
+  # v5.1 owner request supersedes the v4 QA ruling: tab bar only with 2+ tabs, full-width status bar (the small one cut "9 folders"); phase 29 asserts both
+  grep -q '^AlwaysShowTabBar=true$' /etc/xdg/dolphinrc && fail "tab bar forced on with one tab"
   assert_grep 'KERNEL=="loop' /usr/lib/udev/rules.d/90-mountain-hide-system.rules
   assert_grep 'erofs' /usr/lib/udev/rules.d/90-mountain-hide-system.rules
   for p in ffmpeg mesa-vulkan-drivers mesa-dri-drivers NetworkManager-wifi; do
@@ -454,6 +454,75 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^ColorScheme=BlackGlass$' /etc/xdg/kdeglobals
   assert_grep '^theme=__aurorae__svg__BlackGlass$' /etc/xdg/kwinrc
   MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=BlackGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=BlackGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
+  true
+}
+
+check_phase29() { # v5.1: brightness, sharp solid windows, File Explorer layout, Task Manager, Security, snapshots, hardening
+  local q=/usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui f n
+  assert_grep 'Not available on this display' $q/BrightnessRow.qml
+  grep -q 'item.visible' $q/main.qml && fail "brightness row can still disappear"
+  # File Explorer: tab bar only with 2+ tabs, full-width status bar, sidebar wide enough for "Documents"/"Recycle Bin"/"Previous versions"
+  assert_grep '^AlwaysShowTabBar=false$' /etc/xdg/dolphinrc
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc
+  python3 -c 'import base64,sys; b=base64.b64decode(open(sys.argv[1]).read().split("State=")[1]); w=int.from_bytes(b[17:21],"big"); assert w>=150, w' /etc/skel/.local/state/dolphinstaterc || fail "File Explorer sidebar too narrow"
+  # contrast: solid app windows, glass menus; Windows-like minimize; crisp fonts
+  f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  assert_grep '^translucent_windows=false$' $f
+  assert_grep '^popup_blurring=true$' $f
+  assert_grep '^transparent_dolphin_view=false$' $f
+  assert_grep '^squashEnabled=true$' /etc/xdg/kwinrc
+  assert_grep '^magiclampEnabled=false$' /etc/xdg/kwinrc
+  assert_grep '^XftSubPixel=rgb$' /etc/xdg/kdeglobals
+  assert_grep '^XftHintStyle=hintslight$' /etc/xdg/kdeglobals
+  grep -qsE '^Xft(SubPixel|HintStyle|Antialias)=' /usr/share/kde-settings/kde-profile/default/xdg/kdeglobals && fail "Fedora profile overrides font rendering"
+  # Task Manager: Ctrl+Shift+Esc, Windows 11 tabs, Mountain list face and helper, Start right-click entry
+  assert_cmd plasma-systemmonitor
+  assert_grep '^X-KDE-Shortcuts=Ctrl+Shift+Esc,Ctrl+Esc$' /usr/share/applications/org.kde.plasma-systemmonitor.desktop
+  n=0
+  for f in $(sed -n 's/^pageOrder=//p' /etc/xdg/systemmonitorrc | tr , ' '); do
+    assert_file "/usr/share/plasma-systemmonitor/$f"; n=$((n+1))
+  done
+  [[ $n == 7 ]] || fail "Task Manager has $n tabs, want 7"
+  for n in Processes Performance "App history" "Startup apps" Users Details Services; do
+    grep -qx "Title=$n" /usr/share/plasma-systemmonitor/mountain-*.page || fail "Task Manager tab missing: $n"
+  done
+  f=/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list
+  python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["KPlugin"]["Id"]=="org.mountain.taskmanager.list" and d["KPackageStructure"]=="KSysguard/SensorFace"' $f/metadata.json || fail "bad Task Manager face metadata"
+  for n in FullRepresentation CompactRepresentation Config; do assert_file $f/contents/ui/$n.qml; done
+  for n in $(grep -ho 'chartFace=[a-z.]*' /usr/share/plasma-systemmonitor/mountain-*.page | sort -u | cut -d= -f2); do
+    [[ -d /usr/share/ksysguard/sensorfaces/$n ]] || fail "Task Manager page uses a missing face: $n"
+  done
+  [[ -x /usr/libexec/mountain-taskmanager ]] || fail "mountain-taskmanager not executable"
+  /usr/libexec/mountain-taskmanager device | head -1 | grep -q $'^id\tPart\tModel$' || fail "Task Manager device list"
+  /usr/libexec/mountain-taskmanager services | head -1 | grep -q $'^id\tName' || fail "Task Manager services list"
+  assert_grep 'text: i18n("Task Manager")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/main.qml
+  # Security: on-demand ClamAV only (no daemon, timer or cron), Settings page, narrow polkit rule
+  assert_cmd clamscan
+  assert_cmd freshclam
+  grep -q '^Example' /etc/freshclam.conf && fail "freshclam.conf still has Example"
+  for n in clamav-freshclam.service clamd@scan.service clamav-clamonacc.service; do
+    [[ $(systemctl is-enabled "$n" 2>/dev/null) == enabled ]] && fail "background scanner enabled: $n"
+  done
+  compgen -G '/etc/cron.d/*clam*' >/dev/null && fail "ClamAV cron job present"
+  for n in mountain-security mountain-snapshot mountain-flatpak-policy mountain-settings-open; do
+    [[ -x /usr/libexec/$n ]] || fail "$n not executable"; bash -n /usr/libexec/$n || fail "$n syntax"
+  done
+  assert_file /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  assert_grep 'SecurityPage.qml' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml
+  desktop-file-validate /usr/share/applications/org.mountain.security.desktop || fail "invalid Security launcher"
+  assert_grep 'mountain-virus-definitions.service' /usr/share/polkit-1/rules.d/60-mountain.rules
+  assert_grep 'ExecStart=/usr/bin/freshclam' /usr/lib/systemd/system/mountain-virus-definitions.service
+  [[ $(systemctl is-enabled mountain-virus-definitions.service 2>/dev/null) == enabled ]] && fail "definitions would download in the background"
+  # nearly unbreakable: snapshots, Flatpak sandbox, signed updates, SELinux, no passwordless admin
+  [[ $(systemctl is-enabled mountain-snapshot.timer) == enabled ]] || fail "snapshot timer off"
+  [[ $(systemctl is-enabled mountain-flatpak-policy.service) == enabled ]] || fail "Flatpak policy off"
+  assert_grep 'nofilesystem=home' /usr/libexec/mountain-flatpak-policy
+  grep -q 'heroic' /usr/libexec/mountain-flatpak-policy && fail "game launcher sandbox tightened (not gaming-safe)"
+  assert_file /usr/lib/tmpfiles.d/mountain-snapshots.conf
+  python3 -c 'import json,sys; t=json.load(open("/etc/containers/policy.json"))["transports"]["docker"]; r=[v for k,v in t.items() if "borisalv-marinov" in k]; assert r and any(x.get("type")=="sigstoreSigned" for x in r[0]), r' || fail "updates are not signature-checked"
+  assert_grep '^SELINUX=enforcing$' /etc/selinux/config
+  grep -rqs 'NOPASSWD' /etc/sudoers /etc/sudoers.d && fail "passwordless sudo in the shipped image"
+  grep -q 'lockdown=' /usr/lib/bootc/kargs.d/*.toml 2>/dev/null && fail "kernel lockdown forced (breaks unsigned game drivers)"
   true
 }
 

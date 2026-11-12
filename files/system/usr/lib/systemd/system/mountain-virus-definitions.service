@@ -1,0 +1,11 @@
+[Unit]
+Description=Mountain: download virus definitions (only when you click Scan now or Update definitions)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/install -d -o clamupdate -g clamupdate -m 0755 /var/lib/clamav
+ExecStart=/usr/bin/freshclam --stdout
+TimeoutStartSec=20min
+Nice=10

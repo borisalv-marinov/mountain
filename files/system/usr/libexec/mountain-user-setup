@@ -46,6 +46,9 @@ add "$(url "$(dir PICTURES Pictures)")" Pictures folder-pictures
 add "$(url "$(dir MUSIC Music)")" Music folder-music
 add "$(url "$(dir VIDEOS Videos)")" Videos folder-videos
 add "trash:/" "Recycle Bin" user-trash
+# hourly read-only snapshots (mountain-snapshot), only where /var/home is a Btrfs subvolume (its top inode is 256)
+snap=${MOUNTAIN_SNAP_SRC:-/var/home}
+[[ ${MOUNTAIN_SNAPSHOTS_PLACE:-} == 1 || $(stat -c %i "$snap" 2>/dev/null) == 256 ]] && add "$(url "$snap/.snapshots")" "Previous versions" document-revert
 mkdir -p "$(dirname "$out")"
 python3 - "$tpl" "$out" "$places" <<'PY'
 import sys

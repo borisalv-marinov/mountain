@@ -1,0 +1,10 @@
+[Unit]
+Description=Mountain: tighter Flatpak sandbox for the shipped chat, browser and office apps
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/mountain-flatpak-policy
+
+[Install]
+WantedBy=multi-user.target

@@ -8,6 +8,10 @@ widgetStyle=kvantum
 
 [General]
 ColorScheme=BlackGlass
+# sharp text at 100 % and 125 %: slight hinting, RGB subpixel
+XftAntialias=true
+XftHintStyle=hintslight
+XftSubPixel=rgb
 AccentColor=61,174,233
 
 [Icons]
