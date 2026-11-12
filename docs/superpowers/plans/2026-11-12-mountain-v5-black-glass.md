@@ -78,3 +78,21 @@ Image checks: phase 28 in `tests/check-image.sh`.
 | danger | `#C42B1C` | close-button hover (Windows red), white glyph |
 | radius | taskbar: full pill; menus/popups 12 px; windows 10 px; buttons/fields 8 px; toggles: pill |
 | shadow | `#000000` at 55 %, 24 px blur, 8 px down | popups and windows |
+
+## Rulings made while building (for the owner)
+
+10. **Lock screen reveal fades, it does not slide.** Plasma's own login and lock screens already start clock-only and
+    show the sign-in on a key or click; we kept their animation instead of rewriting the greeter.
+11. **Quick settings sit on the taskbar next to the clock, not inside the tray.** Plasma's tray gives every item one
+    square cell, so a Windows-style group of network/volume/battery icons only fits as its own taskbar item.
+12. **Theme ids are "BlackGlass"** (shown as "Mountain Glass"): the image rule keeps the OS name out of /etc/xdg.
+13. **"File Explorer" in title bars** needs US English; a session with no language set now gets US English.
+    Other languages keep KDE's own name.
+14. **Details pane:** shipped as a recorded File Explorer window layout (`/etc/skel/.local/state/dolphinstaterc`),
+    because Dolphin has no plain setting for it.
+15. **Settings:** firewall page dropped (Bazzite has no KDE firewall module); Alt+Tab is under System.
+    Rename opens About this System. The taskbar may show the Settings window under a generic icon (KDE limitation).
+16. **Lite mode:** app windows switch to the solid variant (`BlackGlassSolid`); panels use the opaque SVGs.
+17. **Not done (skipped, named):** a custom slide animation, Steam cold/warm open times (Steam updates itself on first
+    start), 1920×1080 screenshots (the CI VM is fixed at 1280×800), extra speed tuning beyond what was measured
+    (animations stay at half length, file indexing stays off, LAVD scheduler kept).
