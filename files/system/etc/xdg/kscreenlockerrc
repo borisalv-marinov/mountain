@@ -7,5 +7,5 @@ LockOnResume=true
 WallpaperPlugin=org.kde.image
 
 [Greeter][Wallpaper][org.kde.image][General]
-Image=file:///usr/share/wallpapers/mountain-peaks/
-PreviewImage=file:///usr/share/wallpapers/mountain-peaks/contents/images_dark/1920x1080.png
+Image=file:///usr/share/wallpapers/mountain-silk-dark/
+PreviewImage=file:///usr/share/wallpapers/mountain-silk-dark/contents/images_dark/1920x1080.png

@@ -257,8 +257,7 @@ check_phase20() { # line-art wallpaper, login and lock screen
     file "$w/contents/$d/$s.png" | grep -q "${s%x*} x ${s#*x}" || fail "wrong size: $d/$s.png"
   done; done
   assert_file /usr/share/mountain/wallpaper-light.svg
-  assert_grep 'mountain-peaks' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
-  assert_grep '^Image=file:///usr/share/wallpapers/mountain-peaks/$' /etc/xdg/kscreenlockerrc
+  # v5: Mountain Silk became the default (phase 28 checks it the same way); Peaks stays installed as a choice
 }
 
 check_phase21() { # Windows-like start menu and names
@@ -397,6 +396,28 @@ check_phase27() { # v5: login-screen picture, "File Explorer" in title bars
   grep -q dragImageBeingGenerated /usr/share/plasma/plasmoids/org.kde.desktopcontainment/contents/ui/FolderView.qml || fail "desktop drag fix missing"
   MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp geforcenow https://play.geforcenow.com | grep -q -- '--class=mountain-geforcenow --ozone-platform=x11' || fail "web apps not in X11 mode (taskbar grouping)"
   [[ $(env -i LANG=de_DE.UTF-8 bash -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo ${LANGUAGE-unset}') == unset ]] || fail "names script changed another language"
+}
+
+check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows-style taskbar and desktop
+  local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js b w s d
+  b=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit)
+  assert_grep '"Hello, "' "$b/UserDelegate.qml"
+  grep -q '^prefer ' "$b/qmldir" && fail "breeze components still prefer the compiled copy (greeting not used)"
+  assert_file /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml
+  for w in mountain-silk mountain-silk-dark; do
+    python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]==sys.argv[2]' "/usr/share/wallpapers/$w/metadata.json" "$w" || fail "bad $w metadata"
+    for d in images images_dark; do for s in 1920x1080 2560x1440 3840x2160; do
+      file "/usr/share/wallpapers/$w/contents/$d/$s.png" | grep -q "${s%x*} x ${s#*x}" || fail "wrong or missing $w $d/$s.png"
+    done; done
+  done
+  assert_grep 'mountain-silk/' "$L"
+  assert_grep '^Image=file:///usr/share/wallpapers/mountain-silk-dark/$' /etc/xdg/kscreenlockerrc
+  assert_grep 'BelowTime' "$L"
+  assert_grep '"arrangement", 1' "$L"
+  grep -q 'location = "top"' "$L" && fail "top bar is on by default"
+  grep -q 'systemtray' /usr/libexec/mountain-topbar && fail "top bar would add a second tray"
+  assert_grep '^URL=trash:/$' "/etc/skel/Desktop/Recycle Bin.desktop"
+  true
 }
 
 PHASE=${1:-0}

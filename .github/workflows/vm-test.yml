@@ -131,7 +131,7 @@ jobs:
       - name: Run tests
         run: |
           cd "$HOME/vm"
-          SSHO="-i $PWD/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes"
+          SSHO="-i $PWD/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes -o ControlMaster=auto -o ControlPath=/tmp/vmssh-%C -o ControlPersist=120"
           set +e # a failing check must not abort the run
           R() { ssh $SSHO root@127.0.0.1 "$@"; } # everything runs as root over ssh
           TU() { printf 'sudo -u tester -i bash -c %q' "$1"; } # wrap a command to run as tester
@@ -247,6 +247,9 @@ jobs:
               x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
               for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
           elif a[0] == 'up': btn(False)
+          elif a[0] == 'fdrag':  # select an icon, then drag it at once (no pause) and keep the button down
+              x1, y1, x2, y2 = map(int, a[1:5]); click(x1, y1); time.sleep(0.05); btn(True)
+              for i in range(1, 6): move(x1 + (x2 - x1) * i / 5, y1 + (y2 - y1) * i / 5); time.sleep(0.03)
           PY
           QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
           waitproc() { # NAME SECS (PGF=-f for a pattern): seconds taken or fail
@@ -277,8 +280,13 @@ jobs:
             echo $t; QM key esc; sleep 1
           }
 
-          # 1. login-to-desktop
-          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
+          # 1. lock screen at start: no autologin, like the shipped image and Try Mountain
+          LPW=glasstest2026
+          R "useradd -m looktest; echo looktest:$LPW | chpasswd; printf '[Users]\nHideUsers=tester\n' > /etc/plasmalogin.conf; systemctl restart display-manager"
+          sleep 30; W=1280; H=800; shot login-lock # clock and date only
+          QM click 640 200; sleep 2; shot login-hello # "Hello, <name>", picture, password box
+          QM type wrongpass; QM key ret; sleep 5; shot login-wrong
+          QM type $LPW; QM key ret
           LT0=$(date +%s); LTD="never"
           while [ $(( $(date +%s) - LT0 )) -lt 240 ]; do
             R "$LT dbus-send --session --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.NameHasOwner string:org.kde.plasmashell" 2>/dev/null | grep -q "boolean true" && { LTD=$(( $(date +%s) - LT0 )); break; }
@@ -294,7 +302,16 @@ jobs:
           chk "autostart entries" 2 "ls /etc/xdg/autostart ~looktest/.config/autostart 2>&1" '.'
           chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" "^PipeWire '"
           chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
-          chk "wallet off for autologin user" 0 "cat ~looktest/.config/kwalletrc" 'Enabled=false'
+          chk "wallet stays on for a password login" 0 "grep -qs Enabled=false ~looktest/.config/kwalletrc || echo on" '^on$'
+          # 1b. Win+L locks (clock only), a click shows "Hello, <name>", the password unlocks
+          SS="$LT dbus-send --session --print-reply --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.GetActive"
+          QM key meta_l l; sleep 6; shot lock-screen
+          chk "Win+L locks the screen" 1 "$SS" 'boolean true'
+          QM click $((W/2)) $((H/4)); sleep 3; shot lock-hello
+          QM type $LPW; QM key ret; sleep 6; shot unlocked
+          chk "password unlocks" 1 "$SS" 'boolean false'
+          # the long steps below must not lock the screen when idle
+          R "$LT kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false; $LT dbus-send --session --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.kde.screensaver.configure" || true
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           # 2. start menu -> settings
@@ -310,7 +327,14 @@ jobs:
           K -x dolphin
 
           # 4. file explorer
-          L dolphin; sleep 8; shot file-explorer; K -x dolphin
+          L dolphin; sleep 8; shot file-explorer
+          if ! R "test -e /etc/skel/.local/state/dolphinstaterc"; then # record the window state with the Details pane on (F11) for the skel default
+            QM key f11; sleep 3; shot file-explorer-details; QM key ctrl q; sleep 4
+            R "cat ~looktest/.local/state/dolphinstaterc" > dolphinstaterc.txt 2>&1 || true
+            chk "dolphin state recorded" 2 "grep -c '^State=' ~looktest/.local/state/dolphinstaterc" '.'
+          fi
+          chk "Details pane on by default" 0 "grep -qs '^State=' /etc/skel/.local/state/dolphinstaterc && echo yes" '^yes$'
+          K -x dolphin
           L 'dolphin "desktop:/Cloud Gaming"'; sleep 8; shot desktop-folder-names; K -x dolphin
 
           # 5. open files with the default apps
@@ -341,9 +365,12 @@ jobs:
           chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '^moved$'
           K -x dolphin
 
-          # 6b. drag an icon on the desktop: the shot is taken while the mouse button is still down
-          QM hold $((1218*W/1280)) $((80*H/800)) $((700*W/1280)) $((330*H/800)); sleep 1; shot desktop-drag-mid
+          # 6b. drag an icon on the desktop (icons fill columns from the top left): slow drag, then a fast drag right after selecting
+          DX=$((58*W/1280)); DY=$((185*H/800)) # second icon of the first column
+          QM hold $DX $DY $((700*W/1280)) $((330*H/800)); sleep 1; shot desktop-drag-mid
           QM up; sleep 2; shot desktop-drag-after
+          QM fdrag $((700*W/1280)) $((330*H/800)) $((900*W/1280)) $((250*H/800)); shot desktop-fastdrag-mid
+          QM up; echo "screendump /tmp/drop.ppm" | Q >/dev/null; sudo cat /tmp/drop.ppm | convert - shots/desktop-fastdrag-drop.png; sleep 2; shot desktop-fastdrag-after
 
           # 7. Steam
           L steam; wchk "steam starts" 1 steam 60; sleep 40; shot steam; K -f steam
@@ -378,6 +405,53 @@ jobs:
           LATS=""; for _ in 1 2 3; do LATS="$LATS $(latency)"; sleep 2; done
           LAT=$(printf '%s\n' $LATS | sort -n | sed -n 2p)
           echo "| start-menu latency (median of 3) | INFO | ${LAT} ms |" >> report.md
+          # budgets against the v5 baseline (software rendering in this VM, so regressions count, not the real-PC budgets)
+          BASE_LAT=175; BASE_RAM=1520
+          [ "${LAT:-99999}" -le $((BASE_LAT * 120 / 100)) ] && r=PASS || { r=FAIL; CORE_FAIL=1; }
+          echo "| start menu within 20 % of ${BASE_LAT} ms | $r | ${LAT} ms |" >> report.md
+          [ "${RAM:-99999}" -le $((BASE_RAM * 110 / 100)) ] && r=PASS || { r=FAIL; CORE_FAIL=1; }
+          echo "| desktop RAM within 10 % of ${BASE_RAM} MB | $r | ${RAM} MB |" >> report.md
+
+          # UI cost: plasmashell and kwin CPU (10 s sample) and RAM, idle and with the start menu open
+          cat > uicost.sh <<'SH'
+          for p in plasmashell kwin_wayland; do
+            pid=$(pgrep -u looktest -x $p | head -1); [ -n "$pid" ] || { echo "$p=none"; continue; }
+            a=$(awk '{print $14+$15}' /proc/$pid/stat); sleep 10; b=$(awk '{print $14+$15}' /proc/$pid/stat)
+            echo "$p cpu=$(awk -v d=$((b-a)) 'BEGIN{printf "%.1f", d/10}')% rss=$(awk '/VmRSS/{print int($2/1024)}' /proc/$pid/status)MB"
+          done | paste -sd' '
+          SH
+          R "cat > /tmp/uicost.sh" < uicost.sh
+          UIC_IDLE=$(R "bash /tmp/uicost.sh"); echo "| UI cost idle | INFO | $UIC_IDLE |" >> report.md
+          QM key meta_l; sleep 1; UIC_MENU=$(R "bash /tmp/uicost.sh"); QM key esc; sleep 1
+          echo "| UI cost start menu open | INFO | $UIC_MENU |" >> report.md
+          PS_RSS=$(echo "$UIC_IDLE" | grep -o 'plasmashell cpu=[0-9.]*% rss=[0-9]*' | grep -o '[0-9]*$')
+          echo "| plasmashell idle RSS | INFO | ${PS_RSS} MB |" >> report.md
+
+          # app open time: QMP-free launch, ms until the first changed frame (cold, then warm)
+          opent() { # label "command" process-pattern
+            local m0 m t0 t i out=""
+            for i in cold warm; do
+              echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm)
+              t0=$(date +%s%N); L $2
+              while :; do
+                t=$(( ( $(date +%s%N) - t0 ) / 1000000 ))
+                echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm)
+                [ "$m" != "$m0" ] && break; [ $t -ge 30000 ] && break; sleep 0.05
+              done
+              out="$out $i=${t}ms"; sleep 5; K -f "$3"; sleep 3
+            done
+            echo "| open $1 (cold/warm) | INFO |$out |" >> report.md; echo "open $1:$out"
+          }
+          opent "File Explorer" dolphin dolphin
+          opent "Settings" "plasmawindowed org.mountain.settings" org.mountain.settings
+          opent "Terminal" konsole konsole
+          opent "VS Code" code '/usr/share/code/code'
+          # Alt+Tab between two windows
+          L dolphin; sleep 6; L konsole; sleep 6
+          echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm); t0=$(date +%s%N); QM key alt tab
+          while :; do t=$(( ( $(date +%s%N) - t0 ) / 1000000 )); echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm); [ "$m" != "$m0" ] && break; [ $t -ge 5000 ] && break; sleep 0.05; done
+          echo "| Alt+Tab | INFO | ${t} ms |" >> report.md; ALTTAB=$t
+          K -x dolphin; K -x konsole
 
           # perf data (non-fatal) while the session is still up
           mkdir -p perf
@@ -416,13 +490,13 @@ jobs:
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
           for n in 1 2; do
-            R "systemctl reboot" || true
+            R "systemctl reboot" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null # drop the shared connection
             sleep 30
             if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
           # clean shutdown: the VM must power itself off
-          R "systemctl poweroff" || true
+          R "systemctl poweroff" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null
           if timeout 180 sudo podman wait qemu >/dev/null 2>&1; then echo "| shutdown | PASS | VM powered off |" >> report.md
           else echo "| shutdown | FAIL | still running after 180 s |" >> report.md; CORE_FAIL=1; fi
 
@@ -441,4 +515,5 @@ jobs:
             /home/runner/vm/*.png
             /home/runner/vm/shots/*.png
             /home/runner/vm/perf/*.txt
+            /home/runner/vm/*.txt
             /home/runner/vm/serial.log

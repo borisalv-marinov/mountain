@@ -43,6 +43,7 @@ modules:
       - windows-names.sh
       - explorer-title.sh
       - desktop-drag-fix.sh
+      - lock-screen.sh
       - icons-finalize.sh
       - hardening.sh
 
