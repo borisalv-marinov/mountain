@@ -92,7 +92,7 @@ jobs:
           [Install]
           WantedBy=graphical.target
           UNIT
-          # derived image: user + autologin (SDDM and Plasma Login Manager) into Plasma (the shipped image stays untouched)
+          # derived image: user with password 123 and no autologin, so the lock screen shows first (the shipped image stays untouched)
           cat > Containerfile <<EOF
           FROM $REF
           COPY ready.sh /usr/libexec/mountain-try-ready.sh
@@ -101,18 +101,15 @@ jobs:
           # copy/paste agent (already in Bazzite; socket-activated on Fedora)
           RUN rpm -q spice-vdagent && systemctl enable spice-vdagentd.socket || true
           RUN --mount=type=bind,source=pw,target=/pw \
-              useradd -m -G wheel mountain && chpasswd < /pw \
-           && SESS=\$(ls /usr/share/wayland-sessions | grep -i plasma | head -1) \
+              useradd -m -G wheel -c Mountain mountain && chpasswd < /pw \
            && echo 'mountain ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zz-mountain-try \
            && mkdir -p /etc/polkit-1/rules.d && printf 'polkit.addRule(function(a,s){if(s.user=="mountain")return polkit.Result.YES;});\n' > /etc/polkit-1/rules.d/49-mountain-try.rules \
-           && mkdir -p /home/mountain/.config && printf '[Daemon]\nAutolock=false\nLockOnResume=false\n' > /home/mountain/.config/kscreenlockerrc \
+           && mkdir -p /home/mountain/.config \
            && printf '[Wallet]\nEnabled=false\nFirst Use=false\n' > /home/mountain/.config/kwalletrc \
            && mkdir -p /home/mountain/.config/autostart && printf '[Desktop Entry]\nHidden=true\n' > /home/mountain/.config/autostart/mountain-lite-mode.desktop \
            && mkdir -p /home/mountain/.var/app/com.microsoft.Edge/config && echo --disable-gpu | tee /home/mountain/.var/app/com.microsoft.Edge/config/edge-flags.conf > /home/mountain/.var/app/com.microsoft.Edge/config/msedge-flags.conf && chown -R mountain:mountain /home/mountain/.var \
            && printf '[KDE]\nDoubleClickInterval=800\n' > /home/mountain/.config/kdeglobals \
-           && chown -R mountain:mountain /home/mountain/.config \
-           && mkdir -p /etc/sddm.conf.d \
-           && printf '[Autologin]\nUser=mountain\nSession=%s\n' "\$SESS" | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf
+           && chown -R mountain:mountain /home/mountain/.config
           EOF
           sudo podman build -t localhost/mountain-try:latest .
           rm pw

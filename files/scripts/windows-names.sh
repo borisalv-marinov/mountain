@@ -6,7 +6,7 @@ ren() { # file new-name; translated Name[xx] lines are dropped so every language
   [[ -f $a/$1 ]] || { echo "windows-names: missing $1"; return 1; }
   sed -i -E "0,/^Name=/s|^Name=.*|Name=$2|; /^Name\[/d" "$a/$1"
 }
-ren systemsettings.desktop "Settings"
+ren systemsettings.desktop "All Settings" # the full KDE app; "Settings" is our Windows-style one (org.mountain.settings)
 ren org.kde.dolphin.desktop "File Explorer"
 ren org.kde.konsole.desktop "Terminal"
 ren org.kde.plasma-systemmonitor.desktop "Task Manager"

@@ -41,6 +41,9 @@ modules:
       - sddm-background.sh
       - app-icons.sh
       - windows-names.sh
+      - explorer-title.sh
+      - desktop-drag-fix.sh
+      - lock-screen.sh
       - icons-finalize.sh
       - hardening.sh
 
@@ -62,6 +65,8 @@ modules:
       enabled:
         - mountain-gpu-check.service
         - scx_loader.service # LAVD scheduler (config /etc/scx_loader.toml)
+        - mountain-avatars.service # logo as login-screen picture (AccountsService)
+        - mountain-avatars.path # same for accounts created later
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
         - uupd.timer # owner's choice: no background updates; "Updates" app runs one on click

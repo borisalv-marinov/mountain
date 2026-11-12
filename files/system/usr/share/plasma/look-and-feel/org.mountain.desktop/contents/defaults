@@ -1,5 +1,5 @@
 [kdeglobals][General]
-ColorScheme=BreezeDark
+ColorScheme=BlackGlass
 
 [kdeglobals][KDE]
 widgetStyle=kvantum
@@ -8,11 +8,12 @@ widgetStyle=kvantum
 Theme=We10X-dark
 
 [plasmarc][Theme]
-name=breeze-dark
+name=mountain-glass
 
 [kwinrc][org.kde.kdecoration2]
-library=org.kde.breeze
-theme=Breeze
+library=org.kde.kwin.aurorae.v2
+theme=__aurorae__svg__BlackGlass
+BorderSize=Tiny
 
 [kcminputrc][Mouse]
 cursorTheme=breeze_cursors

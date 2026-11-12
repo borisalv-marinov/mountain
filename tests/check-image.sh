@@ -131,7 +131,7 @@ check_phase11() {
   assert_file "$k/GlassDark.kvconfig"
   assert_file "$k/GlassDark.svg"
   assert_grep '^translucent_windows=true$' "$k/GlassDark.kvconfig"
-  assert_grep '^theme=GlassDark$' /etc/xdg/Kvantum/kvantum.kvconfig
+  assert_grep '^theme=BlackGlass$' /etc/xdg/Kvantum/kvantum.kvconfig # v5: BlackGlass replaced GlassDark as the default
   assert_grep '^widgetStyle=kvantum$' /etc/xdg/kdeglobals
   assert_grep '^ButtonsOnRight=IAX$' /etc/xdg/kwinrc
   assert_grep '^blurEnabled=true$' /etc/xdg/kwinrc
@@ -257,13 +257,13 @@ check_phase20() { # line-art wallpaper, login and lock screen
     file "$w/contents/$d/$s.png" | grep -q "${s%x*} x ${s#*x}" || fail "wrong size: $d/$s.png"
   done; done
   assert_file /usr/share/mountain/wallpaper-light.svg
-  assert_grep 'mountain-peaks' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
-  assert_grep '^Image=file:///usr/share/wallpapers/mountain-peaks/$' /etc/xdg/kscreenlockerrc
+  # v5: Mountain Silk became the default (phase 28 checks it the same way); Peaks stays installed as a choice
 }
 
 check_phase21() { # Windows-like start menu and names
   local a=/usr/share/applications L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js f
-  assert_grep '^Name=Settings$' $a/systemsettings.desktop
+  assert_grep '^Name=Settings$' $a/org.mountain.settings.desktop # v5: Windows-style Settings; KDE's app is "All Settings"
+  assert_grep '^Name=All Settings$' $a/systemsettings.desktop
   assert_grep '^Name=File Explorer$' $a/org.kde.dolphin.desktop
   assert_grep '^Name=Task Manager$' $a/org.kde.plasma-systemmonitor.desktop
   assert_grep '^Name=Terminal$' $a/org.kde.konsole.desktop
@@ -274,7 +274,7 @@ check_phase21() { # Windows-like start menu and names
     assert_grep mountain-accessories.directory "$f"; assert_grep '<Deleted/>' "$f"
   done
   assert_file /usr/share/desktop-directories/mountain-accessories.directory
-  assert_grep 'systemsettings.desktop' /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc
+  assert_grep 'org.mountain.settings.desktop' /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc
   grep -qE 'appmenu|systemmonitor\.net|windowtitle|code\.desktop' "$L" && fail "layout still has macOS-style bits or a stale VS Code id"
   assert_file $a/com.microsoft.VSCode.desktop
 }
@@ -351,7 +351,7 @@ check_phase25() { # v4: logo, avatar, Windows 11 start menu, VS Code for text/co
   python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="menu.11.enhanced"' "$m/metadata.json" || fail "start menu plasmoid metadata"
   assert_grep 'menu.11.enhanced' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
   assert_grep '<default>mountain-logo</default>' "$m/contents/config/main.xml"
-  assert_grep 'systemsettings.desktop' "$m/contents/config/main.xml"
+  assert_grep 'org.mountain.settings.desktop' "$m/contents/config/main.xml"
   assert_grep 'i18n("Recommended")' "$m/contents/ui/MenuRepresentation.qml"
   assert_grep '^text/plain=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
   assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
@@ -376,6 +376,85 @@ check_phase26() { # v4: smoother backend and hardening (docs/OWNER-GUIDE.md list
   grep -q 'port=' /etc/firewalld/zones/mountain.xml && fail "mountain zone opens raw ports"
   assert_grep 'steam-streaming' /etc/firewalld/zones/mountain.xml
   assert_grep '^SELINUX=enforcing$' /etc/selinux/config
+}
+
+check_phase27() { # v5: login-screen picture, "File Explorer" in title bars
+  local d
+  for u in mountain-avatars.service mountain-avatars.path; do
+    [[ $(systemctl is-enabled $u 2>/dev/null) == enabled ]] || fail "$u not enabled"
+  done
+  d=$(mktemp -d); mkdir -p "$d/as/users"
+  printf 'ana:x:1000:1000::/home/ana:/bin/bash\nbob:x:1001:1001::/home/bob:/bin/bash\nnobody:x:65534:65534::/:/sbin/nologin\n' > "$d/passwd"
+  printf '[User]\nIcon=/home/bob/me.png\n' > "$d/as/users/bob"
+  MOUNTAIN_AS_ROOT=$d/as MOUNTAIN_PASSWD=$d/passwd /usr/libexec/mountain-avatars || fail "mountain-avatars failed"
+  cmp -s "$d/as/icons/ana" /usr/share/plasma/avatars/Mountain.png || fail "ana got no logo picture"
+  assert_grep "^Icon=$d/as/icons/ana\$" "$d/as/users/ana"
+  assert_grep '^Icon=/home/bob/me.png$' "$d/as/users/bob"
+  [[ ! -e $d/as/icons/bob && ! -e $d/as/users/nobody ]] || fail "mountain-avatars replaced a chosen picture or touched a system account"
+  rm -rf "$d"
+  python3 -c 'import gettext,sys; t=gettext.GNUTranslations(open(sys.argv[1],"rb")); assert "File Explorer" in t._catalog.values()' /usr/share/locale/en@mountain/LC_MESSAGES/dolphin.mo || fail "File Explorer catalog"
+  [[ $(env -i LANG=en_US.UTF-8 bash -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo $LANGUAGE') == en@mountain:en_US ]] || fail "names script: US English"
+  grep -q dragImageBeingGenerated /usr/share/plasma/plasmoids/org.kde.desktopcontainment/contents/ui/FolderView.qml || fail "desktop drag fix missing"
+  MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp geforcenow https://play.geforcenow.com | grep -q -- '--class=mountain-geforcenow --ozone-platform=x11' || fail "web apps not in X11 mode (taskbar grouping)"
+  [[ $(env -i LANG=de_DE.UTF-8 bash -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo ${LANGUAGE-unset}') == unset ]] || fail "names script changed another language"
+  [[ $(env -i sh -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo $LANGUAGE') == en@mountain:en_US ]] || fail "names script: no language set"
+}
+
+check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows-style taskbar and desktop
+  local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js b w s d
+  b=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit)
+  assert_grep '"Hello, "' "$b/UserDelegate.qml"
+  grep -q '^prefer ' "$b/qmldir" && fail "breeze components still prefer the compiled copy (greeting not used)"
+  assert_file /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml
+  for w in mountain-silk mountain-silk-dark; do
+    python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]==sys.argv[2]' "/usr/share/wallpapers/$w/metadata.json" "$w" || fail "bad $w metadata"
+    for d in images images_dark; do for s in 1920x1080 2560x1440 3840x2160; do
+      file "/usr/share/wallpapers/$w/contents/$d/$s.png" | grep -q "${s%x*} x ${s#*x}" || fail "wrong or missing $w $d/$s.png"
+    done; done
+  done
+  assert_grep 'mountain-silk/' "$L"
+  assert_grep '^Image=file:///usr/share/wallpapers/mountain-silk-dark/$' /etc/xdg/kscreenlockerrc
+  assert_grep '^State=' /etc/skel/.local/state/dolphinstaterc # File Explorer opens with the Details (Information) pane
+  assert_grep 'BelowTime' "$L"
+  assert_grep '"arrangement", 1' "$L"
+  grep -q 'location = "top"' "$L" && fail "top bar is on by default"
+  grep -q 'systemtray' /usr/libexec/mountain-topbar && fail "top bar would add a second tray"
+  assert_grep '^URL=trash:/$' "/etc/skel/Desktop/Recycle Bin.desktop"
+  # Windows-style Settings and quick settings
+  local a id missing=""
+  for a in org.mountain.settings org.mountain.quicksettings; do
+    python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]==sys.argv[2]' "/usr/share/plasma/plasmoids/$a/metadata.json" "$a" || fail "bad $a metadata"
+    assert_file "/usr/share/plasma/plasmoids/$a/contents/ui/main.qml"
+  done
+  desktop-file-validate /usr/share/applications/org.mountain.settings.desktop || fail "invalid Settings launcher"
+  assert_grep 'org.mountain.quicksettings' "$L"
+  assert_grep 'org.mountain.settings.desktop' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/config/main.xml
+  assert_cmd plasmawindowed
+  for id in $(grep -rhoE 'kcm_[A-Za-z0-9_-]+' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings | sort -u); do
+    compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/*/$id.so" >/dev/null || compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/$id.so" >/dev/null \
+      || [[ -e /usr/share/applications/$id.desktop ]] || missing="$missing $id"
+  done
+  [[ -z $missing ]] || fail "Settings pages without a KDE module:$missing"
+  for id in kcm_kscreen kcm_pulseaudio kcm_bluetooth kcm_networkmanagement kcm_wallpaper kcm_colors kcm_users kcm_clock kcm_access; do
+    [[ " $missing " == *" $id "* ]] && fail "Settings page has no module: $id"
+  done
+  # black glass
+  assert_file /usr/share/Kvantum/BlackGlass/BlackGlass.svg
+  assert_grep '^theme=BlackGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
+  assert_grep '^translucent_windows=false$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig
+  python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /usr/share/Kvantum/BlackGlass/BlackGlass.svg || fail "Kvantum SVG invalid"
+  local t=/usr/share/plasma/desktoptheme/mountain-glass f
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="mountain-glass"' $t/metadata.json || fail "bad Plasma theme metadata"
+  for f in widgets/panel-background translucent/widgets/panel-background dialogs/background translucent/dialogs/background widgets/tooltip widgets/tasks; do
+    python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' "$t/$f.svg" || fail "Plasma theme SVG invalid: $f"
+  done
+  assert_file /usr/share/color-schemes/BlackGlass.colors
+  assert_file /usr/share/aurorae/themes/BlackGlass/decoration.svg
+  assert_grep '^name=mountain-glass$' /etc/xdg/plasmarc
+  assert_grep '^ColorScheme=BlackGlass$' /etc/xdg/kdeglobals
+  assert_grep '^theme=__aurorae__svg__BlackGlass$' /etc/xdg/kwinrc
+  MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=BlackGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=BlackGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
+  true
 }
 
 PHASE=${1:-0}

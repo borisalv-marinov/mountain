@@ -18,6 +18,8 @@ echo "lite: on ($reason)"
 kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false
 kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled false
 kwriteconfig6 --file kdeglobals --group KDE --key AnimationDurationFactor 0
+# same black glass, but solid app windows (nothing to blur behind them)
+grep -qs '^theme=BlackGlass$' "$HOME/.config/Kvantum/kvantum.kvconfig" && kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme BlackGlassSolid
 dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true # qdbus6 is not installed
 # Edge hangs on software rendering (no GPU, e.g. VMs): start it without GPU acceleration
 [[ $reason == "software rendering" ]] && for f in edge-flags.conf msedge-flags.conf; do

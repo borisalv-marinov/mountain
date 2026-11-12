@@ -8,8 +8,9 @@ You can use the Mountain desktop from any web browser, with nothing to install.
    (Optional: change "minutes" to choose how long it stays open. Default is 4 hours, the most is 5.)
 4. Wait about 45 minutes. Click the new run, and when the **Summary** shows a line starting with "Open https://...", click that link (it ends in `/mountain.html`). The link only appears once the desktop is ready, so it can take a little longer to show up.
 5. Press Connect if asked, and enter the password from your Mountain notes file (only the first 8 characters count).
-6. Inside Mountain, the desktop password (lock screen, admin) is `123`.
-   The Mountain desktop appears; the very first start can take a few more minutes.
+6. Mountain starts on its lock screen (clock and date). Click or press a key, and it says **Hello, Mountain**.
+   Type the desktop password `123` and press Enter. The same password unlocks the screen after Win+L and is the admin password.
+   The very first start can take a few more minutes.
 
 Or just ask Claude to start it for you.
 

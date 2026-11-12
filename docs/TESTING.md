@@ -65,3 +65,25 @@ Notes
 - `qdbus6` is not installed on Bazzite; scripts use `dbus-send`.
 - Desktop layout, places and the File Explorer bar apply to new users. Existing users: Settings → Global Theme →
   Mountain (tick "Desktop and window layout"); names, icons, file types and logos are system-wide.
+| 2026-11-12 | v5 first wave (old look) | 19.7 s | 1533 MB | 3 s (autologin) | 176 ms |
+| 2026-11-12 | v5 black glass | 24.7 s* | 1499 MB | 6 s (password typed at the lock screen) | 190 ms |
+
+\* first boot of a fresh disk; boot varies ±5 s between runs on the CI machines.
+
+### v5 UI cost and open times (vm-test, software rendering, 1280×800)
+
+| Measure | v5 black glass | Budget in vm-test |
+|---|---|---|
+| plasmashell idle | 1.1 % CPU, 668 MB | RAM at desktop within 10 % of 1520 MB |
+| kwin idle | 3.1 % CPU, 315 MB | — |
+| plasmashell / kwin with the start menu open | 1.0 % / 3.0 % CPU, +1 / +2 MB | — |
+| File Explorer open (cold / warm) | 205 / 195 ms | INFO (real-PC budget: warm < 400 ms) |
+| Settings open (cold / warm) | 285 / 282 ms | INFO |
+| Terminal open (cold / warm) | 198 / 286 ms | INFO |
+| VS Code open (cold / warm) | 193 / 204 ms | INFO |
+| Alt+Tab | 143 ms | INFO |
+| Start menu | 190 ms | fail above 210 ms (baseline 175 ms + 20 %) |
+
+Open time is measured to the first changed frame after the launch command (QMP screendump), so it is the moment the
+window starts to appear, not when it is fully drawn. The new glass look costs no extra CPU at idle: the theme is SVG,
+blur stays in KWin, and the Settings and quick-settings panels have no animations or shaders.

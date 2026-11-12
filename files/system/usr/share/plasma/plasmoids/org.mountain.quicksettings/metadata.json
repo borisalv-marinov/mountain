@@ -1,0 +1,21 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "System Information",
+    "Description": "Wi-Fi, Bluetooth, airplane mode, energy saver, night light, brightness and volume in one flyout",
+    "EnabledByDefault": false,
+    "Icon": "preferences-system-network",
+    "Id": "org.mountain.quicksettings",
+    "License": "GPL-2.0-or-later",
+    "Name": "Quick settings",
+    "Version": "1.0"
+  },
+  "X-Plasma-API-Minimum-Version": "6.0",
+  "X-Plasma-NotificationArea": "true",
+  "X-Plasma-NotificationAreaCategory": "Hardware"
+}

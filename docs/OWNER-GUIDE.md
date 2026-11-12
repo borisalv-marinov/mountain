@@ -6,7 +6,11 @@
 - **File Explorer**: double-click **This PC** on the desktop. Left side: Home, Recent, Desktop, Documents, Downloads, Pictures, Music, Videos, Recycle Bin. The bar under the address has New, cut/copy/paste/rename/delete, Sort, View, Filter and Information (details).
 - **Opening files**: double-click. Photos → Gwenview, PDF → Okular, text and code → VS Code, video and music → Haruna, zip and other archives → Ark, Word/Excel/PowerPoint → OnlyOffice. Right-click → **Open With** for something else.
 - **Moving files**: drag onto a folder and pick **Move Here** (hold Shift to move straight away, Ctrl to copy).
-- **Settings**: start menu → Settings. **Top Bar On/Off** hides or shows the bar with CPU, memory and clock.
+- **Lock screen**: Mountain starts on a lock screen with the clock and date. Click or press a key: it says **Hello, <your name>**; type your password. **Win+L** locks it again.
+- **Settings**: start menu → Settings (Windows 11 layout: Home, System, Bluetooth & devices, … Updates; search at the top). Each page opens the real KDE page. **All Settings** in the start menu is the full KDE app.
+- **Quick settings**: click the network/volume/battery icons next to the clock, or press **Win+A**: Wi-Fi, Bluetooth, Airplane mode, Energy saver, Accessibility, Night light, brightness and volume; the gear opens Settings. The old separate icons are under the **^** arrow.
+- **Top Bar On/Off** (start menu) adds or removes a bar at the top with CPU and memory.
+- **Your own wallpaper** (one step): right-click the desktop → **Desktop and Wallpaper** (Change wallpaper) → **Add…** and pick your picture file. Mountain ships its own look-alike, *Mountain Silk*, because the picture on your Windows PC is a downloaded image we may not publish; *Mountain Peaks* is the other built-in choice.
 - **Cloud gaming**: desktop folder *Cloud Gaming* (GeForce NOW, Xbox Cloud Gaming, Boosteroid). Each opens in its own window with its own taskbar icon; you sign in once per service.
 - **AI tools and coding**: desktop folder *AI* (Claude Code, Codex, Gemini, Copilot) and *Coding* (VS Code, Terminal, Python, Node.js). The first click installs the AI tool (about a minute). Tools installed with `npm install -g` work without admin rights.
 

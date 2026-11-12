@@ -7,7 +7,7 @@ LookAndFeelPackage=org.mountain.desktop
 widgetStyle=kvantum
 
 [General]
-ColorScheme=BreezeDark
+ColorScheme=BlackGlass
 AccentColor=61,174,233
 
 [Icons]

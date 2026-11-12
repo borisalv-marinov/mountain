@@ -1,33 +1,26 @@
-// Top bar (CPU/RAM, tray, clock) + Windows-style bottom taskbar. Apps keep their menus inside their windows, like Windows.
+// One Windows 11 style taskbar like the owner's desktop: start and apps in the middle, tray and two-line clock on the right.
+// The top bar (CPU/RAM) is off by default; the "Top Bar On/Off" app adds it. Apps keep their menus inside their windows.
 // opt() skips applets that are not installed so a missing one never breaks the panel.
 const known = (typeof knownWidgetTypes !== "undefined") ? knownWidgetTypes : null;
 const opt = (p, id) => {
     if (known === null) { try { return p.addWidget(id); } catch (e) { return null; } }
     return known.indexOf(id) >= 0 ? p.addWidget(id) : null;
 };
-
-const top = new Panel();
-top.location = "top";
-top.lengthMode = "fill";
-top.floating = false;
-top.opacity = "translucent";
-top.height = Math.round(gridUnit * 1.6);
-
-opt(top, "org.kde.plasma.panelspacer");
-opt(top, "org.kde.plasma.systemmonitor.cpu");
-opt(top, "org.kde.plasma.systemmonitor.memory");
-top.addWidget("org.kde.plasma.systemtray");
-top.addWidget("org.kde.plasma.digitalclock");
+const spacer = (p, expanding, length) => {
+    const s = opt(p, "org.kde.plasma.panelspacer");
+    if (s) { s.currentConfigGroup = ["General"]; s.writeConfig("expanding", expanding); if (length) s.writeConfig("length", length); }
+};
 
 const panel = new Panel();
 panel.location = "bottom";
 panel.height = 2 * Math.ceil(gridUnit * 2.5 / 2);
 panel.floating = true;
-panel.alignment = "center";
-panel.lengthMode = "fit";
+panel.lengthMode = "fill";
 panel.opacity = "translucent";
 panel.hiding = "none";
 
+spacer(panel, false, Math.round(gridUnit * 9)); // balances the tray so start + apps sit in the middle
+spacer(panel, true);
 // Windows 11 style start menu (vendored Menu 11 Enhanced: pins and icon are its defaults); Kickoff if it is missing.
 if (!opt(panel, "menu.11.enhanced")) {
     const kickoff = panel.addWidget("org.kde.plasma.kickoff");
@@ -50,11 +43,31 @@ tasks.writeConfig("launchers", [
     "applications:org.kde.konsole.desktop"
 ]);
 tasks.writeConfig("showOnlyCurrentDesktop", false);
+spacer(panel, true);
 
-opt(panel, "org.kde.plasma.trash");
+const tray = panel.addWidget("org.kde.plasma.systemtray");
+// Windows 11 quick settings replace the separate network/volume/battery/Bluetooth/brightness icons;
+// the stock applets stay enabled behind the tray's ^ expander.
+tray.currentConfigGroup = ["General"];
+const stock = ["org.kde.plasma.networkmanagement", "org.kde.plasma.volume", "org.kde.plasma.battery",
+               "org.kde.plasma.bluetooth", "org.kde.plasma.brightness"];
+const extra = String(tray.readConfig("extraItems", "")).split(",").filter(s => s);
+stock.forEach(id => { if (extra.indexOf(id) < 0) extra.push(id); });
+tray.writeConfig("extraItems", extra);
+tray.writeConfig("hiddenItems", stock);
+tray.reloadConfig();
+const quick = opt(panel, "org.mountain.quicksettings"); // network, volume and battery icons; click for the flyout
+if (quick) quick.globalShortcut = "Meta+A"; // Windows' quick-settings shortcut
+const clock = panel.addWidget("org.kde.plasma.digitalclock");
+clock.currentConfigGroup = ["Appearance"];
+clock.writeConfig("showDate", true);
+clock.writeConfig("dateDisplayFormat", "BelowTime"); // two lines, like the Windows taskbar
+clock.writeConfig("dateFormat", "shortDate");
 
 for (const d of desktopsForActivity(currentActivity())) {
     d.wallpaperPlugin = "org.kde.image";
     d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
-    d.writeConfig("Image", "file:///usr/share/wallpapers/mountain-peaks/");
+    d.writeConfig("Image", "file:///usr/share/wallpapers/mountain-silk/");
+    d.currentConfigGroup = ["General"];
+    d.writeConfig("arrangement", 1); // icons in columns from the top left, like Windows
 }
