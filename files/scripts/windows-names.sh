@@ -31,6 +31,6 @@ done
 
 # Our file-type defaults must beat Fedora's profile-dir lists (read before /etc/xdg); later keys in a merged group win.
 for f in /usr/share/kde-settings/kde-profile/default/xdg/{kde-,}mimeapps.list; do
-  [[ -f $f ]] && cat /etc/xdg/mimeapps.list >> "$f"
+  [[ -f $f ]] && { echo; cat /etc/xdg/mimeapps.list; } >> "$f"
 done
 exit 0

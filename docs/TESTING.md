@@ -61,6 +61,7 @@ Latency is measured from the Windows key (QMP) to the first changed frame, inclu
 
 Notes
 - In VMs KWin renders with llvmpipe (no GPU), so lite mode turns blur and animations off there.
+- File Explorer command bar: `/etc/skel/.local/share/kxmlgui5/dolphin/dolphinui.rc` is pinned to Dolphin 26.08 (`version="49"`); if Dolphin ships a newer version, KXmlGui ignores the copy and the default toolbar returns — bump it from `src/dolphinui.rc` of the new release.
 - `qdbus6` is not installed on Bazzite; scripts use `dbus-send`.
 - Desktop layout, places and the File Explorer bar apply to new users. Existing users: Settings → Global Theme →
   Mountain (tick "Desktop and window layout"); names, icons, file types and logos are system-wide.
