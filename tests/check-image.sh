@@ -353,7 +353,7 @@ check_phase25() { # v4: logo, avatar, Windows 11 start menu, VS Code for text/co
   assert_grep '<default>mountain-logo</default>' "$m/contents/config/main.xml"
   assert_grep 'org.mountain.settings.desktop' "$m/contents/config/main.xml"
   assert_grep 'i18n("Recommended")' "$m/contents/ui/MenuRepresentation.qml"
-  assert_grep '^text/plain=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
+  # v6 owner request supersedes v4: .txt opens in Notepad (KWrite) like Windows; code stays in VS Code (phase 30 asserts it)
   assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
   [[ -x /usr/libexec/mountain-webapp ]] || fail "mountain-webapp not executable"
   /usr/libexec/mountain-webapp 'bad id' x >/dev/null 2>&1 && fail "mountain-webapp accepted a bad id"
@@ -457,7 +457,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   true
 }
 
-check_phase29() { # v5.1: brightness, sharp solid windows, File Explorer layout, Task Manager, Security, snapshots, hardening
+check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explorer layout, Task Manager, Security, snapshots, hardening
   local q=/usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui f n
   assert_grep 'Not available on this display' $q/BrightnessRow.qml
   grep -q 'item.visible' $q/main.qml && fail "brightness row can still disappear"
@@ -523,6 +523,56 @@ check_phase29() { # v5.1: brightness, sharp solid windows, File Explorer layout,
   assert_grep '^SELINUX=enforcing$' /etc/selinux/config
   grep -rqs 'NOPASSWD' /etc/sudoers /etc/sudoers.d && fail "passwordless sudo in the shipped image"
   grep -q 'lockdown=' /usr/lib/bootc/kargs.d/*.toml 2>/dev/null && fail "kernel lockdown forced (breaks unsigned game drivers)"
+  true
+}
+
+check_phase30() { # v6: looks like Windows 11 in black glass: full start menu, Windows apps and shortcuts, Bulgarian, recovery
+  local m=/usr/share/plasma/plasmoids/menu.11.enhanced/contents a=/usr/share/applications L n f
+  L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  python3 - "$m/config/main.xml" <<'PY' || fail "start menu pins"
+import sys, xml.etree.ElementTree as E
+ns = {'k': 'http://www.kde.org/standards/kcfg/1.0'}
+e = {x.get('name'): (x.find('k:default', ns).text or '') for x in E.parse(sys.argv[1]).getroot().iter('{http://www.kde.org/standards/kcfg/1.0}entry')}
+pins = e['favoriteApps'].split(',')
+assert e['numberRows'] == '3' and len(pins) == 18 and int(e['numberColumns']) * 3 == 18, (e['numberRows'], len(pins))
+assert not any('yafti' in p for p in pins), "Welcome pinned"
+PY
+  assert_grep 'The more you use your device' $m/ui/MenuRepresentation.qml
+  for f in org.kde.kwrite.desktop org.kde.kcalc.desktop org.kde.gwenview.desktop org.kde.haruna.desktop org.kde.spectacle.desktop org.kde.plasma-systemmonitor.desktop org.mountain.security.desktop; do
+    assert_file $a/$f
+  done
+  for n in "kcalc:Calculator" "gwenview:Photos" "haruna:Media Player" "kamoso:Camera" "kclock:Clock" "spectacle:Snipping Tool" "kolourpaint:Paint" "krecorder:Sound Recorder" "skanlite:Scanner" "kdeconnect.app:Phone Link" "kwrite:Notepad"; do
+    assert_grep "^Name=${n#*:}$" "$a/org.kde.${n%%:*}.desktop"
+  done
+  assert_grep '^Name=VS Code$' $a/com.microsoft.VSCode.desktop
+  assert_grep '^text/plain=org.kde.kwrite.desktop;$' /etc/xdg/mimeapps.list
+  assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
+  # Windows shortcuts
+  assert_grep '^X-KDE-Shortcuts=Meta+I$' $a/org.mountain.settings.desktop
+  assert_grep '^X-KDE-Shortcuts=Meta+R,' $a/org.kde.krunner.desktop
+  assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
+  assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/xdg/kglobalshortcutsrc
+  assert_grep '^next activity=none,' /etc/xdg/kglobalshortcutsrc
+  assert_grep '^toggle_hud=Super_L+g$' /etc/xdg/MangoHud/MangoHud.conf
+  assert_grep '^MANGOHUD=1$' /usr/lib/environment.d/60-mountain-mangohud.conf
+  assert_grep '^clipboardGroup=PostScreenshotCopyImage$' /etc/xdg/spectaclerc
+  # Bulgarian keyboard, Cyrillic fonts
+  assert_grep '^LayoutList=us,bg,bg$' /etc/xdg/kxkbrc
+  assert_grep '^VariantList=,phonetic,$' /etc/xdg/kxkbrc
+  assert_grep '^Options=grp:alt_shift_toggle$' /etc/xdg/kxkbrc
+  fc-list :lang=bg family | grep -q . || fail "no font covers Bulgarian"
+  # Windows 11 taskbar: 48 px, not floating, show-desktop corner
+  assert_grep 'panel.height = 48' "$L"
+  assert_grep 'panel.floating = false' "$L"
+  assert_grep 'org.kde.plasma.showdesktop' "$L"
+  # Phone Link starts KDE Connect only when opened; Restore previous versions; Reset this PC
+  assert_grep '^Exec=/usr/libexec/mountain-phonelink$' $a/org.kde.kdeconnect.app.desktop
+  [[ ! -e /usr/share/dbus-1/services/org.kde.kdeconnect.service ]] || fail "Phone Link daemon D-Bus activated (background drain)"
+  assert_grep 'kdeconnect' /etc/firewalld/zones/mountain.xml
+  assert_grep 'Exec=/usr/libexec/mountain-previous-versions %f' /usr/share/kio/servicemenus/mountain-previous-versions.desktop
+  for n in mountain-phonelink mountain-previous-versions; do [[ -x /usr/libexec/$n ]] || fail "$n not executable"; bash -n /usr/libexec/$n || fail "$n syntax"; done
+  assert_grep 'reset) reset_pc' /usr/libexec/mountain-security
+  for n in kcalc kclock kolourpaint kamoso krecorder skanlite spectacle; do assert_cmd $n; done
   true
 }
 

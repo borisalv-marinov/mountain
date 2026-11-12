@@ -539,6 +539,17 @@ PlasmaCore.Dialog {
                     iconSize: docsIconSize
                     clip: true
                     handleTriggerManually: true
+                    // Mountain: like Windows 11, never a blank Recommended area
+                    PlasmaExtras.Heading {
+                        anchors.centerIn: parent
+                        width: parent.width - Kirigami.Units.gridUnit * 4
+                        visible: documentsGrid.count === 0
+                        level: 5
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.85)
+                        text: i18n("The more you use your device, the more recent files and new apps show up here.")
+                    }
                     onItemActivated: (index, actionId, argument) => {
                          var url = documentsGrid.currentItem.url.toString();
                          console.log("Opening URL:", url);

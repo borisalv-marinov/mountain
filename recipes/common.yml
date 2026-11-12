@@ -34,6 +34,14 @@ modules:
         - gwenview
         - okular
         - haruna
+        - kcalc # Calculator
+        - kclock # Clock (alarms, timer, stopwatch)
+        - kolourpaint # Paint
+        - kamoso # Camera
+        - krecorder # Sound Recorder
+        - skanlite # Scanner
+        - spectacle # Snipping Tool (Win+Shift+S)
+        - kio-gdrive # Google Drive in File Explorer after signing in under Online accounts
         - clamav # virus scan on demand (Settings > Privacy & security)
         - clamav-update # freshclam, run only when you click Scan now
 

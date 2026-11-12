@@ -3,6 +3,7 @@
 #   mountain-security status          key=value lines for every card
 #   mountain-security scan [DIR...]   update virus definitions, then scan (default: your home folder); found files go to quarantine
 #   mountain-security rollback        go back to the previous Mountain version at the next restart
+#   mountain-security reset           Reset this PC, keep my files (removes system changes made on this PC)
 # Definitions download only here (Scan now / Update definitions): no background downloads (owner's rule).
 set -uo pipefail
 state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
@@ -74,6 +75,12 @@ scan() {
   [[ $r == error ]] && return 2 || return 0
 }
 
+reset_pc() { # Reset this PC, keep my files: drop added packages and overrides, back to the plain Mountain image
+  rpm-ostree reset || return 1 # asks for the admin password; your files and apps from the App Store stay
+  command -v notify-send >/dev/null && notify-send -i system-reboot "Mountain" "Restart to finish resetting this PC. Your files are kept."
+  echo "reset=staged"
+}
+
 rollback() {
   rpm-ostree rollback || return 1 # asks for the admin password
   command -v notify-send >/dev/null && notify-send -i system-software-update "Mountain" "Restart to go back to the previous version."
@@ -84,5 +91,6 @@ case ${1:-} in
   status) status ;;
   scan) shift; scan "$@" ;;
   rollback) rollback ;;
+  reset) reset_pc ;;
   *) echo "usage: mountain-security status|scan [DIR...]|rollback" >&2; exit 2 ;;
 esac

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# File Explorer right-click > "Restore previous versions": open the same folder in the newest snapshot
+# (go up to pick an older time). Copy the file back to restore it.
+set -uo pipefail
+snaps=/var/home/.snapshots
+p=$(realpath -m "${1:-$HOME}"); [[ -d $p ]] || p=$(dirname "$p")
+rel=${p#/var/home/}; [[ $p == /var/home/* ]] || rel=${p#/home/}
+new=$(ls -1 "$snaps" 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$' | sort | tail -1)
+if [[ -z $new ]]; then
+  kdialog --sorry "No previous versions yet. Mountain takes a snapshot every hour (see Security > Ransomware protection)." 2>/dev/null \
+    || notify-send "Previous versions" "No snapshots yet: Mountain takes one every hour." 2>/dev/null; exit 0
+fi
+d=$snaps/$new/$rel; while [[ ! -d $d && $d != "$snaps/$new" ]]; do d=$(dirname "$d"); done
+exec dolphin --new-window "$d"

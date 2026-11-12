@@ -1,0 +1,9 @@
+[Layout]
+Use=true
+LayoutList=us,bg,bg
+VariantList=,phonetic,
+DisplayNames=ENG,БЪЛ,БДС
+Options=grp:alt_shift_toggle
+ResetOldOptions=true
+SwitchMode=Global
+ShowLayoutIndicator=true

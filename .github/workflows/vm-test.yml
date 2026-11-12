@@ -375,6 +375,45 @@ jobs:
           chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
 
+          # v6: Windows shortcuts. PASS = the screen reacts within 3 s (QMP clock) or the app starts
+          MS() { QM measure 60 "$@" | tail -1; } # -> first=MS settle=MS
+          num() { sed -n 's/.*first=\([0-9-]*\).*/\1/p' <<<"$1"; }
+          scut() { # name keys...
+            local n=$1 r rr; shift; r=$(MS 3000 key "$@"); sleep 1; shot "shortcut-$(tr ' +.A-Z' '---a-z' <<<"$n")"
+            [ "$(num "$r")" -ge 0 ] 2>/dev/null && rr=PASS || rr=FAIL; echo "| shortcut $n | $rr | $r |" >> report.md; echo "$rr $n"; QM key esc; sleep 1
+          }
+          chk "Win+A is registered" 2 "grep -h -i 'meta+a' ~looktest/.config/kglobalshortcutsrc ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc 2>/dev/null | head -3" '.'
+          scut "Win+A (quick settings)" meta_l a
+          scut "Win+N (notifications)" meta_l n
+          scut "Win+V (clipboard history)" meta_l v
+          scut "Win+Tab (task view)" meta_l tab
+          scut "Win+Z (snap layouts)" meta_l z
+          scut "Win+R (run)" meta_l r
+          scut "Win+X (power-user menu)" meta_l x
+          QM key meta_l e; wchk "shortcut Win+E (File Explorer)" 0 dolphin 15; sleep 4
+          scut "Win+Left (snap)" meta_l left
+          scut "Win+D (show desktop)" meta_l d
+          K -x dolphin
+          QM key meta_l i; PGF=-f wchk "shortcut Win+I (Settings)" 0 org.mountain.settings 20; sleep 4; shot shortcut-win-i; K -f org.mountain.settings
+          QM key meta_l dot; PGF=-f wchk "shortcut Win+. (emoji)" 0 emojier 15; sleep 3; shot shortcut-emoji; K -f emojier
+          QM key meta_l shift s; wchk "shortcut Win+Shift+S (Snipping Tool)" 0 spectacle 15; sleep 3; shot shortcut-snip; QM key esc; sleep 1; K -x spectacle
+          QM key print; wchk "shortcut PrtSc (screenshot)" 0 spectacle 15; sleep 4; K -x spectacle
+          chk "screenshots saved" 2 "ls ~looktest/Pictures/Screenshots 2>/dev/null | wc -l" '.'
+          KL="$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayout"
+          QM key meta_l spc; sleep 2; chk "shortcut Win+Space switches to Bulgarian" 0 "$KL | awk '/uint32/{print \$2}'" '^1$'
+          QM key alt shift_r; sleep 1; QM key meta_l spc; sleep 1; chk "layouts cycle back to English" 2 "$KL | awk '/uint32/{print \$2}'" '.'
+          chk "keyboard layouts" 2 "$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayoutsList | grep -o 'string \"[^\"]*\"' | paste -sd' '" '.'
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true
+          # Cyrillic names in File Explorer
+          R "$(TL 'mkdir -p ~/Документи-тест; cp /usr/share/mountain/wallpaper.png ~/Документи-тест/снимка.png; echo здравей > ~/Документи-тест/бележка.txt')"
+          L 'dolphin /home/looktest/Документи-тест'; sleep 7; shot cyrillic-names; K -x dolphin
+          chk "Bulgarian translations installed" 2 "ls /usr/share/locale/bg/LC_MESSAGES 2>/dev/null | wc -l" '.'
+          # everyday apps with Windows names
+          for t in "Calculator:kcalc" "Clock:kclock" "Paint:kolourpaint" "Camera:kamoso" "Sound Recorder:krecorder" "Scanner:skanlite" "Notepad:kwrite"; do
+            IFS=: read n app <<<"$t"; L "$app"; wchk "app $n ($app) opens" 0 "$app" 20; sleep 5; shot "app-$(tr ' A-Z' '-a-z' <<<"$n")"; K -x "$app"
+          done
+          L /usr/libexec/mountain-phonelink; wchk "Phone Link opens" 0 kdeconnect-app 25; sleep 5; shot app-phone-link; K -x kdeconnect-app; K -x kdeconnectd
+          
           # 3. double-click the first desktop icon (folder AI)
           QM dclick $((58*W/1280)) $((75*H/800))
           wchk "desktop folder opens (dolphin)" 0 dolphin 15; sleep 3; shot folder-open
@@ -393,10 +432,12 @@ jobs:
 
           # 5. open files with the default apps
           R "$(TL 'mkdir -p ~/Pictures ~/Documents ~/Desktop; cp /usr/share/mountain/wallpaper.png ~/Pictures/photo.png; rsvg-convert -f pdf -o ~/Documents/letter.pdf /usr/share/mountain/wallpaper.svg; echo hello mountain > ~/Documents/notes.txt')"
-          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:code"; do
+          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:kwrite"; do
             IFS=: read n f app <<<"$t"
             L xdg-open "$f"; wchk "open $n ($app)" 1 "$app" 20; sleep 5; shot "open-$n"; K -x "$app"
           done
+          QM key meta_l; sleep 3; shot start-menu-after-files; QM key esc; sleep 1
+          chk "mime text/plain -> Notepad" 0 "$(TL 'xdg-mime query default text/plain')" 'org.kde.kwrite.desktop'
           chk "mime video/mp4" 0 "$(TL 'xdg-mime query default video/mp4')" 'org.kde.haruna.desktop'
           chk "mime audio/mpeg" 0 "$(TL 'xdg-mime query default audio/mpeg')" 'org.kde.haruna.desktop'
           chk "mime docx" 0 "$(TL 'xdg-mime query default application/vnd.openxmlformats-officedocument.wordprocessingml.document')" 'org.onlyoffice.desktopeditors.desktop'
@@ -508,7 +549,7 @@ jobs:
           R "$(TL 'mkdir -p ~/Speed/Folder; cp /usr/share/mountain/wallpaper.png ~/Speed/photo.png; rsvg-convert -f pdf -o ~/Speed/letter.pdf /usr/share/mountain/wallpaper.svg; echo speed > ~/Speed/notes.txt; for i in 1 2 3 4 5 6; do cp ~/Speed/photo.png ~/Speed/Folder/picture-$i.png; done')"
           L dolphin /home/looktest/Speed; sleep 8; shot speed-folder
           SPEED=""
-          for t in "photo:photo:gwenview" "pdf:letter:okular" "text:notes:code"; do
+          for t in "photo:photo:gwenview" "pdf:letter:okular" "text:notes:kwrite"; do
             IFS=: read n sel app <<<"$t"
             for w in cold warm; do
               QM type $sel; sleep 2 # File Explorer's type-ahead selects the file; Enter opens it like a double-click

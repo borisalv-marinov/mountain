@@ -7,5 +7,6 @@
   <service name="samba-client"/>
   <service name="steam-streaming"/>
   <service name="steam-lan-transfer"/>
+  <service name="kdeconnect"/> <!-- Phone Link; nothing listens unless you open it -->
   <forward/>
 </zone>

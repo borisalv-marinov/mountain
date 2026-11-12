@@ -13,8 +13,8 @@ const spacer = (p, expanding, length) => {
 
 const panel = new Panel();
 panel.location = "bottom";
-panel.height = 2 * Math.ceil(gridUnit * 2.5 / 2);
-panel.floating = true;
+panel.height = 48; // Windows 11 taskbar
+panel.floating = false;
 panel.lengthMode = "fill";
 panel.opacity = "translucent";
 panel.hiding = "none";
@@ -63,6 +63,7 @@ clock.currentConfigGroup = ["Appearance"];
 clock.writeConfig("showDate", true);
 clock.writeConfig("dateDisplayFormat", "BelowTime"); // two lines, like the Windows taskbar
 clock.writeConfig("dateFormat", "shortDate");
+opt(panel, "org.kde.plasma.showdesktop"); // the show-desktop corner, like Windows
 
 for (const d of desktopsForActivity(currentActivity())) {
     d.wallpaperPlugin = "org.kde.image";

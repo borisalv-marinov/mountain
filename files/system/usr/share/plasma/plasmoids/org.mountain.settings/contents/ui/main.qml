@@ -54,6 +54,7 @@ PlasmoidItem {
             { t: "Multitasking", d: "Virtual desktops", i: "preferences-desktop-virtual", kcm: "kcm_kwin_virtualdesktops", k: "workspaces desktops" },
             { t: "Screen edges", d: "Hot corners and edge actions", i: "preferences-system-windows", kcm: "kcm_kwinscreenedges", k: "corners snap" },
             { t: "Window switching", d: "Alt+Tab appearance", i: "preferences-system-windows", kcm: "kcm_kwintabbox", k: "alt tab task switcher" },
+            { t: "Recovery", d: "Go back to the previous version, reset this PC", i: "document-revert", page: "updates", k: "recovery reset go back rollback restore" },
             { t: "About", d: "Device specifications, PC name", i: "help-about", kcm: "kcm_about-distro", k: "pc name hostname rename specs version" }
         ] },
         { id: "devices", name: "Bluetooth & devices", icon: "preferences-system-bluetooth", items: [
@@ -61,7 +62,9 @@ PlasmoidItem {
             { t: "Mouse", d: "Pointer speed, buttons, scrolling", i: "input-mouse", kcm: "kcm_mouse", k: "pointer cursor speed" },
             { t: "Touchpad", d: "Taps, gestures, scrolling", i: "input-touchpad", kcm: "kcm_touchpad", k: "trackpad gestures" },
             { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", kcm: "kcm_keyboard", k: "layout typing keys" },
-            { t: "Printers & scanners", d: "Add and manage printers", i: "printer", kcm: "kcm_printer_manager", k: "print" },
+            { t: "Printers & scanners", d: "Add and manage printers (most work without drivers)", i: "printer", kcm: "kcm_printer_manager", k: "print" },
+            { t: "Scanner", d: "Scan a document or photo", i: "scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
+            { t: "Phone Link", d: "Your phone's messages, files and notifications on this PC", i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad joystick controller" }
         ] },
         { id: "network", name: "Network & internet", icon: "preferences-system-network", items: [
@@ -91,11 +94,13 @@ PlasmoidItem {
         { id: "time", name: "Time & language", icon: "preferences-system-time", items: [
             { t: "Date & time", d: "Time zone, clock", i: "preferences-system-time", kcm: "kcm_clock", k: "clock time zone date" },
             { t: "Language & region", d: "Language, formats, region", i: "preferences-desktop-locale", kcm: "kcm_regionandlang", k: "language region locale format" },
-            { t: "Typing", d: "Keyboard layouts and input", i: "preferences-desktop-keyboard", kcm: "kcm_keyboard", k: "input method layout" }
+            { t: "Typing", d: "Keyboard layouts (English, Bulgarian phonetic and BDS): Alt+Shift or Win+Space switches", i: "preferences-desktop-keyboard", kcm: "kcm_keyboard", k: "input method layout bulgarian cyrillic български" }
         ] },
         { id: "gaming", name: "Gaming", icon: "applications-games", items: [
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad controller joystick" },
-            { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" }
+            { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
+            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance (MangoHud)", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
+            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", kcm: "kcm_kscreen", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: "Accessibility", icon: "preferences-desktop-accessibility", items: [
             { t: "Accessibility", d: "Bell, modifier keys, screen reader", i: "preferences-desktop-accessibility", kcm: "kcm_access", k: "screen reader sticky keys" },
@@ -112,6 +117,8 @@ PlasmoidItem {
         { id: "updates", name: "Updates", icon: "system-software-update", items: [
             { t: "Check for updates", d: "Updates are manual: open the Updates app and run it when you choose", i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
             { t: "Go back to the previous version", d: "Undo the last update: Mountain restarts into the version you had before", i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
+            { t: "Reset this PC (keep my files)", d: "Removes system changes made on this PC and restarts into plain Mountain; files and apps stay", i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
+            { t: "Update virus definitions", d: "Download the newest definitions now (they never download in the background)", i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" },
             { t: "All settings (advanced)", d: "Every KDE setting in System Settings", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
         ] }
     ]
