@@ -107,6 +107,7 @@ jobs:
            && mkdir -p /etc/polkit-1/rules.d && printf 'polkit.addRule(function(a,s){if(s.user=="mountain")return polkit.Result.YES;});\n' > /etc/polkit-1/rules.d/49-mountain-try.rules \
            && mkdir -p /home/mountain/.config && printf '[Daemon]\nAutolock=false\nLockOnResume=false\n' > /home/mountain/.config/kscreenlockerrc \
            && printf '[Wallet]\nEnabled=false\nFirst Use=false\n' > /home/mountain/.config/kwalletrc \
+           && mkdir -p /home/mountain/.config/autostart && printf '[Desktop Entry]\nHidden=true\n' > /home/mountain/.config/autostart/mountain-lite-mode.desktop \
            && printf '[KDE]\nDoubleClickInterval=800\n' > /home/mountain/.config/kdeglobals \
            && chown -R mountain:mountain /home/mountain/.config \
            && mkdir -p /etc/sddm.conf.d \

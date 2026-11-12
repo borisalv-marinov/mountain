@@ -1,0 +1,5 @@
+# Mountain: start the LAVD scheduler at boot (Bazzite ships scx_loader but leaves it off).
+# LAVD favours latency-critical, interactive tasks: smoother desktop and games under load.
+# Undo: sudo systemctl disable --now scx_loader  (the kernel's default scheduler takes over)
+default_sched = "scx_lavd"
+default_mode = "Auto"

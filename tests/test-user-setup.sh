@@ -14,7 +14,7 @@ ok 'grep -q "<GroupState-Devices-IsHidden>true</GroupState-Devices-IsHidden>" "$
 ok '! grep -q "RemovableDevices-IsHidden" "$f"' "USB drives still shown"
 ok 'grep -q "href=\"desktop:/\"" "$f"' "Desktop via desktop:/"
 ok 'grep -q "href=\"file://[^\"]*with%20space[^\"]*/Documents\"" "$f"' "Documents absolute, space encoded"
-ok '[[ $(grep -c "<bookmark " "$f") == 8 ]]' "8 places"
+ok '[[ $(grep -c "<bookmark " "$f") == 9 ]]' "9 places"
 ok '[[ $(eval "$(grep "^esc()" "$S")"; esc "a<b&c>d") == "a&lt;b&amp;c&gt;d" ]]' "XML escaping"
 ok '[[ ! -e $H/.config/kwalletrc ]]' "wallet untouched without autologin"
 A=$(mktemp); printf '[Autologin]

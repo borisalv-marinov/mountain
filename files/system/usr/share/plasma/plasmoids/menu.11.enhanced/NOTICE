@@ -1,0 +1,4 @@
+Menu 11 Enhanced 1.1.2 by Eisteed and kurojs, GPL-2.0-or-later.
+Source: https://github.com/kurojs/Menu-11-Enhanced (commit 0a54ba7, 2025-12-24).
+Mountain changes: search placeholder text and "Recent documents" renamed "Recommended" (contents/ui/MenuRepresentation.qml).
+Mountain: default pins and icon set in favoriteApps/icon (contents/config/main.xml).

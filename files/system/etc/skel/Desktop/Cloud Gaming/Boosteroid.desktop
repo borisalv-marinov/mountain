@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Boosteroid
-Exec=flatpak run com.microsoft.Edge --app=https://cloud.boosteroid.com
+Exec=/usr/libexec/mountain-webapp boosteroid https://cloud.boosteroid.com
 Icon=mountain-boosteroid
-StartupWMClass=msedge-cloud.boosteroid.com__-Default
+StartupWMClass=mountain-boosteroid

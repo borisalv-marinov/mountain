@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Xbox Cloud Gaming
-Exec=flatpak run com.microsoft.Edge --app=https://www.xbox.com/play
+Exec=/usr/libexec/mountain-webapp xboxcloud https://www.xbox.com/play
 Icon=/usr/share/icons/Papirus/64x64/apps/xbox.svg
 Categories=Game;
-StartupWMClass=msedge-www.xbox.com__play-Default
+StartupWMClass=mountain-xboxcloud

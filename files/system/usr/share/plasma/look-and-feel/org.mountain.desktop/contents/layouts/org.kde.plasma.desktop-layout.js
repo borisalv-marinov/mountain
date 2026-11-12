@@ -28,10 +28,13 @@ panel.lengthMode = "fit";
 panel.opacity = "translucent";
 panel.hiding = "none";
 
-const kickoff = panel.addWidget("org.kde.plasma.kickoff");
-kickoff.currentConfigGroup = ["General"];
-kickoff.writeConfig("icon", "mountain-logo");
-kickoff.writeConfig("showActionButtonCaptions", true);
+// Windows 11 style start menu (vendored Menu 11 Enhanced: pins and icon are its defaults); Kickoff if it is missing.
+if (!opt(panel, "menu.11.enhanced")) {
+    const kickoff = panel.addWidget("org.kde.plasma.kickoff");
+    kickoff.currentConfigGroup = ["General"];
+    kickoff.writeConfig("icon", "mountain-logo");
+    kickoff.writeConfig("showActionButtonCaptions", true);
+}
 // pinned apps come from kde-profile/default/xdg/kicker-extra-favoritesrc
 
 const tasks = panel.addWidget("org.kde.plasma.icontasks");

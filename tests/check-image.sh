@@ -52,7 +52,9 @@ check_phase3() {
   for url in geforcenow=https://play.geforcenow.com xboxcloud=https://www.xbox.com/play boosteroid=https://cloud.boosteroid.com; do
     f=/usr/share/applications/mountain-${url%%=*}.desktop
     assert_file "$f"
-    assert_grep "^Exec=flatpak run com.microsoft.Edge --app=${url#*=}\$" "$f"
+    # v4: launched through mountain-webapp (own window class + profile); still Edge with the same URL
+    assert_grep "^Exec=/usr/libexec/mountain-webapp ${url%%=*} ${url#*=}\$" "$f"
+    MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp "${url%%=*}" "${url#*=}" | grep -q -- "^flatpak run com.microsoft.Edge .*--app=${url#*=}\$" || fail "mountain-webapp does not open ${url#*=} in Edge"
     desktop-file-validate "$f" || fail "invalid desktop file: $f"
   done
 }
@@ -319,7 +321,7 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   bash -n /usr/libexec/mountain-topbar || fail "mountain-topbar syntax"
   /usr/libexec/mountain-topbar sideways >/dev/null 2>&1 && fail "mountain-topbar accepted a bad argument"
   for f in topbar python node; do desktop-file-validate /usr/share/applications/mountain-$f.desktop || fail "invalid mountain-$f.desktop"; done
-  for f in geforcenow xboxcloud boosteroid; do assert_grep '^StartupWMClass=msedge-' /usr/share/applications/mountain-$f.desktop; done
+  for f in geforcenow xboxcloud boosteroid; do assert_grep "^StartupWMClass=mountain-$f\$" /usr/share/applications/mountain-$f.desktop; done
   assert_grep 'NPM_CONFIG_PREFIX="$HOME/.local"' /etc/profile.d/mountain-dev.sh
   assert_grep '^TitleAlignment=AlignLeft$' /etc/xdg/breezerc
   assert_grep '^AnimationDurationFactor=0.5$' /etc/xdg/kdeglobals
@@ -339,6 +341,41 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   for p in amdgpu i915 'iwlwifi-*' 'rtw8*' nvidia; do
     compgen -G "/usr/lib/firmware/$p*" >/dev/null || fail "firmware missing: $p"
   done
+}
+
+check_phase25() { # v4: logo, avatar, Windows 11 start menu, VS Code for text/code
+  local m=/usr/share/plasma/plasmoids/menu.11.enhanced
+  xmllint --noout /usr/share/icons/hicolor/scalable/apps/mountain-logo.svg || fail "logo svg invalid"
+  file /etc/skel/.face.icon | grep -q 'PNG image data, 256 x 256' || fail "no 256 px account picture in skel"
+  assert_file /usr/share/plasma/avatars/Mountain.png
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="menu.11.enhanced"' "$m/metadata.json" || fail "start menu plasmoid metadata"
+  assert_grep 'menu.11.enhanced' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  assert_grep '<default>mountain-logo</default>' "$m/contents/config/main.xml"
+  assert_grep 'systemsettings.desktop' "$m/contents/config/main.xml"
+  assert_grep 'i18n("Recommended")' "$m/contents/ui/MenuRepresentation.qml"
+  assert_grep '^text/plain=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
+  assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
+  [[ -x /usr/libexec/mountain-webapp ]] || fail "mountain-webapp not executable"
+  /usr/libexec/mountain-webapp 'bad id' x >/dev/null 2>&1 && fail "mountain-webapp accepted a bad id"
+  true
+}
+
+check_phase26() { # v4: smoother backend and hardening (docs/OWNER-GUIDE.md lists how to undo each)
+  local k=/usr/lib/sysctl.d/60-mountain-hardening.conf s
+  assert_grep '^default_sched = "scx_lavd"$' /etc/scx_loader.toml
+  [[ $(systemctl is-enabled scx_loader.service 2>/dev/null) == enabled ]] || fail "scx_loader not enabled"
+  [[ $(systemctl is-enabled ModemManager.service 2>/dev/null) == disabled ]] || fail "ModemManager still enabled"
+  for s in 'kernel.yama.ptrace_scope = 1' 'kernel.kptr_restrict = 2' 'kernel.dmesg_restrict = 1' 'kernel.unprivileged_bpf_disabled = 1' 'net.ipv4.conf.all.accept_redirects = 0' 'fs.suid_dumpable = 0'; do
+    assert_grep "^$s\$" "$k"
+  done
+  grep -qE 'unprivileged_userns_clone|io_uring_disabled|icmp_echo_ignore_all' "$k" && fail "hardening breaks Steam/flatpak/LAN"
+  assert_grep 'slab_nomerge' /usr/lib/bootc/kargs.d/10-mountain-hardening.toml
+  python3 -c 'import sys,tomllib; assert isinstance(tomllib.load(open(sys.argv[1],"rb"))["kargs"], list)' /usr/lib/bootc/kargs.d/10-mountain-hardening.toml || fail "kargs toml invalid"
+  assert_grep '^DefaultZone=mountain$' /etc/firewalld/firewalld.conf
+  xmllint --noout /etc/firewalld/zones/mountain.xml || fail "firewall zone invalid"
+  grep -q 'port=' /etc/firewalld/zones/mountain.xml && fail "mountain zone opens raw ports"
+  assert_grep 'steam-streaming' /etc/firewalld/zones/mountain.xml
+  assert_grep '^SELINUX=enforcing$' /etc/selinux/config
 }
 
 PHASE=${1:-0}

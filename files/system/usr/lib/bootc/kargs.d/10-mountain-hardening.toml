@@ -1,0 +1,2 @@
+# Kernel memory hardening with negligible gaming cost (from secureblue's defaults). Undo: see docs/OWNER-GUIDE.md.
+kargs = ["slab_nomerge", "page_alloc.shuffle=1", "randomize_kstack_offset=on", "vsyscall=none"]

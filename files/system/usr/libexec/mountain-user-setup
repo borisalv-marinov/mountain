@@ -38,6 +38,7 @@ add() { # href title icon
  </bookmark>
 "; n=$((n+1)); }
 add "$(url "$HOME")" Home user-home
+add "recentlyused:/files" Recent document-open-recent # like Windows "Recent"
 add "desktop:/" Desktop user-desktop # desktop:/ shows shortcut names without ".desktop"
 add "$(url "$(dir DOCUMENTS Documents)")" Documents folder-documents
 add "$(url "$(dir DOWNLOAD Downloads)")" Downloads folder-downloads
