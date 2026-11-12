@@ -562,7 +562,7 @@ PY
   assert_grep '^LayoutList=us,bg,bg$' /etc/xdg/kxkbrc
   assert_grep '^VariantList=,phonetic,$' /etc/xdg/kxkbrc
   assert_grep '^Options=grp:alt_shift_toggle$' /etc/xdg/kxkbrc
-  fc-list :lang=bg family | grep -q . || fail "no font covers Bulgarian"
+  { fc-list :lang=bg family; fc-list :charset=439 family; } 2>/dev/null | grep -q . || fail "no font covers Bulgarian ($(fc-list 2>&1 | wc -l) fonts, $(fc-list 2>&1 | grep -ci noto) Noto)"
   # Windows 11 taskbar: 48 px, not floating, show-desktop corner
   assert_grep 'panel.height = 48' "$L"
   assert_grep 'panel.floating = false' "$L"
