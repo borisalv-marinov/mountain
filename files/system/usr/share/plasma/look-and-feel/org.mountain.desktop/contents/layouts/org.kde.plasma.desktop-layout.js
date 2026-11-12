@@ -46,7 +46,18 @@ tasks.writeConfig("showOnlyCurrentDesktop", false);
 spacer(panel, true);
 
 const tray = panel.addWidget("org.kde.plasma.systemtray");
-//@TRAY@
+// Windows 11 quick settings replace the separate network/volume/battery/Bluetooth/brightness icons;
+// the stock applets stay enabled behind the tray's ^ expander.
+tray.currentConfigGroup = ["General"];
+const stock = ["org.kde.plasma.networkmanagement", "org.kde.plasma.volume", "org.kde.plasma.battery",
+               "org.kde.plasma.bluetooth", "org.kde.plasma.brightness"];
+const extra = String(tray.readConfig("extraItems", "")).split(",").filter(s => s);
+stock.forEach(id => { if (extra.indexOf(id) < 0) extra.push(id); });
+tray.writeConfig("extraItems", extra);
+tray.writeConfig("hiddenItems", stock);
+tray.reloadConfig();
+const quick = opt(panel, "org.mountain.quicksettings"); // network, volume and battery icons; click for the flyout
+if (quick) quick.globalShortcut = "Meta+A"; // Windows' quick-settings shortcut
 const clock = panel.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup = ["Appearance"];
 clock.writeConfig("showDate", true);

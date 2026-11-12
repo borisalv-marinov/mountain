@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+GenericName=Settings
+Comment=Change system, device and personal settings
+Exec=plasmawindowed org.mountain.settings
+Icon=preferences-system
+Categories=Settings;Qt;KDE;
+Keywords=settings;control panel;preferences;system;configuration;
+StartupNotify=true

@@ -1,0 +1,12 @@
+MountainGlass Kvantum theme (MountainGlass.kvconfig, MountainGlass.svg)
+
+The kvconfig section layout and keys follow the KvMojave theme by Tsu Jan,
+part of Kvantum (https://github.com/tsujan/Kvantum). The SVG artwork is new.
+
+This theme is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version, the same license as Kvantum.
+
+It is distributed WITHOUT ANY WARRANTY. Full text of the license:
+https://www.gnu.org/licenses/gpl-3.0.txt

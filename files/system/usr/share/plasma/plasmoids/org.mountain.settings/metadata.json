@@ -1,0 +1,19 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "System Information",
+    "Description": "Windows 11 style settings that open the real KDE modules",
+    "Icon": "preferences-system",
+    "Id": "org.mountain.settings",
+    "License": "GPL-2.0+",
+    "Name": "Settings",
+    "Version": "1.0"
+  },
+  "NoDisplay": true,
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

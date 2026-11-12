@@ -180,7 +180,7 @@ jobs:
           chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
           chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
-          chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
+          chk "Kvantum MountainGlass" 0 "$(TU 'grep -rh MountainGlass /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=MountainGlass'
           chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
           chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^([3-9]|[1-9][0-9])$'
           chk "steam" 0 "command -v steam" 'steam'  # gamemode is removed upstream on purpose
@@ -318,8 +318,24 @@ jobs:
           QM key meta_l; sleep 3; shot start-menu
           QM type settings; sleep 3; shot search-settings
           QM key ret
-          wchk "start menu opens System Settings" 1 systemsettings 20; sleep 5; shot settings
-          K -x systemsettings; K -x kdebugsettings
+          PGF=-f wchk "start menu opens Settings" 1 org.mountain.settings 20; sleep 6; shot settings
+          # Windows 11 style Settings: maximize, then every category in the sidebar, then search
+          QM key meta_l pgup; sleep 3; shot settings-home
+          i=0
+          for c in system bluetooth network personalization apps accounts time gaming accessibility privacy updates; do
+            i=$((i+1)); QM click $((150*W/1280)) $(( (167 + 36*i) * H/800 )); sleep 2; shot "settings-$c"
+          done
+          for q in bluetooth wallpaper; do
+            QM click $((640*W/1280)) $((60*H/800)); QM key ctrl a; QM type $q; sleep 2; shot "settings-search-$q"
+          done
+          QM key ret; sleep 6; shot settings-search-open # Enter opens the first result (a KDE page)
+          PGF=-f wchk "search result opens a KDE page" 0 systemsettings 15
+          K -f org.mountain.settings; K -x systemsettings; K -x kdebugsettings
+          # quick settings flyout (Win+A), and the tiles this VM can toggle
+          QM key meta_l a; sleep 2; shot quick-settings
+          R "$LT dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile" > qs-profile-before.txt 2>&1
+          chk "airplane mode before" 2 "nmcli radio all" '.'
+          QM key esc
 
           # 3. double-click the first desktop icon (folder AI)
           QM dclick $((58*W/1280)) $((75*H/800))

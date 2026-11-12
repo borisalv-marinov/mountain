@@ -131,7 +131,7 @@ check_phase11() {
   assert_file "$k/GlassDark.kvconfig"
   assert_file "$k/GlassDark.svg"
   assert_grep '^translucent_windows=true$' "$k/GlassDark.kvconfig"
-  assert_grep '^theme=GlassDark$' /etc/xdg/Kvantum/kvantum.kvconfig
+  assert_grep '^theme=MountainGlass$' /etc/xdg/Kvantum/kvantum.kvconfig # v5: MountainGlass replaced GlassDark as the default
   assert_grep '^widgetStyle=kvantum$' /etc/xdg/kdeglobals
   assert_grep '^ButtonsOnRight=IAX$' /etc/xdg/kwinrc
   assert_grep '^blurEnabled=true$' /etc/xdg/kwinrc
@@ -417,6 +417,30 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   grep -q 'location = "top"' "$L" && fail "top bar is on by default"
   grep -q 'systemtray' /usr/libexec/mountain-topbar && fail "top bar would add a second tray"
   assert_grep '^URL=trash:/$' "/etc/skel/Desktop/Recycle Bin.desktop"
+  # Windows-style Settings and quick settings
+  local a id missing=""
+  for a in org.mountain.settings org.mountain.quicksettings; do
+    python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]==sys.argv[2]' "/usr/share/plasma/plasmoids/$a/metadata.json" "$a" || fail "bad $a metadata"
+    assert_file "/usr/share/plasma/plasmoids/$a/contents/ui/main.qml"
+  done
+  desktop-file-validate /usr/share/applications/org.mountain.settings.desktop || fail "invalid Settings launcher"
+  assert_grep 'org.mountain.quicksettings' "$L"
+  assert_grep 'org.mountain.settings.desktop' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/config/main.xml
+  assert_cmd plasmawindowed
+  for id in $(grep -rhoE 'kcm_[A-Za-z0-9_-]+' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings | sort -u); do
+    compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/*/$id.so" >/dev/null || compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/$id.so" >/dev/null \
+      || [[ -e /usr/share/applications/$id.desktop ]] || missing="$missing $id"
+  done
+  echo "NOTE: settings pages without a KDE module:${missing:- none}"
+  for id in kcm_kscreen kcm_pulseaudio kcm_bluetooth kcm_networkmanagement kcm_wallpaper kcm_colors kcm_users kcm_clock kcm_access; do
+    [[ " $missing " == *" $id "* ]] && fail "Settings page has no module: $id"
+  done
+  # black glass
+  assert_file /usr/share/Kvantum/MountainGlass/MountainGlass.svg
+  assert_grep '^theme=MountainGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
+  assert_grep '^translucent_windows=false$' /usr/share/Kvantum/MountainGlassSolid/MountainGlassSolid.kvconfig
+  python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /usr/share/Kvantum/MountainGlass/MountainGlass.svg || fail "Kvantum SVG invalid"
+  MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=MountainGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=MountainGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
   true
 }
 
