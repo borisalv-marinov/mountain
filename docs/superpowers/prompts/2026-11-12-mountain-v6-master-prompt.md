@@ -414,3 +414,20 @@ Already present: VS Code, terminal, Git, Python, Node and the AI CLIs with one-c
 - **Git:**
   - Commit trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; PR bodies end with the Claude Code line.
   - The owner authorized merging to main once everything is green.
+
+## Part G. Active Protection ("APA", owner addition)
+
+1. A resident, real-time threat scanner beyond the Downloads watcher: watches new or changed executables and scripts in `~`, `~/Downloads`, `/tmp`, `/var/tmp`, removable media and new Flatpak installs.
+2. Local only, no cloud uploads. Unverified files (unsigned, unknown, freshly downloaded executables or scripts) are flagged.
+3. Light: ≤ 150 MB RAM resident idle, ~0 % CPU idle, scans at low priority (Nice=19, IOSchedulingClass=idle, MemoryHigh/CPUQuota). Research clamonacc+clamd tuned, YARA+fanotify, or a hybrid pre-filter that wakes the scanner only on demand; pick the lightest that really works. Never scan Steam, Proton or game folders; never slow games. Measure RAM, CPU and file-open time on vs off in vm-test.
+4. Its own black-glass app "Active Protection" (Security area and start menu): live On/Off, files checked today, threats found, unverified files to review (Allow / Quarantine / Delete), quarantine, history, Scan now; a notification the moment a threat is found; signature updates only when the owner presses Update.
+5. vm-test: EICAR in `~/Downloads`, on a fake USB and in `/tmp` is caught within seconds and shows in the app; an unsigned script is flagged unverified; the RAM and CPU budgets hold.
+
+## Part H. Attack test at the end (red team, inside the test VM only)
+
+- Network: scan from outside (expect no open ports), try SSH and Samba logins, brute-force the login (expect a lockout).
+- Privilege: sudo without a password, writing `/usr`, SUID audit, polkit actions without auth, SELinux stays enforcing.
+- Malware: EICAR and test droppers in Downloads, USB, `/tmp` and attachment-like paths; a fake ransomware encrypts a test folder, restore from a snapshot.
+- Apps: a Flatpak reading `~/Documents` and `~/.ssh`; a web download; autostart persistence must be flagged (Active Protection or Startup apps).
+- System: break `/etc` or a bad update, then Go back; delete critical user config, then recover; fill the disk, then still boot.
+- Report in `docs/SECURITY-TEST.md`: attack, expected, actual. Fix every hole, re-run until everything is blocked or recovered. Two green full runs in a row including the attack test before merging.
