@@ -440,6 +440,16 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^theme=MountainGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
   assert_grep '^translucent_windows=false$' /usr/share/Kvantum/MountainGlassSolid/MountainGlassSolid.kvconfig
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /usr/share/Kvantum/MountainGlass/MountainGlass.svg || fail "Kvantum SVG invalid"
+  local t=/usr/share/plasma/desktoptheme/mountain-glass f
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="mountain-glass"' $t/metadata.json || fail "bad Plasma theme metadata"
+  for f in widgets/panel-background translucent/widgets/panel-background dialogs/background translucent/dialogs/background widgets/tooltip widgets/tasks; do
+    python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' "$t/$f.svg" || fail "Plasma theme SVG invalid: $f"
+  done
+  assert_file /usr/share/color-schemes/MountainGlass.colors
+  assert_file /usr/share/aurorae/themes/MountainGlass/decoration.svg
+  assert_grep '^name=mountain-glass$' /etc/xdg/plasmarc
+  assert_grep '^ColorScheme=MountainGlass$' /etc/xdg/kdeglobals
+  assert_grep '^theme=__aurorae__svg__MountainGlass$' /etc/xdg/kwinrc
   MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=MountainGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=MountainGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
   true
 }

@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Mountain"
+            }
+        ],
+        "Category": "",
+        "Description": "Glossy black glass: translucent near-black panels with a chrome rim",
+        "EnabledByDefault": true,
+        "Id": "mountain-glass",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mountain Glass",
+        "Version": "1.0",
+        "Website": ""
+    },
+    "X-Plasma-API": "5.0",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
