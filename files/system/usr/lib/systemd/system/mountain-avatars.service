@@ -1,0 +1,10 @@
+[Unit]
+Description=Mountain: logo as the account picture for accounts without one
+Before=accounts-daemon.service display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/mountain-avatars
+
+[Install]
+WantedBy=multi-user.target

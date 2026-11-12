@@ -378,6 +378,27 @@ check_phase26() { # v4: smoother backend and hardening (docs/OWNER-GUIDE.md list
   assert_grep '^SELINUX=enforcing$' /etc/selinux/config
 }
 
+check_phase27() { # v5: login-screen picture, "File Explorer" in title bars
+  local d
+  for u in mountain-avatars.service mountain-avatars.path; do
+    [[ $(systemctl is-enabled $u 2>/dev/null) == enabled ]] || fail "$u not enabled"
+  done
+  d=$(mktemp -d); mkdir -p "$d/as/users"
+  printf 'ana:x:1000:1000::/home/ana:/bin/bash\nbob:x:1001:1001::/home/bob:/bin/bash\nnobody:x:65534:65534::/:/sbin/nologin\n' > "$d/passwd"
+  printf '[User]\nIcon=/home/bob/me.png\n' > "$d/as/users/bob"
+  MOUNTAIN_AS_ROOT=$d/as MOUNTAIN_PASSWD=$d/passwd /usr/libexec/mountain-avatars || fail "mountain-avatars failed"
+  cmp -s "$d/as/icons/ana" /usr/share/plasma/avatars/Mountain.png || fail "ana got no logo picture"
+  assert_grep "^Icon=$d/as/icons/ana\$" "$d/as/users/ana"
+  assert_grep '^Icon=/home/bob/me.png$' "$d/as/users/bob"
+  [[ ! -e $d/as/icons/bob && ! -e $d/as/users/nobody ]] || fail "mountain-avatars replaced a chosen picture or touched a system account"
+  rm -rf "$d"
+  python3 -c 'import gettext,sys; t=gettext.GNUTranslations(open(sys.argv[1],"rb")); assert "File Explorer" in t._catalog.values()' /usr/share/locale/en@mountain/LC_MESSAGES/dolphin.mo || fail "File Explorer catalog"
+  [[ $(env -i LANG=en_US.UTF-8 bash -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo $LANGUAGE') == en@mountain:en_US ]] || fail "names script: US English"
+  grep -q dragImageBeingGenerated /usr/share/plasma/plasmoids/org.kde.desktopcontainment/contents/ui/FolderView.qml || fail "desktop drag fix missing"
+  MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp geforcenow https://play.geforcenow.com | grep -q -- '--class=mountain-geforcenow --ozone-platform=x11' || fail "web apps not in X11 mode (taskbar grouping)"
+  [[ $(env -i LANG=de_DE.UTF-8 bash -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo ${LANGUAGE-unset}') == unset ]] || fail "names script changed another language"
+}
+
 PHASE=${1:-0}
 for p in $(seq 0 "$PHASE"); do
   fn="check_phase$p"

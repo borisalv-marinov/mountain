@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Login screen / lock screen picture: give every person account without a picture the Mountain logo.
+# The login screen reads AccountsService, not ~/.face.icon (home folders are private). Never replaces a chosen picture.
+set -euo pipefail
+root=${MOUNTAIN_AS_ROOT:-/var/lib/AccountsService} passwd=${MOUNTAIN_PASSWD:-/etc/passwd} pic=${MOUNTAIN_AVATAR:-/usr/share/plasma/avatars/Mountain.png}
+[[ -f $pic ]] || { echo "mountain-avatars: $pic missing" >&2; exit 1; }
+while IFS=: read -r u _ uid _; do
+  [[ $uid =~ ^[0-9]+$ ]] && (( uid >= 1000 && uid < 60000 )) && [[ $u =~ ^[a-z_][a-z0-9_.-]*$ ]] || continue
+  icon=$root/icons/$u cfg=$root/users/$u
+  [[ -e $icon ]] || grep -qs '^Icon=' "$cfg" && continue
+  install -D -m 644 "$pic" "$icon"
+  if grep -qs '^\[User\]' "$cfg"; then sed -i "/^\[User\]/a Icon=$icon" "$cfg"
+  else mkdir -p "$root/users"; printf '[User]\nIcon=%s\n' "$icon" >> "$cfg"; fi
+done < "$passwd"

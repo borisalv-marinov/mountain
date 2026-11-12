@@ -3,6 +3,8 @@
 set -euo pipefail
 id=${1:-} url=${2:-}
 [[ $id =~ ^[a-z0-9-]+$ && $url == https://* ]] || { echo "usage: mountain-webapp <id> <https-url>" >&2; exit 2; }
-cmd=(flatpak run com.microsoft.Edge --class="mountain-$id" --user-data-dir="$HOME/.var/app/com.microsoft.Edge/data/webapp-$id" --app="$url")
+# On Wayland Edge names every app window "com.microsoft.Edge" (seen in vm-test), so the taskbar lumps them under Edge;
+# X11 mode honours --class, which matches StartupWMClass in our launchers.
+cmd=(flatpak run com.microsoft.Edge --class="mountain-$id" --ozone-platform=x11 --user-data-dir="$HOME/.var/app/com.microsoft.Edge/data/webapp-$id" --app="$url")
 [[ -n ${MOUNTAIN_WEBAPP_DRYRUN:-} ]] && { echo "${cmd[*]}"; exit 0; }
 exec "${cmd[@]}"

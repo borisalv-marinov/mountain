@@ -1,0 +1,8 @@
+[Unit]
+Description=Mountain: give new accounts the logo picture
+
+[Path]
+PathChanged=/etc/passwd
+
+[Install]
+WantedBy=multi-user.target
