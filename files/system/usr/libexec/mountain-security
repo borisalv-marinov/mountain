@@ -76,7 +76,7 @@ scan() { # [--no-update] quick|full|DIR...
   local rc out found now kind update=1
   [[ ${1:-} == --no-update ]] && { update=0; shift; }
   case ${1:-full} in
-    quick) kind=Quick; set -- "$HOME/Downloads" "$HOME/Desktop" "$HOME/Documents" ;;
+    quick) kind=Quick; local d q=(); for d in Downloads Desktop Documents; do [[ -d $HOME/$d ]] && q+=("$HOME/$d"); done; set -- "${q[@]:-$HOME}" ;;
     full) kind=Full; set -- "$HOME" ;;
     *) kind=Custom ;;
   esac

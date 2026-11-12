@@ -696,7 +696,7 @@ jobs:
           chk "deleted file restored from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP/looktest/Documents/precious.txt ~/Documents/ && cat ~/Documents/precious.txt")" '^precious$'
           chk "snapshots are read-only for programs" 0 "$(TL "touch /var/home/.snapshots/$SNAP/looktest/x 2>/dev/null && echo writable || echo blocked")" '^blocked$'
           L "dolphin /var/home/.snapshots/$SNAP/looktest/Documents"; sleep 7; shot previous-versions; K -x dolphin
-          chk "sudo always asks for a password" 0 "grep -rs NOPASSWD /etc/sudoers /etc/sudoers.d || echo none" '^none$'
+          chk "sudo always asks for a password" 0 "grep -rsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d || echo none" '^none$'
           chk "polkit rules that skip the password" 2 "grep -ls 'Result.YES' /etc/polkit-1/rules.d/* /usr/share/polkit-1/rules.d/* 2>/dev/null | paste -sd' '" '.'
           chk "kernel lockdown (off by default: game drivers)" 2 "cat /sys/kernel/security/lockdown" '.'
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restart into Windows (dual boot): a one-time boot (EFI BootNext) of the Windows Boot Manager, then restart.
 #   mountain-windows-boot check        print the Windows entry number; exit 1 when there is none (the menu item is hidden)
-#   mountain-windows-boot go [--no-restart]   set BootNext (root; allowed for the signed-in user by org.mountain.windows-boot.policy)
+#   mountain-windows-boot go [--no-restart]   set BootNext (the menus use --no-restart, then Plasma's restart prompt) (root; allowed for the signed-in user by org.mountain.windows-boot.policy)
 set -uo pipefail
 efi=${MOUNTAIN_EFIBOOTMGR:-efibootmgr}
 entry() { "$efi" 2>/dev/null | sed -n -E 's/^Boot([0-9A-Fa-f]{4})\*? +Windows Boot Manager.*/\1/p' | head -1; }

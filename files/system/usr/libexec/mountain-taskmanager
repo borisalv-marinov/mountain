@@ -9,6 +9,7 @@ usr_dir=${XDG_CONFIG_HOME:-$HOME/.config}/autostart
 core=" at-spi-dbus-bus gmenudbusmenuproxy kaccess org.kde.plasmashell org.kde.plasma-fallback-session-restore pam_kwallet_init
  polkit-kde-authentication-agent-1 powerdevil xembedsniproxy xapp-sn-watcher xdg-user-dirs mountain-user-setup spice-vdagent
  vboxclient vmware-user org.kde.foreground-booster geoclue-demo-agent "
+core=${core//$'\n'/ } # one line, so every name is matched as " name "
 
 key() { sed -n "/^\[Desktop Entry\]/,/^\[/{s/^$1=//p}" "$2" 2>/dev/null | head -1; }
 

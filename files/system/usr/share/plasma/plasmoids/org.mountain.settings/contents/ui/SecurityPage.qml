@@ -174,7 +174,7 @@ ColumnLayout {
                 GlassButton { text: "Check for updates"; onClicked: app.run("kstart --application io.github.rfrench3.bazzite-updater") },
                 GlassButton { text: "Go back to the previous version"; enabled: sec.v("rollback") === "yes" && sec.running === ""; onClicked: sec.start("rollback", "/usr/libexec/mountain-security rollback") },
                 GlassButton { text: "Reset this PC"; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-security reset") },
-                GlassButton { visible: sec.v("windows") === "yes"; text: "Restart into Windows"; onClicked: app.run("/usr/libexec/mountain-windows-boot go") }
+                GlassButton { visible: sec.v("windows") === "yes"; text: "Restart into Windows"; onClicked: app.run("/usr/libexec/mountain-windows-boot go --no-restart && dbus-send --session --type=method_call --dest=org.kde.LogoutPrompt /LogoutPrompt org.kde.LogoutPrompt.promptReboot") }
             ]
         }
         SecurityCard {

@@ -522,7 +522,7 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
   assert_file /usr/lib/tmpfiles.d/mountain-snapshots.conf
   python3 -c 'import json,sys; t=json.load(open("/etc/containers/policy.json"))["transports"]["docker"]; r=[v for k,v in t.items() if "borisalv-marinov" in k]; assert r and any(x.get("type")=="sigstoreSigned" for x in r[0]), r' || fail "updates are not signature-checked"
   assert_grep '^SELINUX=enforcing$' /etc/selinux/config
-  grep -rqs 'NOPASSWD' /etc/sudoers /etc/sudoers.d && fail "passwordless sudo in the shipped image"
+  grep -rhsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d | grep -q . && fail "passwordless sudo in the shipped image"
   grep -q 'lockdown=' /usr/lib/bootc/kargs.d/*.toml 2>/dev/null && fail "kernel lockdown forced (breaks unsigned game drivers)"
   true
 }
@@ -556,6 +556,7 @@ PY
   assert_grep '^next activity=none,' /etc/xdg/kglobalshortcutsrc
   assert_grep '^toggle_hud=Super_L+g$' /etc/xdg/MangoHud/MangoHud.conf
   assert_grep '^MANGOHUD=1$' /usr/lib/environment.d/60-mountain-mangohud.conf
+  assert_grep '^MANGOHUD_CONFIGFILE=/etc/xdg/MangoHud/MangoHud.conf$' /usr/lib/environment.d/60-mountain-mangohud.conf
   assert_grep '^clipboardGroup=PostScreenshotCopyImage$' /etc/xdg/spectaclerc
   # Bulgarian keyboard, Cyrillic fonts
   assert_grep '^LayoutList=us,bg,bg$' /etc/xdg/kxkbrc

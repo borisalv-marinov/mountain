@@ -55,7 +55,7 @@ RowLayout{
             icon.name: "system-reboot"
             visible: windowsBoot
             height: visible ? implicitHeight : 0
-            onClicked: logic.runCommand("/usr/libexec/mountain-windows-boot go")
+            onClicked: logic.runCommand("/usr/libexec/mountain-windows-boot go --no-restart && dbus-send --session --type=method_call --dest=org.kde.LogoutPrompt /LogoutPrompt org.kde.LogoutPrompt.promptReboot")
         }
     }
 

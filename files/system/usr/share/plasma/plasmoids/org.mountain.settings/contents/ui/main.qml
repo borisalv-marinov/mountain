@@ -215,6 +215,10 @@ PlasmoidItem {
     // plasmawindowed only honours the minimum size; open at the preferred size the first time
     // (a saved window geometry is restored by plasmawindowed after this and wins).
     readonly property var hostWindow: Window.window
+    Connections { // plasmawindowed is single-instance: a second launch only raises us, so check for a page request again
+        target: app.hostWindow
+        function onActiveChanged() { if (app.hostWindow.active) exec.connectSource(app.pageCmd); }
+    }
     onHostWindowChanged: {
         if (hostWindow && hostWindow.width < 1000) {
             hostWindow.width = 1100;
