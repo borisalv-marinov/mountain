@@ -5,6 +5,7 @@ set -euo pipefail
 m=/usr/share/mountain
 # Login screen: the dark silk wallpaper, softly blurred (like Windows' sign-in screen).
 sed -e '0,/<svg[^>]*>/s//&<filter id="mtblur" x="0" y="0" width="1" height="1"><feGaussianBlur stdDeviation="26" edgeMode="duplicate"\/><\/filter><g filter="url(#mtblur)">/'     -e 's|</svg>|</g></svg>|' $m/wallpaper-silk-dark.svg > /tmp/wallpaper-blur.svg
+grep -q mtblur /tmp/wallpaper-blur.svg # the blur filter really went in
 rsvg-convert -w 2560 -h 1440 -f png -o $m/wallpaper.png /tmp/wallpaper-blur.svg
 # Desktop wallpaper packages: Plasma picks the closest size; images_dark is used with a dark colour scheme.
 # Mountain Silk (default, our own render; the same light-to-black picture in dark mode, like the owner's desktop),
