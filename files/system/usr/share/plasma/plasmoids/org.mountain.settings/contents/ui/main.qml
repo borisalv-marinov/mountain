@@ -286,11 +286,13 @@ PlasmoidItem {
                 Item {
                     Layout.preferredWidth: 52
                     Layout.preferredHeight: 52
-                    Kirigami.Avatar {
+                    Kirigami.ShadowedImage { // round account picture (Kirigami.Avatar lives in an add-on module Mountain does not ship)
                         anchors.fill: parent
                         visible: kuser.faceIconUrl.toString() !== ""
-                        source: kuser.faceIconUrl.toString()
-                        name: kuser.fullName || kuser.loginName
+                        source: kuser.faceIconUrl
+                        fillMode: Image.PreserveAspectCrop
+                        radius: width / 2
+                        sourceSize: Qt.size(104, 104)
                     }
                     Kirigami.Icon {
                         anchors.fill: parent

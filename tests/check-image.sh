@@ -414,6 +414,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   done
   assert_grep 'mountain-silk/' "$L"
   assert_grep '^Image=file:///usr/share/wallpapers/mountain-silk-dark/$' /etc/xdg/kscreenlockerrc
+  assert_grep '^State=' /etc/skel/.local/state/dolphinstaterc # File Explorer opens with the Details (Information) pane
   assert_grep 'BelowTime' "$L"
   assert_grep '"arrangement", 1' "$L"
   grep -q 'location = "top"' "$L" && fail "top bar is on by default"

@@ -332,9 +332,10 @@ jobs:
           PGF=-f wchk "search result opens a KDE page" 0 systemsettings 15
           K -f org.mountain.settings; K -x systemsettings; K -x kdebugsettings
           # quick settings flyout (Win+A), and the tiles this VM can toggle
-          QM key meta_l a; sleep 2; shot quick-settings
+          QM click $((1133*W/1280)) $((768*H/800)); sleep 2; shot quick-settings # the network/volume icons next to the clock
           R "$LT dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile" > qs-profile-before.txt 2>&1
           chk "airplane mode before" 2 "nmcli radio all" '.'
+          chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
 
           # 3. double-click the first desktop icon (folder AI)
@@ -376,16 +377,16 @@ jobs:
           # 6. drag a file between two Dolphin panes (best effort)
           R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"
           L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
-          # drag notes.txt (right pane) onto the Office folder (left pane); Enter picks "Move Here"
-          QM drag $((916*W/1280)) $((275*H/800)) $((603*W/1280)) $((580*H/800)); sleep 2; shot drag-menu; QM click $(((603+57)*W/1280)) $(((580+16)*H/800)); sleep 2; shot drag-after
-          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '^moved$'
+          # drag notes.txt (right pane) onto the Browsers folder (left pane), then click "Move Here"
+          QM drag $((730*W/1280)) $((380*H/800)) $((474*W/1280)) $((385*H/800)); sleep 2; shot drag-menu; QM click $(((474+57)*W/1280)) $(((385+16)*H/800)); sleep 2; shot drag-after
+          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Browsers/notes.txt && echo moved" '^moved$'
           K -x dolphin
 
           # 6b. drag an icon on the desktop (icons fill columns from the top left): slow drag, then a fast drag right after selecting
           DX=$((58*W/1280)); DY=$((185*H/800)) # second icon of the first column
           QM hold $DX $DY $((700*W/1280)) $((330*H/800)); sleep 1; shot desktop-drag-mid
           QM up; sleep 2; shot desktop-drag-after
-          QM fdrag $((700*W/1280)) $((330*H/800)) $((900*W/1280)) $((250*H/800)); shot desktop-fastdrag-mid
+          QM fdrag $((174*W/1280)) $((170*H/800)) $((900*W/1280)) $((250*H/800)); shot desktop-fastdrag-mid # "Office", second column
           QM up; echo "screendump /tmp/drop.ppm" | Q >/dev/null; sudo cat /tmp/drop.ppm | convert - shots/desktop-fastdrag-drop.png; sleep 2; shot desktop-fastdrag-after
 
           # 7. Steam
