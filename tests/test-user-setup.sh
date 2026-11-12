@@ -20,7 +20,7 @@ ok '[[ ! -e $H/.config/kwalletrc ]]' "wallet untouched without autologin"
 A=$(mktemp); printf '[Autologin]
 User=%s
 ' "$(id -un)" > "$A"
-HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_AUTOLOGIN_CONF=$A MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_AUTOLOGIN_CONF="/nonexistent.conf $A /nonexistent2.conf" MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok 'grep -qx "Enabled=false" "$H/.config/kwalletrc"' "wallet off for an autologin account"
 rm -f "$A"
 echo edited > "$f"; HOME=$H XDG_DATA_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"

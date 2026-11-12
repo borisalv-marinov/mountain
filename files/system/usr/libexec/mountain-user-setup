@@ -6,7 +6,8 @@ set -euo pipefail
 cfg=${XDG_CONFIG_HOME:-$HOME/.config}
 autologin_files=${MOUNTAIN_AUTOLOGIN_CONF:-/etc/plasmalogin.conf /etc/sddm.conf /etc/sddm.conf.d/*.conf}
 # shellcheck disable=SC2086
-if [[ ! -e $cfg/kwalletrc ]] && grep -hs '^User=' $autologin_files | grep -qx "User=$(id -un)"; then
+# one grep: with -q it succeeds on a match even if some of the listed files don't exist (a pipe + pipefail did not)
+if [[ ! -e $cfg/kwalletrc ]] && grep -qsx "User=$(id -un)" $autologin_files; then
   mkdir -p "$cfg"; printf '[Wallet]
 Enabled=false
 First Use=false
