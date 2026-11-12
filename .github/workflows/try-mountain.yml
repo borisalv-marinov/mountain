@@ -167,11 +167,16 @@ jobs:
           mkdir -p "$HOME/web" && cp -r /usr/share/novnc/. "$HOME/web/" && cp "$GITHUB_WORKSPACE"/try/*.mjs "$GITHUB_WORKSPACE"/try/mountain.html "$HOME/web/"
           ls "$HOME/web/core/rfb.js" # Ubuntu 24.04 novnc ships ES modules; fail loudly if not
           nohup websockify --web "$HOME/web" 127.0.0.1:6080 127.0.0.1:5900 > novnc.log 2>&1 &
-          nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > cf.log 2>&1 &
           URL=""
-          for _ in $(seq 60); do
-            URL=$(grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' cf.log | head -1 || true)
-            [ -n "$URL" ] && break; sleep 2
+          for try in 1 2 3 4 5 6; do # trycloudflare sometimes fails to hand out a quick tunnel; retry
+            nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:6080 > cf.log 2>&1 &
+            CF=$!
+            for _ in $(seq 30); do
+              URL=$(grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' cf.log | head -1 || true)
+              [ -n "$URL" ] && break; kill -0 $CF 2>/dev/null || break; sleep 2
+            done
+            [ -n "$URL" ] && break
+            echo "tunnel attempt $try failed:"; tail -3 cf.log; kill $CF 2>/dev/null || true; sleep $((try * 15))
           done
           [ -n "$URL" ] || { cat cf.log; echo "::error::no tunnel URL"; exit 1; }
           echo "::notice title=Mountain link::$URL/mountain.html"
