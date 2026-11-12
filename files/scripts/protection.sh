@@ -7,7 +7,8 @@ sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nX-KDE-Shortcuts=Ctrl+Shift+Esc
 grep -q '^X-KDE-Shortcuts=Ctrl+Shift+Esc,Ctrl+Esc$' "$a"
 # more Windows shortcuts on the apps themselves: Win+I Settings, Win+R Run, Win+E File Explorer
 sc() { # desktop-file shortcuts
-  local f=/usr/share/applications/$1; [[ -f $f ]] || { echo "protection: missing $1"; return 1; }
+  local f=/usr/share/applications/$1; [[ -f $f ]] || f=/usr/share/kglobalaccel/$1 # Plasma 6 keeps KRunner's here
+  [[ -f $f ]] || { echo "protection: missing $1"; return 1; }
   sed -i '/^X-KDE-Shortcuts=/d' "$f"; sed -i "0,/^\[Desktop Entry\]/s//[Desktop Entry]\nX-KDE-Shortcuts=$2/" "$f"
 }
 sc org.mountain.settings.desktop Meta+I

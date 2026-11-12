@@ -550,7 +550,7 @@ PY
   assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
   # Windows shortcuts
   assert_grep '^X-KDE-Shortcuts=Meta+I$' $a/org.mountain.settings.desktop
-  assert_grep '^X-KDE-Shortcuts=Meta+R,' $a/org.kde.krunner.desktop
+  grep -qs '^X-KDE-Shortcuts=Meta+R,' $a/org.kde.krunner.desktop /usr/share/kglobalaccel/org.kde.krunner.desktop || fail "Win+R not bound"
   assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
   assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/xdg/kglobalshortcutsrc
   assert_grep '^next activity=none,' /etc/xdg/kglobalshortcutsrc
