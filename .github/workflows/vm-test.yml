@@ -282,7 +282,7 @@ jobs:
 
           # 1. lock screen at start: no autologin, like the shipped image and Try Mountain
           LPW=glasstest2026
-          R "useradd -m looktest; echo looktest:$LPW | chpasswd; printf '[Users]\nHideUsers=tester\n' > /etc/plasmalogin.conf; systemctl restart display-manager"
+          R "userdel tester; useradd -m -c 'Look Test' looktest; echo looktest:$LPW | chpasswd; systemctl restart display-manager" # one account on the sign-in screen, like a fresh PC
           sleep 30; W=1280; H=800; shot login-lock # clock and date only
           QM click 640 200; sleep 2; shot login-hello # "Hello, <name>", picture, password box
           QM type wrongpass; QM key ret; sleep 5; shot login-wrong
