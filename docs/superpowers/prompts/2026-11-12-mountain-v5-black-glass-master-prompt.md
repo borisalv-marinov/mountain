@@ -1,4 +1,11 @@
-# Mountain v6: "Black glass" master prompt
+# Mountain v5 (extended): "Black glass, better than Windows" master prompt
+
+**Owner's ruling (2026-11-12): all of this is part of v5, not a later round.** Work on branch `mountain-v5`.
+- It already holds the v5 fixes: drag-icon backport, login-screen picture, "File Explorer" title, cloud gaming in X11 mode, phase 27.
+- Its image build passed. Its VM test (run 43223461715) may still be running: read its report first and fix anything red.
+- **Do not merge v5** until every item below is built, tested in vm-test with screenshots, reviewed and green. Then open the v5 PR and merge it.
+
+**The owner's aim:** a Linux that looks and feels like a **better OS than Windows**, while staying familiar to Windows people. (The owner wrote "unfamiliar" below and meant "familiar".) Think as big as possible, and install or load whatever skills help: UI design, QA, accessibility, testing.
 
 Use superpowers: brainstorming, then writing-plans, then subagent-driven-development, then verification-before-completion. Use ponytail full: the smallest change that fully works, and name what you skipped.
 
@@ -19,7 +26,7 @@ Keep Mountain's current layout and give it a **glossy black-glass look**: futuri
 
 ## Where things are (read before planning)
 
-- **Repo:** `C:\Users\marin\Desktop\mountain`. Branch from `main`, after v5 (`mountain-v5`, PR "v5") is merged; check `git log origin/main`.
+- **Repo:** `C:\Users\marin\Desktop\mountain`. Branch `mountain-v5` (see the top).
   - BlueBuild on Bazzite stable, KDE Plasma 6.8, Fedora 45.
   - Recipe: `recipes/common.yml`.
   - Files: `files/system/...`.
@@ -43,6 +50,14 @@ Keep Mountain's current layout and give it a **glossy black-glass look**: futuri
   - `glossy-black-chrome-shapes.png`: black panels with a thin bright chrome/silver rim, a highlight on the top edge, a deep black inner gradient, rounded corners and pill toggles.
   - `glassmorphism-black.png`: frosted dark-glass panel over black, thin light border, soft blur.
   - `dark-glass-dialog.png`: dark glass settings dialog with rounded corners, a subtle border, a pill switch and two calm buttons.
+  - `windows-settings-home.png`: Windows 11 Settings Home, the target structure for Settings:
+    - a sidebar with the account at the top and colored category icons
+    - the search box on top
+    - a Home page with a device card (wallpaper thumbnail, PC name, Rename), Recommended settings, Bluetooth devices with an on/off pill, and Personalize (wallpaper/theme tiles, Color mode)
+  - `windows-quick-settings.png`: the Windows 11 quick-settings flyout (tray click):
+    - tiles: Wi-Fi, Bluetooth, Airplane mode, Accessibility, Energy saver, Live captions
+    - brightness and volume sliders
+    - battery % and a settings gear
   - Older refs are in `mountain-v3-refs\` (Explorer, logo sketches).
 
 ## What to build (all of it)
@@ -100,11 +115,64 @@ Measure, don't guess: render each surface in vm-test and compare it side by side
 
 ### 3. Desktop close to the owner's own (see `owner-desktop.webp`)
 
+- **The owner's own wallpaper:** "I like my actual background on my PC. So if you can get it, it will be nice." It is a downloaded stock image of unknown license and the repo is public, so it can't be committed or shipped. Ruling: ship an original look-alike as the default, and document in `docs/OWNER-GUIDE.md` how to set their own file in one step (right-click the desktop → Change wallpaper).
 - **New default wallpaper, our own original work:** soft silk/fabric waves, white/grey fading into deep black, in the style of the owner's wallpaper. Never copy it. Generate it ourselves: a scripted render (for example Python with numpy, layered sine-wave height field and soft shading) or SVG gradients. Make it crisp at 1080p, 1440p and 4K, with a dark variant.
   - Use it for the desktop, lock and login (blurred there).
   - Keep the thin-line peaks wallpaper as a second choice.
 - **Desktop icons** in Windows order: columns starting top-left, readable labels with a soft text shadow (they must stay readable on the light part of the wallpaper), Windows-like folder icons, Recycle Bin.
 - Keep our desktop folders (Cloud Gaming, Games, Coding, AI and the rest) and "This PC".
+
+### 3a. Settings like Windows 11, in black glass
+
+The owner: "the settings is just clean as fuck. Just make them glossy."
+
+**One Settings app** with the Windows 11 structure and names from `windows-settings-home.png`:
+- a sidebar with the account picture and name on top
+- colored category icons in the Windows order: System, Bluetooth & devices, Network & internet, Personalization, Apps, Accounts, Time & language, Gaming, Accessibility, Privacy & security, Updates
+- the search box on top
+- a **Home** page with:
+  - the device card: wallpaper thumbnail, PC name, Rename
+  - Recommended settings
+  - Bluetooth devices with an on/off pill
+  - Personalize: wallpaper and theme tiles, Color mode
+
+**Updates** stands in for Windows Update and runs the existing Updates app (uupd, manual only).
+
+**Research first** and cite sources. Pick the least fragile route and log the ruling. Options:
+- Reorganize KDE System Settings: sidebar categories, the landing page `kcm_landingpage`, renamed and hidden modules.
+- A small Kirigami/QML "Mountain Settings" shell that opens the real KDE modules (KCMUtils) for each page.
+
+Rules:
+- Every Windows category must reach a working KDE page.
+- Nothing advanced appears on the first level.
+- Black-glass styling: cards with chrome rims, pill switches and calm buttons, like `dark-glass-dialog.png`.
+
+**vm-test:** open Settings, screenshot Home and every category, search "bluetooth" and "wallpaper", and check that every page opens.
+
+### 3b. Quick settings flyout like Windows 11
+
+Clicking the network/volume/battery area of the tray opens **one** glass flyout, like `windows-quick-settings.png`:
+- **Tiles:** Wi-Fi (› to pick a network), Bluetooth (›), Airplane mode, Energy saver (power profile), Accessibility, Night light.
+- **Sliders:** brightness (when the hardware has it) and volume (with an output picker).
+- **Bottom row:** battery % and a gear that opens Settings.
+
+Build it:
+- Use Plasma's own backends and models: NetworkManager, BlueZ, PowerDevil and PipeWire.
+- Ship it as our plasmoid in the tray, replacing the separate icons; keep the old applets reachable.
+- It must open in under 150 ms, and every tile must really toggle.
+
+**vm-test:** whatever the VM allows (volume, airplane, energy profile), with screenshots.
+
+### 3c. An optimized UI ("It's not only about the looks")
+
+The new surfaces (glass theme, Settings, quick settings, lock screen) must be light:
+- no heavy QML effects or per-frame shaders
+- blur only where KWin already does it
+- SVG themes, not large images
+
+Measure plasmashell and kwin CPU and RAM, idle and while menus and flyouts open, before and after:
+- Keep them at or below today's numbers (RAM at desktop is about 1520 MB in vm-test).
+- Fail vm-test if idle CPU or RAM regress by more than 10 %.
 
 ### 4. Snappy as a whole
 
@@ -131,6 +199,8 @@ The owner wants it "more snappy as an OS: open things fast, snappy as all".
 > And also when I launch it, I don't see the love screen, which is a big problem to me. And I need a glossy UI. Add that to the prompt, make it a big ass prompt. I'm gonna add you a glossy UI idea of one I want to be. Keep the current layout, it's not too bad, but add a glossy UI. Like, I'm gonna give a few photos. The first one is gonna be of my actual desktop, and I need something like it because that's what I like. I have made it in Windows, but you will get the general idea. I want the template to be close to it. [...] I'm gonna give you what I mean by black glassy UI. That just looks futuristic and cool. Taskbar, things, that just feel incredibly well to use, and they are snappy. Also, I would love it to be a little bit more snappy as an OS to do to open system fast and just be snappy as all. That's pretty much it. And fix the lock screen. Fix the lock screen.
 
 ("love screen" means lock screen.)
+
+> It's not only about the looks too. I need the optimized UI, the UI of the OS should be optimized to run it. I want to have like settings like Windows. I'm gonna give you a photo of some things I like about Windows, and I want to make like it. But with the glossy texture, like the settings is just clean as fuck. Just make them glossy. I like my actual background on my PC. So if you can get it, it will be nice. So I want Linux that is looks like a better OS than Windows, but it's unfamiliar to Windows people. Use the biggest possible thinking you can do. Add skills that you need, like designing UI, QA, everything you need. In before we do V5, I want you to add these things to V5 and then test it, and then after it's tested, everything, every single thing, then it pushes it and it becomes part of V5.
 
 ## Testing (every task, plus a full pass at the end)
 
@@ -169,6 +239,8 @@ The owner wants it "more snappy as an OS: open things fast, snappy as all".
 
 ## Done means
 
+- Settings (3a) and quick settings (3b) work like Windows 11 in black glass, with screenshots of every page and tile.
+- The UI-cost numbers (3c) are measured and at or below today's.
 - The lock screen shows at start and on lock in Try Mountain, with the screenshots in vm-test.
 - Every surface in section 2 has been reworked into black glass, and each one is shown in vm-test screenshots and compared with the refs.
 - The new original wallpaper is the default.
