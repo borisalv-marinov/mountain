@@ -356,9 +356,9 @@ jobs:
           R "printf '|mountain-geforcenow'%s' 'for (const w of workspace.windowList()) console.warn(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
           SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wins.js string:wins" | awk '|mountain-geforcenow'/int32/{print $2}')
           R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 2
-          chk "window classes" 2 "journalctl -b --no-pager | grep -o '|mountain-geforcenow'WIN|.*' | tail -8 | paste -sd';'" '.'
+          chk "window classes" 2 "journalctl -b --no-pager | grep -o 'WIN|.*' | tail -8 | paste -sd';'" '.'
           chk "GeForce NOW has its own taskbar entry" 0 "journalctl -b --no-pager | grep -o 'WIN|GeForce NOW[^|]*|[^|]*' | tail -1" '[|]mountain-geforcenow'
-          chk "title bar says File Explorer" 0 "journalctl -b --no-pager | grep -o '|mountain-geforcenow'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin' | tail -1" 'File Explorer'
+          chk "title bar says File Explorer" 0 "journalctl -b --no-pager | grep -o 'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin' | tail -1" 'File Explorer'
           R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge; K -x dolphin
           chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '|mountain-geforcenow'.'
 
