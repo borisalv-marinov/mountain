@@ -73,6 +73,7 @@ jobs:
           COPY key.pub /etc/ssh/authorized_keys.d/root
           COPY key.pub /etc/ssh/authorized_keys.d/tester
           RUN systemctl enable sshd \
+           && firewall-offline-cmd --zone=mountain --add-service=ssh \
            && chmod 755 /etc/ssh/authorized_keys.d && chmod 644 /etc/ssh/authorized_keys.d/* \
            && printf 'AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.d/%%u\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/90-test.conf
           EOF
@@ -118,7 +119,7 @@ jobs:
           QS
           date +%s > boot_start
           sudo podman run -d --name qemu --privileged --network host --device /dev/kvm -v "$HOME/vm:/vm" -v /tmp:/tmp quay.io/fedora/fedora:latest bash /vm/qemu.sh
-          for _ in $(seq 150); do [ -e /tmp/qmon ] && break; sleep 2; done
+          for _ in $(seq 450); do [ -e /tmp/qmon ] && break; sleep 2; done # dnf in the container can be slow on a bad mirror
           [ -e /tmp/qmon ] || { sudo podman logs qemu; tail -30 dnf.log; echo "::error::qemu did not start"; exit 1; }
 
       - name: Run tests
@@ -304,7 +305,7 @@ jobs:
 
           # 5. open files with the default apps
           R "$(TL 'mkdir -p ~/Pictures ~/Documents ~/Desktop; cp /usr/share/mountain/wallpaper.png ~/Pictures/photo.png; rsvg-convert -f pdf -o ~/Documents/letter.pdf /usr/share/mountain/wallpaper.svg; echo hello mountain > ~/Documents/notes.txt')"
-          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:kwrite"; do
+          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:code"; do
             IFS=: read n f app <<<"$t"
             L xdg-open "$f"; wchk "open $n ($app)" 1 "$app" 20; sleep 5; shot "open-$n"; K -x "$app"
           done
@@ -312,6 +313,14 @@ jobs:
           chk "mime audio/mpeg" 0 "$(TL 'xdg-mime query default audio/mpeg')" 'org.kde.haruna.desktop'
           chk "mime docx" 0 "$(TL 'xdg-mime query default application/vnd.openxmlformats-officedocument.wordprocessingml.document')" 'org.onlyoffice.desktopeditors.desktop'
           chk "mime zip" 0 "$(TL 'xdg-mime query default application/zip')" 'org.kde.ark.desktop'
+          chk "mime python -> VS Code" 0 "$(TL 'xdg-mime query default text/x-python')" 'com.microsoft.VSCode.desktop'
+          # v4 backend + hardening, as running
+          chk "kernel args (hardening)" 0 "cat /proc/cmdline" 'slab_nomerge.*randomize_kstack_offset=on|randomize_kstack_offset=on.*slab_nomerge'
+          chk "sysctl ptrace/kptr" 0 "sysctl -n kernel.yama.ptrace_scope kernel.kptr_restrict | paste -sd' '" '^1 2$'
+          chk "firewall default zone" 0 "firewall-cmd --get-default-zone" '^mountain$'
+          chk "SELinux" 0 "getenforce" '^Enforcing$'
+          chk "LAVD scheduler" 0 "cat /sys/kernel/sched_ext/root/ops 2>/dev/null || systemctl is-active scx_loader" 'lavd|active'
+          chk "account picture" 0 "file ~looktest/.face.icon" 'PNG image data, 256 x 256'
 
           # 6. drag a file between two Dolphin panes (best effort)
           R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"

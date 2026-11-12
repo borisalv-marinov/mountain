@@ -42,6 +42,7 @@ modules:
       - app-icons.sh
       - windows-names.sh
       - icons-finalize.sh
+      - hardening.sh
 
   - type: default-flatpaks
     configurations:
@@ -60,11 +61,13 @@ modules:
     system:
       enabled:
         - mountain-gpu-check.service
+        - scx_loader.service # LAVD scheduler (config /etc/scx_loader.toml)
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
         - uupd.timer # owner's choice: no background updates; "Updates" app runs one on click
         - dnf-makecache.timer # package metadata refresh, useless on an image-based system
         - rpm-ostree-countme.timer # usage counting ping
+        - ModemManager.service # mobile-broadband modems only
     user:
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship

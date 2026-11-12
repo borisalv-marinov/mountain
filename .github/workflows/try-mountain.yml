@@ -107,6 +107,8 @@ jobs:
            && mkdir -p /etc/polkit-1/rules.d && printf 'polkit.addRule(function(a,s){if(s.user=="mountain")return polkit.Result.YES;});\n' > /etc/polkit-1/rules.d/49-mountain-try.rules \
            && mkdir -p /home/mountain/.config && printf '[Daemon]\nAutolock=false\nLockOnResume=false\n' > /home/mountain/.config/kscreenlockerrc \
            && printf '[Wallet]\nEnabled=false\nFirst Use=false\n' > /home/mountain/.config/kwalletrc \
+           && mkdir -p /home/mountain/.config/autostart && printf '[Desktop Entry]\nHidden=true\n' > /home/mountain/.config/autostart/mountain-lite-mode.desktop \
+           && mkdir -p /home/mountain/.var/app/com.microsoft.Edge/config && echo --disable-gpu | tee /home/mountain/.var/app/com.microsoft.Edge/config/edge-flags.conf > /home/mountain/.var/app/com.microsoft.Edge/config/msedge-flags.conf && chown -R mountain:mountain /home/mountain/.var \
            && printf '[KDE]\nDoubleClickInterval=800\n' > /home/mountain/.config/kdeglobals \
            && chown -R mountain:mountain /home/mountain/.config \
            && mkdir -p /etc/sddm.conf.d \
@@ -147,7 +149,7 @@ jobs:
           QS
           date +%s > boot_start
           sudo podman run -d --name qemu --privileged --network host --device /dev/kvm -v "$HOME/vm:/vm" -v /tmp:/tmp quay.io/fedora/fedora:latest bash /vm/qemu.sh
-          for _ in $(seq 150); do [ -e /tmp/qmon ] && break; sleep 2; done
+          for _ in $(seq 450); do [ -e /tmp/qmon ] && break; sleep 2; done # dnf in the container can be slow on a bad mirror
           [ -e /tmp/qmon ] || { sudo podman logs qemu; tail -30 dnf.log; echo "::error::qemu did not start"; exit 1; }
           sleep 2
           # VNC passwords are max 8 characters

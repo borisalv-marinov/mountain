@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Opens a web app (cloud gaming) in Edge with its own window class and profile, so it gets its own taskbar icon and name.
+set -euo pipefail
+id=${1:-} url=${2:-}
+[[ $id =~ ^[a-z0-9-]+$ && $url == https://* ]] || { echo "usage: mountain-webapp <id> <https-url>" >&2; exit 2; }
+cmd=(flatpak run com.microsoft.Edge --class="mountain-$id" --user-data-dir="$HOME/.var/app/com.microsoft.Edge/data/webapp-$id" --app="$url")
+[[ -n ${MOUNTAIN_WEBAPP_DRYRUN:-} ]] && { echo "${cmd[*]}"; exit 0; }
+exec "${cmd[@]}"
