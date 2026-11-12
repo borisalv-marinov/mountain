@@ -396,6 +396,7 @@ check_phase27() { # v5: login-screen picture, "File Explorer" in title bars
   grep -q dragImageBeingGenerated /usr/share/plasma/plasmoids/org.kde.desktopcontainment/contents/ui/FolderView.qml || fail "desktop drag fix missing"
   MOUNTAIN_WEBAPP_DRYRUN=1 /usr/libexec/mountain-webapp geforcenow https://play.geforcenow.com | grep -q -- '--class=mountain-geforcenow --ozone-platform=x11' || fail "web apps not in X11 mode (taskbar grouping)"
   [[ $(env -i LANG=de_DE.UTF-8 bash -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo ${LANGUAGE-unset}') == unset ]] || fail "names script changed another language"
+  [[ $(env -i sh -c '. /etc/xdg/plasma-workspace/env/mountain-names.sh; echo $LANGUAGE') == en@mountain:en_US ]] || fail "names script: no language set"
 }
 
 check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows-style taskbar and desktop
