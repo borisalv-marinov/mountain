@@ -262,7 +262,8 @@ check_phase20() { # line-art wallpaper, login and lock screen
 
 check_phase21() { # Windows-like start menu and names
   local a=/usr/share/applications L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js f
-  assert_grep '^Name=Settings$' $a/systemsettings.desktop
+  assert_grep '^Name=Settings$' $a/org.mountain.settings.desktop # v5: Windows-style Settings; KDE's app is "All Settings"
+  assert_grep '^Name=All Settings$' $a/systemsettings.desktop
   assert_grep '^Name=File Explorer$' $a/org.kde.dolphin.desktop
   assert_grep '^Name=Task Manager$' $a/org.kde.plasma-systemmonitor.desktop
   assert_grep '^Name=Terminal$' $a/org.kde.konsole.desktop
@@ -273,7 +274,7 @@ check_phase21() { # Windows-like start menu and names
     assert_grep mountain-accessories.directory "$f"; assert_grep '<Deleted/>' "$f"
   done
   assert_file /usr/share/desktop-directories/mountain-accessories.directory
-  assert_grep 'systemsettings.desktop' /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc
+  assert_grep 'org.mountain.settings.desktop' /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc
   grep -qE 'appmenu|systemmonitor\.net|windowtitle|code\.desktop' "$L" && fail "layout still has macOS-style bits or a stale VS Code id"
   assert_file $a/com.microsoft.VSCode.desktop
 }
@@ -350,7 +351,7 @@ check_phase25() { # v4: logo, avatar, Windows 11 start menu, VS Code for text/co
   python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="menu.11.enhanced"' "$m/metadata.json" || fail "start menu plasmoid metadata"
   assert_grep 'menu.11.enhanced' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
   assert_grep '<default>mountain-logo</default>' "$m/contents/config/main.xml"
-  assert_grep 'systemsettings.desktop' "$m/contents/config/main.xml"
+  assert_grep 'org.mountain.settings.desktop' "$m/contents/config/main.xml"
   assert_grep 'i18n("Recommended")' "$m/contents/ui/MenuRepresentation.qml"
   assert_grep '^text/plain=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
   assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
