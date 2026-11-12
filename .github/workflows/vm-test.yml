@@ -8,7 +8,7 @@ on:
         type: string
   push: # lets the branch run it before the file exists on main
     branches: [mountain-phases]
-    paths: ['|mountain-geforcenow'.github/workflows/vm-test.yml']
+    paths: ['.github/workflows/vm-test.yml']
   workflow_run:
     workflows: [bluebuild]
     types: [completed]
@@ -17,7 +17,7 @@ on:
 jobs:
   vm:
     name: Boot image in VM
-    if: github.event_name != '|mountain-geforcenow'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04 # 26.04 denies bib mounts
     timeout-minutes: 120
     permissions:
@@ -26,14 +26,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [mountain] # NVIDIA can'|mountain-geforcenow't be tested without a GPU
+        image: [mountain] # NVIDIA can't be tested without a GPU
     env:
       IMG: ${{ matrix.image }}
       BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
     steps:
       - name: Enable KVM and install tools
         run: |
-          echo '|mountain-geforcenow'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm
@@ -60,7 +60,7 @@ jobs:
         run: |
           [ -n "${{ inputs.tag }}" ] && { echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"; echo "Using tag: ${{ inputs.tag }}"; exit 0; }
           SAFE="${BRANCH//\//-}"
-          ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '|mountain-geforcenow'.Tags[]')
+          ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
           TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
           [ -n "$TAG" ] || { echo "::error::no tag contains $SAFE"; echo "$ALL"; exit 1; }
           echo "Using tag: $TAG"
@@ -81,18 +81,18 @@ jobs:
           RUN systemctl enable sshd \
            && firewall-offline-cmd --zone=mountain --add-service=ssh \
            && chmod 755 /etc/ssh/authorized_keys.d && chmod 644 /etc/ssh/authorized_keys.d/* \
-           && printf '|mountain-geforcenow'AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.d/%%u\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/90-test.conf
+           && printf 'AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.d/%%u\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/90-test.conf
           EOF
           sudo podman build -t localhost/mountain-test:latest .
           {
-            echo '|mountain-geforcenow'[[customizations.user]]'
-            echo '|mountain-geforcenow'name = "tester"'
+            echo '[[customizations.user]]'
+            echo 'name = "tester"'
             echo "password = \"$TESTPW\""
             echo "key = \"$(cat key.pub)\""
-            echo '|mountain-geforcenow'groups = ["wheel"]'
-            echo '|mountain-geforcenow'[[customizations.filesystem]]'
-            echo '|mountain-geforcenow'mountpoint = "/"'
-            echo '|mountain-geforcenow'minsize = "40 GiB"' # first-boot apps filled the default-size root ("Low Disk Space")
+            echo 'groups = ["wheel"]'
+            echo '[[customizations.filesystem]]'
+            echo 'mountpoint = "/"'
+            echo 'minsize = "40 GiB"' # first-boot apps filled the default-size root ("Low Disk Space")
           } > config.toml
           mkdir -p output
           sudo podman run --rm --privileged --pull=newer \
@@ -111,7 +111,7 @@ jobs:
       - name: Boot VM
         run: |
           cd "$HOME/vm"
-          cat > qemu.sh <<'|mountain-geforcenow'QS'
+          cat > qemu.sh <<'QS'
           #!/bin/bash
           set -e
           dnf -y -q install qemu-kvm edk2-ovmf >/vm/dnf.log 2>&1
@@ -134,19 +134,19 @@ jobs:
           SSHO="-i $PWD/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes"
           set +e # a failing check must not abort the run
           R() { ssh $SSHO root@127.0.0.1 "$@"; } # everything runs as root over ssh
-          TU() { printf '|mountain-geforcenow'sudo -u tester -i bash -c %q' "$1"; } # wrap a command to run as tester
+          TU() { printf 'sudo -u tester -i bash -c %q' "$1"; } # wrap a command to run as tester
           wait_ssh() {
             local end=$(( $(date +%s) + $1 ))
             while [ "$(date +%s)" -lt "$end" ]; do R true 2>/dev/null && return 0; sleep 10; done
             return 1
           }
-          printf '|mountain-geforcenow'# VM test report (%s)\n\n| Check | Result | Evidence |\n|---|---|---|\n' "$IMG" > report.md
+          printf '# VM test report (%s)\n\n| Check | Result | Evidence |\n|---|---|---|\n' "$IMG" > report.md
           CORE_FAIL=0
           chk() { # name core(0/1, 2=INFO only) cmd expected-regex
             local out rc ev r
             for _ in 1 2 3; do out=$(R "$3" 2>&1); rc=$?; [ $rc -ne 255 ] && break; sleep 10; done
             echo "$out" | grep -Eq -- "$4" || rc=1
-            ev=$(echo "$out" | head -3 | tr '|mountain-geforcenow'\n|' ' /' | cut -c1-80)
+            ev=$(echo "$out" | head -3 | tr '\n|' ' /' | cut -c1-80)
             if [ "$2" = 2 ]; then r=INFO
             elif [ $rc -eq 0 ]; then r=PASS
             else r=FAIL; [ "$2" = 1 ] && CORE_FAIL=1; fi
@@ -163,29 +163,29 @@ jobs:
           BOOT=$(( $(date +%s) - $(cat boot_start) ))
           sleep 30 # sshd accepts before the system settles; first checks were reset
           echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
-          # bib'|mountain-geforcenow's config.toml user was not created, so make it (gets /etc/skel)
+          # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
 
-          chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" '|mountain-geforcenow'Mountain \(based on Bazzite\)'
-          chk "hostname" 0 "hostname" '|mountain-geforcenow'^mountain$'
-          chk "mountain config" 1 "cat /usr/share/mountain/config" '|mountain-geforcenow'MOUNTAIN_NAME="Mountain"'
-          chk "bootc status" 0 "bootc status 2>&1 | head -8" '|mountain-geforcenow'kind: BootcHost'
-          chk "rpm code python3 git" 1 "rpm -q --qf '|mountain-geforcenow'%{NAME}\n' code python3 git | grep -cE '^(code|python3|git)\$'" '^3$'
-          chk "hello.py (tester)" 1 "$(TU '|mountain-geforcenow'python3 ~/Projects/hello.py')" 'hello'
-          chk "free -m (no desktop)" 0 "free -m" '|mountain-geforcenow'Mem:'
-          chk "failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '|mountain-geforcenow'^none$'
-          chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '|mountain-geforcenow'.'
-          chk "systemd-analyze" 0 "systemd-analyze" '|mountain-geforcenow'Startup finished'
-          chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" '|mountain-geforcenow'tcp_congestion_control = bbr'
-          chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" '|mountain-geforcenow'TimersCalendar=.*OnCalendar='
-          chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" '|mountain-geforcenow'nothing to do|would switch|already switched'
-          chk "skel Desktop (tester)" 0 "$(TU '|mountain-geforcenow'ls ~/Desktop')" 'Browsers'
-          chk "Kvantum GlassDark" 0 "$(TU '|mountain-geforcenow'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
-          chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" '|mountain-geforcenow'widgetStyle=kvantum'
-          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '|mountain-geforcenow'^([3-9]|[1-9][0-9])$'
-          chk "steam" 0 "command -v steam" '|mountain-geforcenow'steam'  # gamemode is removed upstream on purpose
-          chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '|mountain-geforcenow'.'
-          chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" '|mountain-geforcenow'HTTP/[0-9.]+ (200|30[0-9])'
+          chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
+          chk "hostname" 0 "hostname" '^mountain$'
+          chk "mountain config" 1 "cat /usr/share/mountain/config" 'MOUNTAIN_NAME="Mountain"'
+          chk "bootc status" 0 "bootc status 2>&1 | head -8" 'kind: BootcHost'
+          chk "rpm code python3 git" 1 "rpm -q --qf '%{NAME}\n' code python3 git | grep -cE '^(code|python3|git)\$'" '^3$'
+          chk "hello.py (tester)" 1 "$(TU 'python3 ~/Projects/hello.py')" 'hello'
+          chk "free -m (no desktop)" 0 "free -m" 'Mem:'
+          chk "failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+          chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
+          chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
+          chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
+          chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
+          chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
+          chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
+          chk "Kvantum GlassDark" 0 "$(TU 'grep -rh GlassDark /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=GlassDark'
+          chk "kdeglobals style" 0 "grep -h widgetStyle /etc/xdg/kdeglobals" 'widgetStyle=kvantum'
+          chk "mountain launchers" 0 "ls /usr/share/applications/mountain-*.desktop | wc -l" '^([3-9]|[1-9][0-9])$'
+          chk "steam" 0 "command -v steam" 'steam'  # gamemode is removed upstream on purpose
+          chk "ping 1.1.1.1 (QEMU user net: no ICMP)" 2 "ping -c3 1.1.1.1 | tail -2" '.'
+          chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
 
           # first-boot flatpaks, up to 25 min
           FP="dev.vencord.Vesktop com.discordapp.Discord com.microsoft.Edge org.onlyoffice.desktopeditors com.heroicgameslauncher.hgl org.mozilla.firefox"
@@ -202,57 +202,57 @@ jobs:
           # desktop: autologin a fresh user, then exercise real use
           SESS=$(R "ls /usr/share/wayland-sessions | grep -i plasma | head -1")
           echo "session file: $SESS"
-          LT='|mountain-geforcenow'sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest) DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u looktest)/bus'
-          TL() { printf '|mountain-geforcenow'sudo -u looktest -i bash -c %q' "$1"; } # wrap a command to run as looktest
+          LT='sudo -u looktest env XDG_RUNTIME_DIR=/run/user/$(id -u looktest) DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u looktest)/bus'
+          TL() { printf 'sudo -u looktest -i bash -c %q' "$1"; } # wrap a command to run as looktest
           Q() { sudo socat - UNIX-CONNECT:/tmp/qmon; }
           mkdir -p shots; SN=0
-          trap '|mountain-geforcenow'echo "::warning::got SIGTERM during: $STEP"' TERM
+          trap 'echo "::warning::got SIGTERM during: $STEP"' TERM
           shot() { # NAME: screendump -> shots/NN-NAME.png
             STEP=$1; echo "step: $1"
             SN=$((SN+1)); echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
-            sudo cat /tmp/$1.ppm | convert - "$(printf '|mountain-geforcenow'shots/%02d-%s.png' $SN "$1")" || true
+            sudo cat /tmp/$1.ppm | convert - "$(printf 'shots/%02d-%s.png' $SN "$1")" || true
           }
-          cat > qmp.py <<'|mountain-geforcenow'PY'
+          cat > qmp.py <<'PY'
           import json, os, socket, sys, time
-          s = socket.socket(socket.AF_UNIX); s.connect('|mountain-geforcenow'/tmp/qmp'); f = s.makefile('rw')
+          s = socket.socket(socket.AF_UNIX); s.connect('/tmp/qmp'); f = s.makefile('rw')
           f.readline()
           def cmd(c, a=None):
-              f.write(json.dumps({'|mountain-geforcenow'execute': c, 'arguments': a} if a else {'execute': c}) + '\n'); f.flush()
+              f.write(json.dumps({'execute': c, 'arguments': a} if a else {'execute': c}) + '\n'); f.flush()
               while True:
                   r = json.loads(f.readline())
-                  if '|mountain-geforcenow'return' in r or 'error' in r: return r
-          def ev(*e): cmd('|mountain-geforcenow'input-send-event', {'events': list(e)})
-          def key(k, d): return {'|mountain-geforcenow'type': 'key', 'data': {'down': d, 'key': {'type': 'qcode', 'data': k}}}
+                  if 'return' in r or 'error' in r: return r
+          def ev(*e): cmd('input-send-event', {'events': list(e)})
+          def key(k, d): return {'type': 'key', 'data': {'down': d, 'key': {'type': 'qcode', 'data': k}}}
           def press(ks):
               ev(*[key(k, True) for k in ks]); ev(*[key(k, False) for k in reversed(ks)])
-          W, H = int(os.environ.get('|mountain-geforcenow'W', 1280)), int(os.environ.get('H', 800))
+          W, H = int(os.environ.get('W', 1280)), int(os.environ.get('H', 800))
           def move(x, y):
-              ev({'|mountain-geforcenow'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / W)}}, {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / H)}})
-          def btn(d): ev({'|mountain-geforcenow'type': 'btn', 'data': {'down': d, 'button': 'left'}})
+              ev({'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / W)}}, {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / H)}})
+          def btn(d): ev({'type': 'btn', 'data': {'down': d, 'button': 'left'}})
           def click(x, y): move(x, y); time.sleep(0.1); btn(True); time.sleep(0.05); btn(False)
-          cmd('|mountain-geforcenow'qmp_capabilities')
+          cmd('qmp_capabilities')
           a = sys.argv[1:]
-          if a[0] == '|mountain-geforcenow'key': press(a[1:])
-          elif a[0] == '|mountain-geforcenow'type':
-              names = {'|mountain-geforcenow' ': 'spc', '.': 'dot', '-': 'minus'}
-              for c in '|mountain-geforcenow' '.join(a[1:]):
+          if a[0] == 'key': press(a[1:])
+          elif a[0] == 'type':
+              names = {' ': 'spc', '.': 'dot', '-': 'minus'}
+              for c in ' '.join(a[1:]):
                   press([names.get(c, c.lower())]); time.sleep(0.05)
-          elif a[0] == '|mountain-geforcenow'click': click(int(a[1]), int(a[2]))
-          elif a[0] == '|mountain-geforcenow'dclick': click(int(a[1]), int(a[2])); time.sleep(0.12); click(int(a[1]), int(a[2]))
-          elif a[0] == '|mountain-geforcenow'drag':
+          elif a[0] == 'click': click(int(a[1]), int(a[2]))
+          elif a[0] == 'dclick': click(int(a[1]), int(a[2])); time.sleep(0.12); click(int(a[1]), int(a[2]))
+          elif a[0] == 'drag':
               x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
               for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
               time.sleep(0.2); btn(False)
-          elif a[0] == '|mountain-geforcenow'hold':  # press at x1 y1, move to x2 y2 and keep the button down (release with 'up')
+          elif a[0] == 'hold':  # press at x1 y1, move to x2 y2 and keep the button down (release with 'up')
               x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
               for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
-          elif a[0] == '|mountain-geforcenow'up': btn(False)
+          elif a[0] == 'up': btn(False)
           PY
           QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
           waitproc() { # NAME SECS (PGF=-f for a pattern): seconds taken or fail
             local t0=$(date +%s) end=$(( $(date +%s) + $2 ))
             while [ "$(date +%s)" -lt "$end" ]; do
-              R "pgrep -u looktest ${PGF:--x} '|mountain-geforcenow'$1'" >/dev/null 2>&1 && { echo "$(( $(date +%s) - t0 ))s"; return 0; }
+              R "pgrep -u looktest ${PGF:--x} '$1'" >/dev/null 2>&1 && { echo "$(( $(date +%s) - t0 ))s"; return 0; }
               sleep 1
             done
             return 1
@@ -278,7 +278,7 @@ jobs:
           }
 
           # 1. login-to-desktop
-          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '|mountain-geforcenow'[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
+          R "useradd -m looktest; mkdir -p /etc/sddm.conf.d; printf '[Autologin]\nUser=looktest\nSession=$SESS\nRelogin=false\n' | tee /etc/sddm.conf.d/zz-autologin.conf > /etc/plasmalogin.conf; systemctl restart display-manager"
           LT0=$(date +%s); LTD="never"
           while [ $(( $(date +%s) - LT0 )) -lt 240 ]; do
             R "$LT dbus-send --session --print-reply --dest=org.freedesktop.DBus / org.freedesktop.DBus.NameHasOwner string:org.kde.plasmashell" 2>/dev/null | grep -q "boolean true" && { LTD=$(( $(date +%s) - LT0 )); break; }
@@ -287,15 +287,15 @@ jobs:
           echo "| login-to-desktop | INFO | ${LTD}s |" >> report.md
           sleep 20
           shot desktop
-          read W H < <(identify -format '|mountain-geforcenow'%w %h' "$(ls shots/*-desktop.png)"); export W H
-          chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" '|mountain-geforcenow'looktest'
-          RAM=$(R "free -m | awk '|mountain-geforcenow'/Mem:/{print \$3}'")
-          chk "RAM used (desktop)" 0 "free -m | awk '|mountain-geforcenow'/Mem:/{print \$3\" MB used\"}'" 'MB used'
-          chk "autostart entries" 2 "ls /etc/xdg/autostart ~looktest/.config/autostart 2>&1" '|mountain-geforcenow'.'
-          chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" "^PipeWire '|mountain-geforcenow'"
-          chk "dolphin installed" 0 "command -v dolphin" '|mountain-geforcenow'dolphin'
-          chk "wallet off for autologin user" 0 "cat ~looktest/.config/kwalletrc" '|mountain-geforcenow'Enabled=false'
-          chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '|mountain-geforcenow'^none$'
+          read W H < <(identify -format '%w %h' "$(ls shots/*-desktop.png)"); export W H
+          chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" 'looktest'
+          RAM=$(R "free -m | awk '/Mem:/{print \$3}'")
+          chk "RAM used (desktop)" 0 "free -m | awk '/Mem:/{print \$3\" MB used\"}'" 'MB used'
+          chk "autostart entries" 2 "ls /etc/xdg/autostart ~looktest/.config/autostart 2>&1" '.'
+          chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" "^PipeWire '"
+          chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
+          chk "wallet off for autologin user" 0 "cat ~looktest/.config/kwalletrc" 'Enabled=false'
+          chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           # 2. start menu -> settings
           QM key meta_l; sleep 3; shot start-menu
@@ -311,34 +311,34 @@ jobs:
 
           # 4. file explorer
           L dolphin; sleep 8; shot file-explorer; K -x dolphin
-          L '|mountain-geforcenow'dolphin "desktop:/Cloud Gaming"'; sleep 8; shot desktop-folder-names; K -x dolphin
+          L 'dolphin "desktop:/Cloud Gaming"'; sleep 8; shot desktop-folder-names; K -x dolphin
 
           # 5. open files with the default apps
-          R "$(TL '|mountain-geforcenow'mkdir -p ~/Pictures ~/Documents ~/Desktop; cp /usr/share/mountain/wallpaper.png ~/Pictures/photo.png; rsvg-convert -f pdf -o ~/Documents/letter.pdf /usr/share/mountain/wallpaper.svg; echo hello mountain > ~/Documents/notes.txt')"
+          R "$(TL 'mkdir -p ~/Pictures ~/Documents ~/Desktop; cp /usr/share/mountain/wallpaper.png ~/Pictures/photo.png; rsvg-convert -f pdf -o ~/Documents/letter.pdf /usr/share/mountain/wallpaper.svg; echo hello mountain > ~/Documents/notes.txt')"
           for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:code"; do
             IFS=: read n f app <<<"$t"
             L xdg-open "$f"; wchk "open $n ($app)" 1 "$app" 20; sleep 5; shot "open-$n"; K -x "$app"
           done
-          chk "mime video/mp4" 0 "$(TL '|mountain-geforcenow'xdg-mime query default video/mp4')" 'org.kde.haruna.desktop'
-          chk "mime audio/mpeg" 0 "$(TL '|mountain-geforcenow'xdg-mime query default audio/mpeg')" 'org.kde.haruna.desktop'
-          chk "mime docx" 0 "$(TL '|mountain-geforcenow'xdg-mime query default application/vnd.openxmlformats-officedocument.wordprocessingml.document')" 'org.onlyoffice.desktopeditors.desktop'
-          chk "mime zip" 0 "$(TL '|mountain-geforcenow'xdg-mime query default application/zip')" 'org.kde.ark.desktop'
-          chk "mime python -> VS Code" 0 "$(TL '|mountain-geforcenow'xdg-mime query default text/x-python')" 'com.microsoft.VSCode.desktop'
+          chk "mime video/mp4" 0 "$(TL 'xdg-mime query default video/mp4')" 'org.kde.haruna.desktop'
+          chk "mime audio/mpeg" 0 "$(TL 'xdg-mime query default audio/mpeg')" 'org.kde.haruna.desktop'
+          chk "mime docx" 0 "$(TL 'xdg-mime query default application/vnd.openxmlformats-officedocument.wordprocessingml.document')" 'org.onlyoffice.desktopeditors.desktop'
+          chk "mime zip" 0 "$(TL 'xdg-mime query default application/zip')" 'org.kde.ark.desktop'
+          chk "mime python -> VS Code" 0 "$(TL 'xdg-mime query default text/x-python')" 'com.microsoft.VSCode.desktop'
           # v4 backend + hardening, as running
-          chk "kernel args (hardening)" 0 "cat /proc/cmdline" '|mountain-geforcenow'slab_nomerge.*randomize_kstack_offset=on|randomize_kstack_offset=on.*slab_nomerge'
-          chk "sysctl ptrace/kptr" 0 "sysctl -n kernel.yama.ptrace_scope kernel.kptr_restrict | paste -sd'|mountain-geforcenow' '" '^1 2$'
-          chk "firewall default zone" 0 "firewall-cmd --get-default-zone" '|mountain-geforcenow'^mountain$'
-          chk "SELinux" 0 "getenforce" '|mountain-geforcenow'^Enforcing$'
-          chk "LAVD scheduler" 0 "cat /sys/kernel/sched_ext/root/ops 2>/dev/null || systemctl is-active scx_loader" '|mountain-geforcenow'lavd|active'
-          chk "account picture" 0 "file ~looktest/.face.icon" '|mountain-geforcenow'PNG image data, 256 x 256'
-          chk "login-screen picture" 0 "cat /var/lib/AccountsService/users/looktest; cmp /var/lib/AccountsService/icons/looktest /usr/share/plasma/avatars/Mountain.png && echo same" '|mountain-geforcenow'^same$'
+          chk "kernel args (hardening)" 0 "cat /proc/cmdline" 'slab_nomerge.*randomize_kstack_offset=on|randomize_kstack_offset=on.*slab_nomerge'
+          chk "sysctl ptrace/kptr" 0 "sysctl -n kernel.yama.ptrace_scope kernel.kptr_restrict | paste -sd' '" '^1 2$'
+          chk "firewall default zone" 0 "firewall-cmd --get-default-zone" '^mountain$'
+          chk "SELinux" 0 "getenforce" '^Enforcing$'
+          chk "LAVD scheduler" 0 "cat /sys/kernel/sched_ext/root/ops 2>/dev/null || systemctl is-active scx_loader" 'lavd|active'
+          chk "account picture" 0 "file ~looktest/.face.icon" 'PNG image data, 256 x 256'
+          chk "login-screen picture" 0 "cat /var/lib/AccountsService/users/looktest; cmp /var/lib/AccountsService/icons/looktest /usr/share/plasma/avatars/Mountain.png && echo same" '^same$'
 
           # 6. drag a file between two Dolphin panes (best effort)
-          R "$(TL '|mountain-geforcenow'echo drag > ~/Desktop/drag-me.txt')"
-          L '|mountain-geforcenow'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
+          R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"
+          L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
           # drag notes.txt (right pane) onto the Office folder (left pane); Enter picks "Move Here"
           QM drag $((916*W/1280)) $((275*H/800)) $((603*W/1280)) $((580*H/800)); sleep 2; shot drag-menu; QM click $(((603+57)*W/1280)) $(((580+16)*H/800)); sleep 2; shot drag-after
-          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '|mountain-geforcenow'^moved$'
+          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Office/notes.txt && echo moved" '^moved$'
           K -x dolphin
 
           # 6b. drag an icon on the desktop: the shot is taken while the mouse button is still down
@@ -353,21 +353,21 @@ jobs:
           L dolphin /home/looktest; sleep 5
           PGF=-f wchk "geforcenow opens Edge" 0 msedge 60; sleep 20; shot geforce-now
           # window classes as KWin sees them (to match launchers to windows)
-          R "printf '|mountain-geforcenow'%s' 'for (const w of workspace.windowList()) console.warn(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
-          SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wins.js string:wins" | awk '|mountain-geforcenow'/int32/{print $2}')
+          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
+          SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wins.js string:wins" | awk '/int32/{print $2}')
           R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 2
           chk "window classes" 2 "journalctl -b --no-pager | grep -o 'WIN|.*' | tail -8 | paste -sd';'" '.'
           chk "GeForce NOW has its own taskbar entry" 0 "journalctl -b --no-pager | grep -o 'WIN|GeForce NOW[^|]*|[^|]*' | tail -1" '[|]mountain-geforcenow'
           chk "title bar says File Explorer" 0 "journalctl -b --no-pager | grep -o 'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin' | tail -1" 'File Explorer'
           R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge; K -x dolphin
-          chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '|mountain-geforcenow'.'
+          chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '.'
 
           # 9. AI launchers
           for n in claude codex gemini copilot; do
-            chk "ai $n dry-run" 1 "$(TL "MOUNTAIN_AI_DRYRUN=1 /usr/libexec/mountain-ai $n")" '|mountain-geforcenow'Installing'
+            chk "ai $n dry-run" 1 "$(TL "MOUNTAIN_AI_DRYRUN=1 /usr/libexec/mountain-ai $n")" 'Installing'
           done
-          L '|mountain-geforcenow'konsole --hold -e /usr/libexec/mountain-ai codex'; sleep 90; shot ai-codex-install
-          chk "codex installed" 2 "test -e ~looktest/.local/bin/codex && echo yes || echo no" '|mountain-geforcenow'.'
+          L 'konsole --hold -e /usr/libexec/mountain-ai codex'; sleep 90; shot ai-codex-install
+          chk "codex installed" 2 "test -e ~looktest/.local/bin/codex && echo yes || echo no" '.'
           K -x konsole
 
           # top bar switch
@@ -376,7 +376,7 @@ jobs:
 
           # 10. latency
           LATS=""; for _ in 1 2 3; do LATS="$LATS $(latency)"; sleep 2; done
-          LAT=$(printf '|mountain-geforcenow'%s\n' $LATS | sort -n | sed -n 2p)
+          LAT=$(printf '%s\n' $LATS | sort -n | sed -n 2p)
           echo "| start-menu latency (median of 3) | INFO | ${LAT} ms |" >> report.md
 
           # perf data (non-fatal) while the session is still up
@@ -386,14 +386,14 @@ jobs:
           P "top -b -n 2 -d 5 | head -40" top
           sleep 60
           P "free -m; ps -eo rss,pcpu,user,comm --sort=-rss | head -40" ps2
-          P "ps -eo rss,comm --no-headers | awk '|mountain-geforcenow'{a[\$2]+=\$1; n[\$2]++} END{for(k in a) printf \"%d MB %d procs %s\n\", a[k]/1024, n[k], k}' | sort -rn | head -40" ps-grouped
+          P "ps -eo rss,comm --no-headers | awk '{a[\$2]+=\$1; n[\$2]++} END{for(k in a) printf \"%d MB %d procs %s\n\", a[k]/1024, n[k], k}' | sort -rn | head -40" ps-grouped
           P "free -m; cat /proc/pressure/memory /proc/pressure/cpu; zramctl; cat /sys/kernel/mm/transparent_hugepage/enabled; sysctl vm.swappiness; swapon --show" mem
           P "systemctl list-unit-files --state=enabled --no-pager" unit-files-enabled
           P "systemctl list-units --type=service --state=running --no-pager" system-running
           P "$LT systemctl --user list-units --type=service --state=running --no-pager" user-running
           P "systemd-analyze; systemd-analyze blame | head -30; systemd-analyze critical-chain" boot
           P "ls -la /etc/xdg/autostart ~looktest/.config/autostart" autostart
-          P "journalctl -b --no-pager | grep -i -E '|mountain-geforcenow'llvmpipe|renderer|kwin|softpipe|swrast|virtio_gpu|virgl' | head -60; ls /dev/dri; (glxinfo -B || eglinfo | head -40) 2>&1" gpu
+          P "journalctl -b --no-pager | grep -i -E 'llvmpipe|renderer|kwin|softpipe|swrast|virtio_gpu|virgl' | head -60; ls /dev/dri; (glxinfo -B || eglinfo | head -40) 2>&1" gpu
           P "kreadconfig6 --file kwinrc --group Plugins --key x 2>&1; cat ~looktest/.config/kwinrc /etc/xdg/kwinrc 2>&1; $LT qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadedEffects 2>&1; $LT qdbus6 org.kde.KWin /KWin org.kde.KWin.supportInformation 2>&1 | head -120" kwin
           P "flatpak list --app; flatpak ps; rpm -q kdeconnect plasma-discover baloo input-remapper geoclue2 2>&1; balooctl6 status 2>&1" misc
           P "ps -eo pid,rss,pcpu,user,args --sort=-rss | head -25 | cut -c1-200" ps-args
@@ -402,7 +402,7 @@ jobs:
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
           R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
-          chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '|mountain-geforcenow'.'
+          chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
           LO=fail
           for _ in $(seq 30); do
@@ -411,14 +411,14 @@ jobs:
           done
           if [ $LO = ok ]; then echo "| logout | PASS | session ended |" >> report.md; else echo "| logout | FAIL | looktest session still there |" >> report.md; fi
           shot after-logout
-          BT=$(R "systemd-analyze | head -1 | sed '|mountain-geforcenow's/.*= //'")
-          printf '|mountain-geforcenow'\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
+          BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
+          printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
           for n in 1 2; do
             R "systemctl reboot" || true
             sleep 30
-            if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '|mountain-geforcenow'^none$'
+            if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
           # clean shutdown: the VM must power itself off
