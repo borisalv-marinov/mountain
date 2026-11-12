@@ -1,4 +1,5 @@
-# Windows 11 keyboard shortcuts (defaults for every account; Settings > Keyboard can change them).
+# Windows 11 keyboard shortcuts for every new account (Settings > Keyboard can change them).
+# In the account, not /etc/xdg: the shortcut service reads only its own file.
 # Format: action=active shortcuts (tab-separated),default,friendly name
 [KDE Keyboard Layout Switcher]
 Switch to Next Keyboard Layout=Meta+Space,Meta+Alt+K,Switch to Next Keyboard Layout

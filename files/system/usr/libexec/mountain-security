@@ -29,14 +29,16 @@ status() {
   # read without admin rights (firewall-cmd queries need polkit): the unit, the default zone and the zone files
   if [[ $(systemctl is-active firewalld 2>/dev/null) == active ]]; then
     v=$(sed -n 's/^DefaultZone=//p' /etc/firewalld/firewalld.conf 2>/dev/null); echo "fw=on"; echo "fw_zone=${v:-mountain}"
-    local c z zf s on; c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
+    local c z zf s on open; c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
     z=$(nmcli -g connection.zone connection show "$c" 2>/dev/null); z=${z:-${v:-mountain}}
     [[ $z == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$z"
-    zf=/etc/firewalld/zones/$z.xml; [[ -r $zf ]] || zf=/usr/lib/firewalld/zones/$z.xml
-    echo "fw_open=$(grep -oE '<(service name|port port)="[^"]*"' "$zf" 2>/dev/null | sed -E 's/.*="//; s/"$//' | paste -sd' ')"
+    zf=/etc/firewalld/zones/$z.xml; [[ -e $zf ]] || zf=/usr/lib/firewalld/zones/$z.xml
+    if [[ -r $zf ]]; then open=$(grep -oE '<(service name|port port)="[^"]*"' "$zf" | sed -E 's/.*="//; s/"$//' | paste -sd' ')
+    else open=$(timeout 10 firewall-cmd --zone="$z" --list-services --list-ports 2>/dev/null | paste -sd' '); fi # zones dir is root-only
+    echo "fw_open=$open"
     IFS='|' read -ra list <<<"$apps"
     for s in "${list[@]}"; do
-      on=no; grep -q "<service name=\"${s%%:*}\"/>" "$zf" 2>/dev/null && on=yes
+      on=no; [[ " $open " == *" ${s%%:*} "* ]] && on=yes
       echo "fw_app=${s%%:*}:$on:${s#*:}"
     done
   else echo "fw=off"; fi

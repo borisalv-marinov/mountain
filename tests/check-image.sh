@@ -552,10 +552,10 @@ PY
   assert_grep '^X-KDE-Shortcuts=Meta+I$' $a/org.mountain.settings.desktop
   grep -qs '^X-KDE-Shortcuts=Meta+R,' $a/org.kde.krunner.desktop /usr/share/kglobalaccel/org.kde.krunner.desktop || fail "Win+R not bound"
   assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
-  assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/xdg/kglobalshortcutsrc
-  assert_grep '^next activity=none,' /etc/xdg/kglobalshortcutsrc
-  assert_grep $'^_launch=Ctrl+Shift+Esc\tCtrl+Esc$' /etc/xdg/kglobalshortcutsrc
-  assert_grep '^\[services\]\[mountain-winx.desktop\]$' /etc/xdg/kglobalshortcutsrc
+  assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^next activity=none,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep $'^_launch=Ctrl+Shift+Esc\tCtrl+Esc$' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^\[services\]\[mountain-winx.desktop\]$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^toggle_hud=Super_L+g$' /etc/xdg/MangoHud/MangoHud.conf
   assert_grep '^MANGOHUD=1$' /usr/lib/environment.d/60-mountain-mangohud.conf
   assert_grep '^MANGOHUD_CONFIGFILE=/etc/xdg/MangoHud/MangoHud.conf$' /usr/lib/environment.d/60-mountain-mangohud.conf
@@ -611,7 +611,12 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   assert_grep '^Storage=none$' /usr/lib/systemd/coredump.conf.d/60-mountain.conf
   assert_grep 'registerShortcut("WindowsAltF4"' /usr/share/kwin/scripts/mountain-altf4/contents/code/main.js
   assert_grep '^mountain-altf4Enabled=true$' /etc/xdg/kwinrc
-  assert_grep '^Window Close=none,' /etc/xdg/kglobalshortcutsrc
+  assert_grep '^Window Close=none,' /etc/skel/.config/kglobalshortcutsrc
+  [[ ! -e /etc/xdg/kglobalshortcutsrc ]] || fail "shortcuts in /etc/xdg are ignored by kglobalaccel"
+  assert_file /usr/libexec/mountain-shortcuts; [[ -x /usr/libexec/mountain-shortcuts ]] || fail "mountain-shortcuts not executable"
+  assert_grep 'Meta+N' /usr/libexec/mountain-shortcuts
+  assert_grep '^Exec=/usr/libexec/mountain-shortcuts$' /etc/xdg/autostart/mountain-shortcuts.desktop
+  assert_grep 'FirewallD1.info' /usr/share/polkit-1/rules.d/60-mountain.rules
   assert_grep '^X-KDE-Shortcuts=Meta+X$' /usr/share/applications/mountain-winx.desktop
   assert_grep 'GTA Online and FiveM' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml
   assert_grep 'mountain-personalize glass toggle' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml

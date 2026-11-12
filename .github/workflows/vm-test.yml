@@ -357,7 +357,7 @@ jobs:
           PGF=-f wchk "search result opens a KDE page" 0 systemsettings 15
           K -f org.mountain.settings; K -x systemsettings; K -x kdebugsettings
           # quick settings flyout (Win+A), and the tiles this VM can toggle
-          QM click $((1133*W/1280)) $((768*H/800)); sleep 2; shot quick-settings # the network/volume icons next to the clock
+          QM click $((1092*W/1280)) $((776*H/800)); sleep 2; shot quick-settings # the network/volume icons left of the clock
           R "$LT dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile" > qs-profile-before.txt 2>&1
           chk "airplane mode before" 2 "nmcli radio all" '.'
           PP="dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile | grep -o '\"[a-z-]*\"'"
@@ -382,7 +382,8 @@ jobs:
             local n=$1 r rr; shift; r=$(MS 3000 key "$@"); sleep 1; shot "shortcut-$(tr ' +.A-Z' '---a-z' <<<"$n")"
             [ "$(num "$r")" -ge 0 ] 2>/dev/null && rr=PASS || rr=FAIL; echo "| shortcut $n | $rr | $r |" >> report.md; echo "$rr $n"; QM key esc; sleep 1
           }
-          chk "Win+A is registered" 2 "grep -h -i 'meta+a' ~looktest/.config/kglobalshortcutsrc ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc 2>/dev/null | head -3" '.'
+          chk "Win+A and Win+N set on the applets" 0 "grep -h '^global=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort | paste -sd' '" 'Meta\+A.*Meta\+N'
+          chk "app shortcuts in the account" 2 "grep -A1 -h '^\[services\]' ~looktest/.config/kglobalshortcutsrc | grep _launch | paste -sd' '" '.'
           scut "Win+A (quick settings)" meta_l a
           scut "Win+N (notifications)" meta_l n
           scut "Win+V (clipboard history)" meta_l v
@@ -417,7 +418,7 @@ jobs:
           L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
           chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
           QM key meta_l d; sleep 2; QM key alt f4; sleep 3; shot shortcut-altf4-desktop; QM key esc; sleep 2
-          chk "shortcut Alt+F4 on the desktop asks to shut down" 2 "pgrep -u looktest -f ksmserver-logout-greeter >/dev/null && echo dialog || echo none" '.'
+          chk "shortcut Alt+F4 on the desktop asks to shut down" 0 "pgrep -u looktest -f ksmserver-logout-greeter >/dev/null && echo dialog || echo none" '^dialog$'
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align left"; sleep 3; shot taskbar-left
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align center"; sleep 3
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass off"; sleep 3; QM key meta_l; sleep 3; shot start-menu-glass-off; QM key esc
@@ -464,9 +465,9 @@ jobs:
 
           # 6. drag a file between two Dolphin panes (best effort)
           R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"
-          L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
+          K -x systemsettings; L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
           # drag notes.txt (right pane) onto the Browsers folder (left pane), then click "Move Here"
-          QM drag $((730*W/1280)) $((380*H/800)) $((474*W/1280)) $((385*H/800)); sleep 2; shot drag-menu; QM click $(((474+57)*W/1280)) $(((385+16)*H/800)); sleep 2; shot drag-after
+          QM drag $((715*W/1280)) $((262*H/800)) $((575*W/1280)) $((268*H/800)); sleep 2; shot drag-menu; QM click $(((575+57)*W/1280)) $(((268+16)*H/800)); sleep 2; shot drag-after
           chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Browsers/notes.txt && echo moved" '^moved$'
           K -x dolphin
 
@@ -506,6 +507,7 @@ jobs:
           # top bar switch
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 3; shot topbar-off
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar on"; sleep 3; shot topbar-on
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 2
 
           # 10. latency
           LATS=""; for _ in 1 2 3; do LATS="$LATS $(latency)"; sleep 2; done
@@ -594,18 +596,20 @@ jobs:
           R "$(TL 'cp /usr/bin/sleep ~/.local/bin/endtasktest')"; L /home/looktest/.local/bin/endtasktest 99999
           QM key ctrl shift esc; wchk "Ctrl+Shift+Esc opens Task Manager" 0 plasma-systemmonitor 15; sleep 6; shot taskmanager
           chk "Task Manager RAM" 2 "ps -o rss=,comm= -C plasma-systemmonitor | awk '{print int(\$1/1024)\" MB\"}'" '.'
-          for pg in Processes Performance "App history" "Startup apps" Users Details Services; do
-            K -x plasma-systemmonitor; L "plasma-systemmonitor --page-name '$pg'"; sleep 8; shot "taskmanager-$(tr ' A-Z' '-a-z' <<<"$pg")"
+          for pg in 1-processes 2-performance 3-apphistory 4-startup 5-users 6-details 7-services; do
+            K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-$pg.page"; sleep 8; shot "taskmanager-${pg#*-}"
           done
-          # End task: Details is open; search the test process, click its row, Delete, confirm
-          QM key meta_l pgup; sleep 2; QM type endtasktest; sleep 3; QM click $((500*W/1280)) $((125*H/800)); sleep 1; shot taskmanager-endtask-select
+          # End task on Processes (maximized): search the test process, click its row, Delete, confirm
+          K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8
+          QM key meta_l pgup; sleep 2; QM click $((565*W/1280)) $((431*H/800)); sleep 1; QM type endtasktest; sleep 3
+          QM click $((300*W/1280)) $((493*H/800)); sleep 1; shot taskmanager-endtask-select
           QM key delete; sleep 2; shot taskmanager-endtask-confirm; QM key ret; sleep 3
           chk "Task Manager: End task ends the process" 0 "pgrep -u looktest -x endtasktest || echo ended" '^ended$'
           K -x endtasktest
           chk "startup test app ran at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' >/dev/null && echo running" '^running$'
           chk "Startup apps tab lists it" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'mtm-autostart-test.desktop'
           R "$(TL '/usr/libexec/mountain-taskmanager startup-set mtm-autostart-test.desktop off')"
-          K -x plasma-systemmonitor; L "plasma-systemmonitor --page-name 'Startup apps'"; sleep 8; shot taskmanager-startup-disabled
+          K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-4-startup.page"; sleep 8; shot taskmanager-startup-disabled
           chk "Task Manager services list" 2 "$(TL '/usr/libexec/mountain-taskmanager services | head -4 | tr "\t" " "')" 'Running'
           chk "Task Manager device names" 2 "$(TL '/usr/libexec/mountain-taskmanager device | tr "\t" " " | paste -sd";"')" 'Processor'
           K -x plasma-systemmonitor
@@ -676,7 +680,7 @@ jobs:
           chk "Active Protection: an email-attachment-like threat is caught" 0 "test ! -e ~looktest/Downloads/attachments/invoice.pdf.com && ls ~looktest/.local/share/mountain/quarantine | grep -q invoice && echo caught" '^caught$'
           R "$(TL 'printf "#!/bin/sh\necho installing\n" > ~/Downloads/install.sh; printf "[Desktop Entry]\nType=Application\nName=Updater\nExec=sh -c true\n" > ~/.config/autostart/updater.desktop')"; sleep 15
           AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
-          chk "Active Protection: an unsigned script is flagged unverified" 0 "echo '$(grep -c 'ap_unverified=.*install.sh|script' <<<"$AP")'" '^1$'
+          chk "Active Protection: an unsigned script is flagged unverified" 0 "echo '$(grep -c 'ap_unverified=.*install.sh|program or script' <<<"$AP")'" '^1$'
           chk "Active Protection: a new autostart entry is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*updater.desktop|starts at sign-in' <<<"$AP")'" '^1$'
           chk "Active Protection status" 2 "echo '$(grep -E '^ap_(checked|threats)' <<<"$AP" | paste -sd' ')'" '.'
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
@@ -755,9 +759,9 @@ jobs:
           R "$(TL 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo fake-key > ~/.ssh/id_test')"
           chk "attack: a Flatpak can't read ~/.ssh" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/.ssh/id_test 2>&1 | tail -1" 'No such file'
           # fake ransomware: encrypt a folder, then restore it from Previous versions
-          R "$(TL 'mkdir -p ~/Documents/rt && for i in 1 2 3; do echo precious-$i > ~/Documents/rt/f$i.txt; done')"; sleep 61
+          R "$(TL 'mkdir -p ~/Documents/rt && echo precious-1 > ~/Documents/rt/f1.txt && echo precious-2 > ~/Documents/rt/f2.txt && echo precious-3 > ~/Documents/rt/f3.txt')"; sleep 61
           R "systemctl start mountain-snapshot.service"; SNAP2=$(R "ls /var/home/.snapshots | tail -1")
-          R "$(TL 'for f in ~/Documents/rt/*.txt; do openssl enc -aes-256-cbc -pbkdf2 -k ransom -in "$f" -out "$f.locked" && rm "$f"; done')"
+          R "$(TL 'cd ~/Documents/rt && openssl enc -aes-256-cbc -pbkdf2 -k ransom -in f1.txt -out f1.txt.locked && openssl enc -aes-256-cbc -pbkdf2 -k ransom -in f2.txt -out f2.txt.locked && openssl enc -aes-256-cbc -pbkdf2 -k ransom -in f3.txt -out f3.txt.locked && rm f1.txt f2.txt f3.txt')"
           chk "attack: ransomware encrypted the test folder" 2 "ls ~looktest/Documents/rt | paste -sd' '" 'locked'
           chk "attack: ransomware recovery from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP2/looktest/Documents/rt/*.txt ~/Documents/rt/ && rm ~/Documents/rt/*.locked && cat ~/Documents/rt/f2.txt")" '^precious-2$'
           # broken system file (/etc) and deleted user settings, then recover

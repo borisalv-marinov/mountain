@@ -52,7 +52,7 @@ check() { # FILE...: count, flag unverified, scan in a separate low-priority uni
 
 daemon() {
   # every watcher writes paths into one FIFO; a new USB drive (mount under /run/media) gets its own watcher
-  local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch m
+  local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch ev
   local rec=("$HOME/Downloads" "$HOME/Desktop" "$HOME/Documents" "$HOME/.local/bin" "$HOME/.config/autostart" /tmp /var/tmp)
   mkdir -p "$HOME/Downloads" "$HOME/.local/bin" "$HOME/.config/autostart"
   rm -f "$fifo"; mkfifo -m 600 "$fifo"; exec 3<>"$fifo"
@@ -63,18 +63,27 @@ daemon() {
   inotifywait -mq -e create --format 'APP %f' /var/lib/flatpak/app >&3 2>/dev/null &
   findmnt --poll=mount -n -r -o TARGET 2>/dev/null | sed -u 's/^/MNT /' >&3 &
   while read -r f <&3; do
-    case $f in
-      "APP "*) echo "$(date '+%F %H:%M') New app installed: ${f#APP }" >> "$state/scan-history"; continue ;;
-      "MNT /run/media/"*)
-        m=$(printf '%b' "${f#MNT }") # findmnt -r escapes spaces as \x20
-        inotifywait -mrq -e close_write,moved_to --format '%w%f' "$m" >&3 2>/dev/null &
-        mapfile -t batch < <(find "$m" -maxdepth 2 -type f 2>/dev/null | head -200) # what is already on the drive
-        [[ ${#batch[@]} -gt 0 ]] && check "${batch[@]}"; continue ;;
-      "MNT "*) continue ;;
-    esac
-    batch=("$f"); while read -r -t 2 f <&3; do [[ $f == MNT* || $f == APP* ]] || batch+=("$f"); done # gather a burst
+    event "$f" && continue
+    batch=("$f"); ev=()
+    while read -r -t 2 f <&3; do [[ $f == MNT\ * || $f == APP\ * ]] && ev+=("$f") || batch+=("$f"); done # gather a burst
     check "${batch[@]}"
+    for f in "${ev[@]}"; do event "$f"; done
   done
+}
+
+event() { # a new drive or app (not a file): handle it and succeed
+  local m batch
+  case $1 in
+    "APP "*) echo "$(date '+%F %H:%M') New app installed: ${1#APP }" >> "$state/scan-history" ;;
+    "MNT /run/media/"*)
+      m=$(printf '%b' "${1#MNT }") # findmnt -r escapes spaces as \x20
+      inotifywait -mrq -e close_write,moved_to --format '%w%f' "$m" >&3 2>/dev/null &
+      mapfile -t batch < <(find "$m" -maxdepth 2 -type f 2>/dev/null | head -200) # what is already on the drive
+      [[ ${#batch[@]} -gt 0 ]] && check "${batch[@]}" ;;
+    "MNT "*) ;;
+    *) return 1 ;;
+  esac
+  return 0
 }
 
 status() {

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Windows Shortcuts
+Exec=/usr/libexec/mountain-shortcuts
+X-KDE-autostart-phase=2
+NoDisplay=true
