@@ -10,6 +10,8 @@
    <GroupState-RecentlySaved-IsHidden>true</GroupState-RecentlySaved-IsHidden>
    <GroupState-SearchFor-IsHidden>true</GroupState-SearchFor-IsHidden>
    <GroupState-Tags-IsHidden>true</GroupState-Tags-IsHidden>
+   <!-- internal drives: the read-only system image shows as an unnamed, 100%-full drive; USB drives stay under Removable Devices -->
+   <GroupState-Devices-IsHidden>true</GroupState-Devices-IsHidden>
   </metadata>
  </info>
 @PLACES@</xbel>

@@ -283,6 +283,7 @@ jobs:
           chk "autostart entries" 2 "ls /etc/xdg/autostart ~looktest/.config/autostart 2>&1" '.'
           chk "wpctl status (looktest)" 0 "$LT wpctl status | head -15" "^PipeWire '"
           chk "dolphin installed" 0 "command -v dolphin" 'dolphin'
+          chk "wallet off for autologin user" 0 "cat ~looktest/.config/kwalletrc" 'Enabled=false'
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           # 2. start menu -> settings

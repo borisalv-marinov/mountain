@@ -11,6 +11,10 @@ if [[ ! -e $cfg/kwalletrc ]] && grep -hs '^User=' $autologin_files | grep -qx "U
 Enabled=false
 First Use=false
 ' > "$cfg/kwalletrc"
+  # the wallet service may already be running (started by PAM at login): make it re-read the setting
+  for n in org.kde.kwalletd6:/modules/kwalletd6 org.kde.kwalletd5:/modules/kwalletd5; do
+    dbus-send --session --type=method_call --dest="${n%%:*}" "${n#*:}" org.kde.KWallet.reconfigure 2>/dev/null || true
+  done
 fi
 out=${XDG_DATA_HOME:-$HOME/.local/share}/user-places.xbel
 tpl=${MOUNTAIN_PLACES_TEMPLATE:-/usr/share/mountain/user-places.xbel.in}
