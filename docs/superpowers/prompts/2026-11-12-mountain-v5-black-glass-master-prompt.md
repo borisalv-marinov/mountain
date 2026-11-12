@@ -62,6 +62,22 @@ Keep Mountain's current layout and give it a **glossy black-glass look**: futuri
 
 ## What to build (all of it)
 
+### 0. Leftovers the owner named again: each must be done AND proven with a vm-test screenshot
+
+1. **Drag-icon bug** (icons vanish or blink while dragged on the desktop):
+   - v5 backports KDE's fix (plasma-desktop MR 4141/4159) in `files/scripts/desktop-drag-fix.sh`. Confirm it applied in the build log and in phase 27.
+   - Add a vm-test that does a fast drag right after selecting, and screenshots mid-drag and on drop.
+   - If icons still blink on drop (KDE bug 514333, 3 invisible frames), find and backport the upstream fix, or fix it in the shipped QML.
+2. **"Dolphin" in title bars:** v5 ships an `en@mountain` catalog plus `/etc/xdg/plasma-workspace/env/mountain-names.sh`.
+   - Check the vm-test check "title bar says File Explorer" and look at a screenshot of the title bar.
+   - If it fails, find another way that changes the title.
+3. **Details pane:** the owner wants it. Overrule the old "Windows has it off" ruling.
+   - Open File Explorer with the Information/Details panel visible on the right by default for new users, in black glass, like the Windows 11 Details pane.
+   - Research how Dolphin stores panel state (`dolphinrc` / the `State=` key / `dolphinui.rc`) and ship a skel default.
+4. **Login avatar:** v5 ships `mountain-avatars` (AccountsService picture).
+   - Prove it with a screenshot of the login screen showing the Mountain logo picture, and of the lock screen.
+5. **Lock greeting "Hello, <name>":** part of section 1. It must say **Hello, <display name>** above the password box on both login and lock.
+
 ### 1. Lock screen at start (owner: "a big problem to me")
 
 **Today:** Try Mountain auto-logs in and has no lock screen, so the owner never sees one. The shipped image shows the stock login greeter.
