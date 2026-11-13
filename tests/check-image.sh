@@ -613,6 +613,9 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   assert_grep '^mountain-altf4Enabled=true$' /etc/xdg/kwinrc
   assert_grep '^Window Close=none,' /etc/skel/.config/kglobalshortcutsrc
   [[ ! -e /etc/xdg/kglobalshortcutsrc ]] || fail "shortcuts in /etc/xdg are ignored by kglobalaccel"
+  for f in /usr/share/kglobalaccel/org.kde.plasma-systemmonitor.desktop /usr/share/applications/org.kde.plasma-systemmonitor.desktop; do
+    [[ ! -e $f ]] || assert_grep '^X-KDE-Shortcuts=Ctrl+Shift+Esc,Ctrl+Esc$' "$f"
+  done
   assert_file /usr/libexec/mountain-shortcuts; [[ -x /usr/libexec/mountain-shortcuts ]] || fail "mountain-shortcuts not executable"
   assert_grep 'Meta+N' /usr/libexec/mountain-shortcuts
   assert_grep '^Exec=/usr/libexec/mountain-shortcuts$' /etc/xdg/autostart/mountain-shortcuts.desktop

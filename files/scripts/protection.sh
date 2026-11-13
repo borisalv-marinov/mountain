@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # v5.1: Task Manager on Ctrl+Shift+Esc (Ctrl+Esc kept), on-demand ClamAV with no background downloads, crisp fonts.
 set -euo pipefail
-a=/usr/share/applications/org.kde.plasma-systemmonitor.desktop
-sed -i '/^X-KDE-Shortcuts=/d' "$a"
-sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nX-KDE-Shortcuts=Ctrl+Shift+Esc,Ctrl+Esc/' "$a"
-grep -q '^X-KDE-Shortcuts=Ctrl+Shift+Esc,Ctrl+Esc$' "$a"
-# more Windows shortcuts on the apps themselves: Win+I Settings, Win+R Run, Win+E File Explorer
-sc() { # desktop-file shortcuts
-  local f=/usr/share/applications/$1; [[ -f $f ]] || f=/usr/share/kglobalaccel/$1 # Plasma 6 keeps KRunner's here
-  [[ -f $f ]] || { echo "protection: missing $1"; return 1; }
-  sed -i '/^X-KDE-Shortcuts=/d' "$f"; sed -i "0,/^\[Desktop Entry\]/s//[Desktop Entry]\nX-KDE-Shortcuts=$2/" "$f"
+# Windows shortcuts on the apps themselves: Ctrl+Shift+Esc Task Manager, Win+I Settings, Win+R Run, Win+E File Explorer
+sc() { # desktop-file shortcuts, in applications/ and in kglobalaccel/ (Plasma 6 reads that copy first when it exists)
+  local f n=0
+  for f in /usr/share/applications/$1 /usr/share/kglobalaccel/$1; do
+    [[ -e $f ]] || continue
+    sed -i '/^X-KDE-Shortcuts=/d' "$f"; sed -i "0,/^\[Desktop Entry\]/s//[Desktop Entry]\nX-KDE-Shortcuts=$2/" "$f"; n=$((n + 1))
+  done
+  [[ $n -gt 0 ]] || { echo "protection: missing $1"; return 1; }
 }
+sc org.kde.plasma-systemmonitor.desktop "Ctrl+Shift+Esc,Ctrl+Esc"
 sc org.mountain.settings.desktop Meta+I
 sc org.kde.krunner.desktop "Meta+R,Alt+Space,Alt+F2,Search"
 sc org.kde.dolphin.desktop Meta+E

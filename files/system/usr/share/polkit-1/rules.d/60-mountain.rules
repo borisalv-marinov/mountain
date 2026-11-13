@@ -3,7 +3,7 @@
 // Everything else that needs admin rights still asks for the password.
 polkit.addRule(function (action, subject) {
     // read-only firewall status for the Security page ("Allow an app" list); changes still need the password
-    if (action.id === "org.fedoraproject.FirewallD1.info" && subject.local && subject.active) {
+    if (action.id === "org.fedoraproject.FirewallD1.info" || action.id === "org.fedoraproject.FirewallD1.config.info") {
         return polkit.Result.YES;
     }
     if (action.id === "org.freedesktop.systemd1.manage-units" && subject.local && subject.active &&

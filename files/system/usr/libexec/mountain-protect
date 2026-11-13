@@ -61,7 +61,7 @@ daemon() {
   inotifywait -mrq -e close_write,moved_to --format '%w%f' "${d[@]}" >&3 2>/dev/null &
   inotifywait -mq -e close_write,moved_to --format '%w%f' "$HOME" >&3 2>/dev/null & # home top level only (never game folders)
   inotifywait -mq -e create --format 'APP %f' /var/lib/flatpak/app >&3 2>/dev/null &
-  findmnt --poll=mount -n -r -o TARGET 2>/dev/null | sed -u 's/^/MNT /' >&3 &
+  stdbuf -oL findmnt --poll=mount -n -r -o TARGET 2>/dev/null | sed -u 's/^/MNT /' >&3 & # unbuffered: one line per new mount
   while read -r f <&3; do
     event "$f" && continue
     batch=("$f"); ev=()

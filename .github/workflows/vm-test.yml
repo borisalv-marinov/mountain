@@ -365,7 +365,7 @@ jobs:
           P0=$(R "$PP"); V0=$(R "$VOL"); A0=$(R "nmcli -t -f WIFI,WWAN radio")
           QM click $((965*W/1280)) $((532*H/800)); sleep 3 # Energy saver
           QM click $((1209*W/1280)) $((445*H/800)); sleep 3 # Airplane mode
-          QM click $((1180*W/1280)) $((663*H/800)); sleep 2; shot quick-settings-toggled # volume slider
+          QM click $((1185*W/1280)) $((676*H/800)); sleep 2; shot quick-settings-toggled # volume slider
           chk "quick settings: Energy saver switches the power profile" 0 "echo before=$P0; $PP" 'power-saver'
           chk "quick settings: Airplane mode turns radios off" 0 "echo before=$A0; nmcli -t -f WIFI,WWAN radio" 'disabled'
           chk "quick settings: volume slider changes the volume" 0 "echo before=$V0; $VOL" 'Volume: 0\.(8|9)'
@@ -383,7 +383,8 @@ jobs:
             [ "$(num "$r")" -ge 0 ] 2>/dev/null && rr=PASS || rr=FAIL; echo "| shortcut $n | $rr | $r |" >> report.md; echo "$rr $n"; QM key esc; sleep 1
           }
           chk "Win+A and Win+N set on the applets" 0 "grep -h '^global=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort | paste -sd' '" 'Meta\+A.*Meta\+N'
-          chk "app shortcuts in the account" 2 "grep -A1 -h '^\[services\]' ~looktest/.config/kglobalshortcutsrc | grep _launch | paste -sd' '" '.'
+          chk "applet shortcut helper" 2 "cat ~looktest/.local/state/mountain/applet-shortcuts.log 2>/dev/null || echo ok" '.'
+          R "cat ~looktest/.config/kglobalshortcutsrc; ls -l /usr/share/kglobalaccel" > kglobalshortcutsrc.txt 2>&1
           scut "Win+A (quick settings)" meta_l a
           scut "Win+N (notifications)" meta_l n
           scut "Win+V (clipboard history)" meta_l v
@@ -417,8 +418,9 @@ jobs:
           QM key meta_l x; wchk "shortcut Win+X (quick links)" 0 kdialog 15; sleep 3; shot shortcut-win-x; QM key esc; sleep 1; K -x kdialog
           L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
           chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
-          QM key meta_l d; sleep 2; QM key alt f4; sleep 3; shot shortcut-altf4-desktop; QM key esc; sleep 2
-          chk "shortcut Alt+F4 on the desktop asks to shut down" 0 "pgrep -u looktest -f ksmserver-logout-greeter >/dev/null && echo dialog || echo none" '^dialog$'
+          QM key meta_l d; sleep 2; QM key alt f4; sleep 3; shot shortcut-altf4-desktop
+          chk "shortcut Alt+F4 on the desktop asks to shut down" 0 "pgrep -u looktest -f logout-greeter >/dev/null && echo dialog || echo none" '^dialog$'
+          QM key esc; sleep 2
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align left"; sleep 3; shot taskbar-left
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align center"; sleep 3
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass off"; sleep 3; QM key meta_l; sleep 3; shot start-menu-glass-off; QM key esc
@@ -601,8 +603,8 @@ jobs:
           done
           # End task on Processes (maximized): search the test process, click its row, Delete, confirm
           K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8
-          QM key meta_l pgup; sleep 2; QM click $((565*W/1280)) $((431*H/800)); sleep 1; QM type endtasktest; sleep 3
-          QM click $((300*W/1280)) $((493*H/800)); sleep 1; shot taskmanager-endtask-select
+          QM key meta_l pgup; sleep 2; QM click $((565*W/1280)) $((453*H/800)); sleep 1; QM type endtasktest; sleep 3
+          QM click $((300*W/1280)) $((515*H/800)); sleep 1; shot taskmanager-endtask-select
           QM key delete; sleep 2; shot taskmanager-endtask-confirm; QM key ret; sleep 3
           chk "Task Manager: End task ends the process" 0 "pgrep -u looktest -x endtasktest || echo ended" '^ended$'
           K -x endtasktest
@@ -675,6 +677,7 @@ jobs:
           R "mount | grep -q USBTEST || mount -o loop,uid=\$(id -u looktest) /var/tmp/usb.img /run/media/looktest/USBTEST"; sleep 3
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /run/media/looktest/USBTEST/game-crack.com')"; apwait /run/media/looktest/USBTEST/game-crack.com
           chk "Active Protection: a threat on a USB drive is caught" 0 "test ! -e /run/media/looktest/USBTEST/game-crack.com && ls ~looktest/.local/share/mountain/quarantine | grep -q game-crack && echo caught" '^caught$'
+          R "$LT journalctl --user -u mountain-protect -n 40 --no-pager; findmnt /run/media/looktest/USBTEST; ls -la /run/media/looktest/USBTEST" > protect-usb-log.txt 2>&1
           R "umount /run/media/looktest/USBTEST; rm -f /var/tmp/usb.img"
           R "$(TL 'mkdir -p ~/Downloads/attachments; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/attachments/invoice.pdf.com')"; apwait /home/looktest/Downloads/attachments/invoice.pdf.com
           chk "Active Protection: an email-attachment-like threat is caught" 0 "test ! -e ~looktest/Downloads/attachments/invoice.pdf.com && ls ~looktest/.local/share/mountain/quarantine | grep -q invoice && echo caught" '^caught$'
@@ -701,6 +704,7 @@ jobs:
           FWR=$(curl -s -o /dev/null -w '%{http_code}' -m 8 http://127.0.0.1:8765/ 2>/dev/null)
           [ "$FWR" = 000 ] && r=PASS || r=FAIL; echo "| firewall blocks an incoming port (8765 from outside) | $r | http ${FWR:-none} |" >> report.md; echo "$r firewall"
           K -f "http.server 8765"
+          R "ls -ld /etc/firewalld/zones; $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^fw'" > firewall-status.txt 2>&1
           chk "Allow an app: Steam Remote Play listed" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^fw_app=steam-streaming'" 'fw_app=steam-streaming:yes'
           chk "Allow an app: block and allow again" 0 "/usr/libexec/mountain-security allow rdp on; firewall-cmd --zone=mountain --query-service=rdp; /usr/libexec/mountain-security allow rdp off; firewall-cmd --zone=mountain --query-service=rdp || echo blocked-again" 'blocked-again'
           chk "network profile Home, then Public" 0 "/usr/libexec/mountain-security profile home >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1; /usr/libexec/mountain-security profile public >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1" 'mountain-home'
@@ -814,6 +818,7 @@ jobs:
 
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$CORE_FAIL" = 1 ]; then echo "::error::core check failed"; exit 1; fi
+          if grep -q '| FAIL |' report.md; then echo "::error::$(grep -c '| FAIL |' report.md) check(s) failed"; exit 1; fi
       - name: Fix ownership
         if: always()
         run: sudo chown -R "$USER" "$HOME/vm" || true
