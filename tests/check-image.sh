@@ -428,6 +428,11 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js b w s d
   b=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit)
   assert_grep '"Hello, "' "$b/UserDelegate.qml"
+  # Windows-style wrong-password message; the sign-in clock in 12 h US time like the taskbar when the greeter has no locale
+  assert_grep 'The password is incorrect. Try again.' "$b/SessionManagementScreen.qml"
+  assert_grep 'mtWrongPassword' "$b/SessionManagementScreen.qml"
+  assert_grep 'mtLocale' "$b/Clock.qml"
+  grep -q 'Qt.formatTime(timeSource.dateTime, Qt.locale()' "$b/Clock.qml" && fail "sign-in clock not patched (24 h with no locale)"
   grep -q '^prefer ' "$b/qmldir" && fail "breeze components still prefer the compiled copy (greeting not used)"
   assert_file /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml
   for w in mountain-silk mountain-silk-dark; do
@@ -492,9 +497,9 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
   assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
   # Terminal uses the same black glass; Settings cards keep a 3:1 edge against the page
-  assert_grep '^DefaultProfile=Mountain.profile$' /etc/xdg/konsolerc
-  assert_grep '^ColorScheme=MountainBlack$' /usr/share/konsole/Mountain.profile
-  assert_grep '^Color=18,18,18$' /usr/share/konsole/MountainBlack.colorscheme
+  assert_grep '^DefaultProfile=BlackGlass.profile$' /etc/xdg/konsolerc
+  assert_grep '^ColorScheme=BlackGlass$' /usr/share/konsole/BlackGlass.profile
+  assert_grep '^Color=18,18,18$' /usr/share/konsole/BlackGlass.colorscheme
   python3 - /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml <<'PY' || fail "Settings card edge under 3:1 against the page"
 import re, sys
 s = open(sys.argv[1], encoding='utf-8').read(); hexc = lambda n: re.search(n + r': "#([0-9A-Fa-f]{6})"', s).group(1)
@@ -814,6 +819,66 @@ PY
   bad=$({ grep -ho 'SensorIds=.*\|totalSensors=.*' /usr/share/plasma-systemmonitor/mountain-*.page || true; } | { grep -o '"[^"]*"' || true; } | tr -d '"' | sort -u | { grep -vxE 'cpu/all/usage|memory/physical/(used|total)|disk/all/(read|write)|network/all/(download|upload)' || true; })
   [[ -z $bad ]] || fail "Task Manager pages use sensors a PC may lack: $bad"
   assert_grep 'plasma-systemmonitor/mountain-' /usr/libexec/mountain-user-setup # old saved pages (GPU chart) cleared
+  # taskbar: quick settings glyphs and feedback, top bar as text
+  qs=/usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui
+  assert_grep 'iconSizes.smallMedium' $qs/main.qml
+  assert_grep 'expandedFeedback' $qs/main.qml
+  assert_grep '"preferences-system-symbolic"' $qs/main.qml
+  grep -q '"configure-symbolic"' $qs/main.qml && fail "quick settings gear is KDE's configure glyph"
+  assert_grep '"go-next-symbolic"' $qs/VolumeRow.qml
+  assert_grep 'org.kde.ksysguard.textonly' /usr/libexec/mountain-topbar
+  t=$({ grep -c 'org.kde.plasma.systemmonitor.\(cpu\|memory\)' /usr/libexec/mountain-topbar || true; }); [[ $t -ge 2 ]] || fail "top bar lost the CPU/RAM applets"
+  # start menu: Windows 11 header and footer, Best match, dialog tokens
+  mu=/usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui
+  assert_file $mu/Pill.qml
+  assert_grep 'text: i18n("All")' $mu/MenuRepresentation.qml
+  assert_grep 'i18n("Best match")' $mu/ItemMultiGridView.qml
+  assert_grep 'Kirigami.Avatar' $mu/Footer.qml
+  [[ -z $(grep -E "icon.name: +\"(user-home|configure)\"" $mu/Footer.qml || true) ]] || fail "start menu footer has more than account and power"
+  [[ -z $(grep -E "source: '(bookmarks|tag-recents|view-grid)'" $mu/MenuRepresentation.qml || true) ]] || fail "start menu section titles carry KDE icons"
+  [[ -z $(grep -l '#F2F3F5' /usr/share/plasma/plasmoids/org.mountain.{run,winx,shutdown}/contents/ui/main.qml || true) ]] || fail "Run / Win+X / Shut Down text is not #FFFFFF"
+  # Task Manager Background processes: Mountain face with Windows names, End task only for own processes
+  assert_grep '^mode=processes$' /usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep '^actionsFace=Face-880000000001$' /usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep 'Kirigami.PromptDialog' /usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
+  f=$(/usr/libexec/mountain-taskmanager processes || true); [[ $f == $'id\tName\tCPU\tMemory'* ]] || fail "Task Manager background processes list"
+  /usr/libexec/mountain-taskmanager end '1;true' 2>/dev/null && fail "End task accepts a non-numeric pid"
+  /usr/libexec/mountain-taskmanager end 1 2>/dev/null && fail "End task accepts pid 1 (or runs as root)"
+  assert_grep 'plasmashell=Windows Explorer' /usr/libexec/mountain-taskmanager
+  # app strings: Phone Link, Notepad welcome page, Camera (only from catalogs the image actually has)
+  for c in kdeconnect-app kate kamoso; do
+    [[ -f /usr/share/locale/de/LC_MESSAGES/$c.mo ]] || continue
+    [[ -f /usr/share/locale/en@mountain/LC_MESSAGES/$c.mo ]] || fail "no en@mountain catalog for $c"
+  done
+  v=$(python3 -c 'import gettext,glob; print("\n".join(v for f in glob.glob("/usr/share/locale/en@mountain/LC_MESSAGES/*.mo") for v in gettext.GNUTranslations(open(f,"rb"))._catalog.values()))' || true)
+  grep -qx 'About Phone Link' <<<"$v" || fail "Phone Link About string not renamed"
+  grep -qx 'Send feedback' <<<"$v" || fail "Notepad welcome page still says Get involved"
+  # Windows 11 menus and 8 px corners, no Overview hot corner, yellow folders, no classic menubars
+  f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  for p in '^frame.left=8$' '^menu_shadow_depth=8$' '^menu_blur_radius=8$' '^reduce_menu_opacity=6$' '^text.iconspacing=12$'; do assert_grep "$p" $f; done
+  for f in /usr/share/Kvantum/BlackGlass/BlackGlass.svg /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.svg; do assert_grep 'id="menu-shadow-topleft"' $f; done
+  assert_grep 'id="menu-shadow-hint-left"' /usr/share/Kvantum/BlackGlass/BlackGlass.svg
+  [[ -z "$(grep -o 'A10,10' /usr/share/aurorae/themes/BlackGlass/decoration.svg || true)" ]] || fail "window corners are not 8 px"
+  assert_grep 'A8,8 0 0 1 32,20' /usr/share/aurorae/themes/BlackGlass/decoration.svg
+  assert_grep '^\[Effect-overview\]$' /etc/xdg/kwinrc
+  assert_grep '^BorderActivate=9$' /etc/xdg/kwinrc
+  assert_grep '^MenuBar=Disabled$' /etc/xdg/okularrc
+  assert_grep '^MenuBar=Disabled$' /etc/xdg/gwenviewrc
+  assert_grep '^StatusBar=Disabled$' /etc/xdg/kolourpaintrc
+  for f in /usr/share/icons/hicolor/scalable/places/mountain-folder-*.svg; do
+    assert_grep 'stop-color="#FFD866"' "$f"
+    [[ -z "$(grep -o '#475569\|#334155' "$f" || true)" ]] || fail "slate folder left: $f"
+  done
+  # Settings: Windows "Network & internet" rows, no polling; focus ring apart from the selected pill; 4 px buttons
+  su=/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  assert_file $su/NetworkPage.qml
+  assert_grep 'NetworkPage.qml' $su/main.qml
+  assert_grep 'app.netFailed' $su/main.qml # falls back to the plain rows without plasma-nm
+  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode' 'Proxy' 'Advanced network settings'; do assert_grep "{ t: \"$t\"" $su/main.qml; done
+  assert_grep 'handler.enableAirplaneMode(on)' $su/NetworkPage.qml
+  n=$({ grep -c 'Timer' $su/NetworkPage.qml || true; }); [[ $n == 0 ]] || fail "Network page polls"
+  assert_grep 'navButton.visualFocus ? 2 : 0' $su/main.qml
+  n=$({ grep -A1 'background: Rectangle' $su/GlassButton.qml | grep -c 'radius: 4' || true; }); [[ $n == 1 ]] || fail "Settings buttons not 4 px"
   assert_grep 'Environment=MOUNTAIN_SCAN_REPORT_ONLY=1' /usr/libexec/mountain-protect
   assert_grep '/.local/share/kwin/scripts' /usr/libexec/mountain-protect
   assert_grep "split(\"'\").join" /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml # wallpaper path shell-quoted

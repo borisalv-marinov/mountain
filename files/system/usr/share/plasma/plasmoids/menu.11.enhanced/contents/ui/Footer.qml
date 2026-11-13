@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
-import QtCore
 
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
@@ -22,7 +21,9 @@ import org.kde.plasma.private.sessions
 import org.kde.plasma.plasma5support as P5Support
 
 RowLayout{
-
+    id: footerRow
+    // Mountain: Windows 11 footer, the account (avatar and name) on the left and power on the right
+    readonly property string userName: kuser.fullName || kuser.loginName
     spacing: Kirigami.Units.largeSpacing
 
     KCoreAddons.KUser {   id: kuser  }
@@ -59,74 +60,27 @@ RowLayout{
         }
     }
 
-    RowLayout{
-        Image {
-            id: iconUser
-            source: {
-                var faceUrl = kuser.faceIconUrl.toString()
-                if (faceUrl !== "") {
-                    return faceUrl
-                }
-                return "file://usr/share/icons/breeze/apps/48/kuser.svg"
+    PlasmaComponents3.ToolButton {
+        id: accountButton
+        Accessible.name: footerRow.userName
+        Accessible.description: i18n("Account settings, lock and sign out")
+        onClicked: accountMenu.popup(accountButton, 0, -accountMenu.implicitHeight)
+        contentItem: RowLayout {
+            spacing: Kirigami.Units.largeSpacing
+            Kirigami.Avatar { // round picture, initials when there is none
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                source: kuser.faceIconUrl
+                name: footerRow.userName
             }
-            cache: false
-            visible: source !== ""
-            sourceSize.height: 24
-            sourceSize.width: 24
-            fillMode: Image.PreserveAspectFit
-            Layout.alignment: Qt.AlignVCenter
-            layer.enabled: true
-            
-            MouseArea {
-                cursorShape: Qt.PointingHandCursor
-                anchors.fill: parent
-                onClicked: accountMenu.popup()
+            PlasmaComponents3.Label {
+                text: footerRow.userName
+                color: Kirigami.Theme.textColor
+                elide: Text.ElideRight
+                Layout.maximumWidth: Kirigami.Units.gridUnit * 14
             }
         }
-
-        PlasmaExtras.Heading {
-            wrapMode: Text.NoWrap
-            color: Kirigami.Theme.textColor
-            level: 3
-            font.bold: true
-            text: qsTr(kuser.fullName)
-            
-            MouseArea {
-                cursorShape: Qt.PointingHandCursor
-                anchors.fill: parent
-                onClicked: accountMenu.popup()
-            }
-        }   
     }
-
-
-    PlasmaComponents3.ToolButton {
-        icon.width: 24
-        icon.height: 24
-        icon.name:  "user-home"
-        
-        Layout.leftMargin: 10
-        PlasmaComponents3.ToolTip.delay: 1000
-        PlasmaComponents3.ToolTip.timeout: 1000
-        PlasmaComponents3.ToolTip.visible: hovered
-        PlasmaComponents3.ToolTip.text: i18n("User Home")
-        
-        onClicked: logic.openUrl(StandardPaths.writableLocation(StandardPaths.HomeLocation).toString())
-    }
-
-    PlasmaComponents3.ToolButton {
-        icon.width: 24
-        icon.height: 24
-        icon.name:  "configure"
-        Layout.leftMargin: 10
-        PlasmaComponents3.ToolTip.delay: 1000
-        PlasmaComponents3.ToolTip.timeout: 1000
-        PlasmaComponents3.ToolTip.visible: hovered
-        PlasmaComponents3.ToolTip.text: i18n("System Preferences")
-        
-        onClicked: logic.runCommand("plasmawindowed org.mountain.settings")
-    }
-
     Item{
         Layout.fillWidth: true
     }

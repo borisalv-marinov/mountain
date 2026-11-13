@@ -248,7 +248,7 @@ PlasmaCore.Dialog {
                 rightMargin: Kirigami.Units.gridUnit
             }
             focus: true
-            placeholderText: i18n("Search for apps, settings and documents")
+            placeholderText: i18n("Search for apps, settings, and documents")
             topPadding: 10
             bottomPadding: 10
             leftPadding: Kirigami.Units.gridUnit + Kirigami.Units.iconSizes.small
@@ -257,9 +257,10 @@ PlasmaCore.Dialog {
 
             background: Rectangle {
                 color: Kirigami.Theme.backgroundColor
-                radius: 20
-                border.width: 1
-                border.color: colorWithAlpha(Kirigami.Theme.textColor, 0.05)
+                radius: height / 2
+                // Mountain: visible rim at rest, accent ring when typing (Windows 11 start search)
+                border.width: searchField.activeFocus ? 2 : 1
+                border.color: searchField.activeFocus ? Kirigami.Theme.highlightColor : colorWithAlpha(Kirigami.Theme.textColor, 0.12)
             }
 
             onTextChanged: runnerModel.query = text
@@ -422,28 +423,24 @@ PlasmaCore.Dialog {
                     id: topRow
                     width: parent.width
                     height: butttonActionAllApps.implicitHeight
-                    Kirigami.Icon {
-                        source: 'bookmarks'
-                        implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                        implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                    }
-
+                    // Mountain: Windows 11 section title, no icon
                     PlasmaExtras.Heading {
                         id: headLabelFavorites
-                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
+                        Layout.leftMargin: Kirigami.Units.smallSpacing
+                        color: Kirigami.Theme.textColor
                         level: 5
                         text: i18n("Pinned")
-                        font.weight: Font.Bold
+                        font.weight: Font.DemiBold
                     }
 
                     Item {
                         Layout.fillWidth: true
                     }
 
-                    PC3.ToolButton {
+                    Pill {
                         id: butttonActionAllApps
-                        icon.name: "go-next"
-                        text: i18n("All apps")
+                        text: i18n("All")
+                        Accessible.name: i18n("All apps")
                         onClicked: {
                             view.currentIndex = 1;
                         }
@@ -490,28 +487,22 @@ PlasmaCore.Dialog {
                     width: parent.width
                     height: butttonActionAllApps.implicitHeight
 
-                    Kirigami.Icon {
-                        source: 'tag-recents'
-                        implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                        implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                    }
-
                     PlasmaExtras.Heading {
-                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
+                        color: Kirigami.Theme.textColor
                         level: 5
                         text: i18n("Recommended")
                         Layout.leftMargin: Kirigami.Units.smallSpacing
-                        font.weight: Font.Bold
+                        font.weight: Font.DemiBold
                     }
 
                     Item {
                         Layout.fillWidth: true
                     }
 
-                    PC3.ToolButton {
+                    Pill {
                         id: butttonActionRecentMore
-                        icon.name: "go-next"
-                        text: i18n("Show more")
+                        text: i18n("More")
+                        Accessible.name: i18n("More recommended files")
                         onClicked: {
                             executable.checkDolphin();
                             if (executable.dolphinRunning) {
@@ -583,27 +574,21 @@ PlasmaCore.Dialog {
                     width: parent.width
                     height: butttonActionAllApps.implicitHeight
 
-                    Kirigami.Icon {
-                        source: 'view-grid'
-                        implicitHeight: Kirigami.Units.iconSizes.smallMedium
-                        implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                    }
-
                     PlasmaExtras.Heading {
-                        color: colorWithAlpha(Kirigami.Theme.textColor, 0.8)
+                        color: Kirigami.Theme.textColor
                         level: 5
                         text: i18n("All apps")
                         Layout.leftMargin: Kirigami.Units.smallSpacing
-                        font.weight: Font.Bold
+                        font.weight: Font.DemiBold
                     }
 
                     Item {
                         Layout.fillWidth: true
                     }
 
-                    PC3.ToolButton {
-                        icon.name: 'go-previous'
-                        text: i18n("Pinned")
+                    Pill {
+                        back: true
+                        text: i18n("Back")
                         onClicked: {
                             view.currentIndex = 0;
                         }

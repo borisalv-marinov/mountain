@@ -8,6 +8,6 @@ Kirigami.FormLayout {
         id: mode
         Kirigami.FormData.label: "Shows:"
         editable: true
-        model: ["startup", "users", "services", "device"]
+        model: ["processes", "startup", "users", "services", "device"]
     }
 }

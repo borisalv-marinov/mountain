@@ -14,7 +14,7 @@ QQC2.AbstractButton {
 
     // Windows 11: highlighted = the one accent-filled (primary or selected) button, the rest lighter than the card
     background: Rectangle {
-        radius: 6
+        radius: 4
         border.width: btn.visualFocus ? 2 : 1
         border.color: btn.visualFocus ? "#FFFFFF" : btn.highlighted ? app.accent : app.rim
         color: btn.highlighted ? (btn.pressed ? "#4A9AE6" : btn.hovered ? "#6BB9FF" : app.accent)

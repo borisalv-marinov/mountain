@@ -36,6 +36,7 @@ PlasmoidItem {
     // pages without their own nav entry light up their category
     readonly property string navPage: page === "background" ? "personalization" : page === "protection" ? "privacy" : page
     property string query: ""
+    property bool netFailed: false // no plasma-nm QML module: Network shows the plain rows
     property string modelName: ""
     property string colorMode: "Dark"
 
@@ -71,8 +72,13 @@ PlasmoidItem {
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad joystick controller" }
         ] },
         { id: "network", name: "Network & internet", icon: "preferences-system-network", items: [
-            { t: "Wi-Fi & network", d: "Wi-Fi, Ethernet, VPN, hotspot", i: "network-wireless", kcm: "kcm_networkmanagement", k: "wifi wireless ethernet vpn internet" },
-            { t: "Proxy", d: "Proxy server for apps", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
+            { t: "Wi-Fi", d: "Connect, manage known networks", i: "network-wireless", kcm: "kcm_networkmanagement", net: "wifi", k: "wifi wireless internet" },
+            { t: "Ethernet", d: "Authentication, IP and DNS settings", i: "network-wired", kcm: "kcm_networkmanagement", net: "ethernet", k: "ethernet wired cable lan ip dns internet" },
+            { t: "VPN", d: "Add, connect, manage", i: "network-vpn", kcm: "kcm_networkmanagement", net: "vpn", k: "vpn wireguard openvpn" },
+            { t: "Mobile hotspot", d: "Share your internet connection", i: "network-wireless-hotspot", kcm: "kcm_networkmanagement", net: "hotspot", k: "hotspot tethering share" },
+            { t: "Airplane mode", d: "Stop all wireless communication", i: "network-flightmode-on", kcm: "kcm_networkmanagement", net: "airplane", k: "airplane flight mode radio" },
+            { t: "Proxy", d: "Proxy server for Wi-Fi and Ethernet connections", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
+            { t: "Advanced network settings", d: "All network adapters, network reset", i: "preferences-system-network", kcm: "kcm_networkmanagement", k: "adapters advanced network reset dns" }
         ] },
         { id: "personalization", name: "Personalization", icon: "preferences-desktop-theme", items: [
             { t: "Background", d: "Picture, solid color, slideshow", i: "preferences-desktop-wallpaper", page: "background", k: "wallpaper background picture" },
@@ -256,7 +262,7 @@ PlasmoidItem {
                 anchors.centerIn: parent
                 width: Math.min(520, parent.width - 360)
                 height: 34
-                radius: 8
+                radius: 4
                 gradient: Gradient {
                     GradientStop { position: 0; color: app.glassTop }
                     GradientStop { position: 1; color: app.glassBottom }
@@ -376,10 +382,10 @@ PlasmoidItem {
                     Keys.onReturnPressed: clicked()
 
                     background: Rectangle {
-                        radius: 6
+                        radius: 4
                         color: navButton.current ? Qt.rgba(1, 1, 1, 0.09) : (navButton.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
-                        border.width: navButton.visualFocus ? 1 : 0 // the ring only for keyboard focus; selection is the fill + pill
-                        border.color: app.accent
+                        border.width: navButton.visualFocus ? 2 : 0 // white ring only for keyboard focus; selection is the fill + accent pill
+                        border.color: "#FFFFFF"
                         Rectangle {
                             visible: navButton.current
                             anchors { left: parent.left; verticalCenter: parent.verticalCenter }
@@ -422,8 +428,9 @@ PlasmoidItem {
                 id: pageLoader
                 width: Math.min(flick.width - 32, 1000)
                 height: item ? item.implicitHeight : 0
-                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : app.page === "background" ? "BackgroundPage.qml" : "ListPage.qml"
+                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "network" && !app.netFailed ? "NetworkPage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : app.page === "background" ? "BackgroundPage.qml" : "ListPage.qml"
                 onSourceChanged: flick.contentY = 0
+                onStatusChanged: if (status === Loader.Error && app.page === "network") app.netFailed = true
             }
         }
     }

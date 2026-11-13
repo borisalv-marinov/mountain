@@ -2,6 +2,7 @@
 # Data and actions behind Task Manager's Startup apps, Users, Services and device-name lists
 # (face org.mountain.taskmanager.list). Output: tab-separated, a header line, then rows whose first field is an id.
 #   mountain-taskmanager startup | startup-set FILE on|off | users | services | service start|stop|restart UNIT | device
+#   | processes | end PID
 set -uo pipefail
 sys_dir=${MOUNTAIN_AUTOSTART_SYSTEM:-/etc/xdg/autostart}
 usr_dir=${XDG_CONFIG_HOME:-$HOME/.config}/autostart
@@ -101,6 +102,54 @@ device() {
   done
 }
 
+# Background processes as Windows names them: the user's processes outside app scopes (apps are in the Apps table)
+proc=${MOUNTAIN_PROC:-/proc}
+# comm (first 15 chars of the program name) -> name; session core can not be ended (it would sign you out)
+names='kwin_wayland=Desktop Window Manager|kwin_wayland_wrapper=Desktop Window Manager|kwin_x11=Desktop Window Manager
+plasmashell=Windows Explorer|ksmserver=Windows Logon Application|startplasma-wayland=Windows Logon Application
+plasma_session=Windows Logon Application|systemd=Service Host: User services|dbus-broker=Service Host: Messages
+dbus-broker-launch=Service Host: Messages|dbus-daemon=Service Host: Messages|kded6=Service Host: Desktop services
+Xwayland=Desktop Window Manager (older apps)|pipewire=Windows Audio|pipewire-pulse=Windows Audio
+wireplumber=Windows Audio Device Graph|xdg-desktop-portal=Runtime Broker|xdg-desktop-portal-kde=Runtime Broker
+xdg-desktop-portal-gtk=Runtime Broker|xdg-document-portal=Runtime Broker|xdg-permission-store=Runtime Broker
+polkit-kde-authentication-agent-1=Consent UI for administrative apps|kwalletd6=Credential Manager
+baloo_file=Search Indexer|baloo_file_extractor=Search Indexer|kdeconnectd=Phone Link|ksystemstats=Performance counters
+kactivitymanagerd=Activity history|org_kde_powerdevil=Power service|at-spi-bus-launcher=Accessibility
+at-spi2-registryd=Accessibility|kaccess=Accessibility|xembedsniproxy=Notification area|gmenudbusmenuproxy=Menu bar helper
+ibus-daemon=Text Input Host|plasma-browser-integration-host=Browser integration|kglobalacceld=Keyboard shortcuts
+ksecretd=Credential Manager|kiod6=File transfers|kioworker=File transfers|gvfsd=File transfers'
+nokill=' plasmashell kwin_wayland kwin_wayland_wr kwin_x11 ksmserver startplasma-way plasma_session systemd dbus-broker dbus-broker-lau dbus-daemon Xwayland '
+
+processes() {
+  printf 'id\tName\tCPU\tMemory\n'
+  local d own=() a b cg
+  for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
+  ((${#own[@]})) || return 0
+  a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
+  cg=$(grep -l '/app-.*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null | sed -E 's|.*/([0-9]+)/cgroup$|\1|')
+  { sed 's/^/C /' <<<"$cg"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
+    names=$names awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
+    BEGIN {k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
+    $1 == "C" {app[$2] = 1; next}
+    {pid = $2; c = $0; sub(/^[A-Z] [0-9]+ \(/, "", c); r = c; sub(/\) [^)]*$/, "", c); sub(/^.*\) /, "", r); split(r, f, " ")
+     if ($1 == "A") {t[pid] = f[12] + f[13]; next}
+     if (f[1] == "Z" || pid in app) next
+     v = (pid in t) ? (f[12] + f[13] - t[pid]) * 100 / (hz * 0.5 * n) : 0; mb = f[22] * pg / 1048576
+     printf "%s\t%s\t%.1f %%\t%s\n", pid, (c in nm ? nm[c] : c), (v > 100 ? 100 : v), (mb >= 1024 ? sprintf("%.1f GB", mb / 1024) : sprintf("%.1f MB", mb))}' |
+    sort -t$'\t' -k2,2 -k1,1n
+}
+
+end_task() { # PID: only a process of this user, never the session core; TERM, then KILL after 3 s like Windows
+  local pid=${1:-} c
+  [[ $pid =~ ^[1-9][0-9]{0,9}$ ]] || { echo "bad process id: $pid" >&2; return 2; }
+  ((EUID != 0)) && [[ -O /proc/$pid ]] || { echo "not your process: $pid" >&2; return 1; }
+  c=$(cat "/proc/$pid/comm" 2>/dev/null)
+  [[ $nokill == *" $c "* ]] && { echo "Ending $c would sign you out." >&2; return 1; }
+  kill -TERM -- "$pid" || return 1
+  for _ in 1 2 3 4 5 6; do kill -0 -- "$pid" 2>/dev/null || return 0; sleep 0.5; done
+  kill -KILL -- "$pid" 2>/dev/null; return 0
+}
+
 case ${1:-} in
   startup) startup ;;
   startup-set) startup_set "${2:-}" "${3:-}" ;;
@@ -108,5 +157,7 @@ case ${1:-} in
   services) services ;;
   service) service "${2:-}" "${3:-}" ;;
   device) device ;;
-  *) echo "usage: mountain-taskmanager startup|startup-set FILE on|off|users|services|service VERB UNIT|device" >&2; exit 2 ;;
+  processes) processes ;;
+  end) end_task "${2:-}" ;;
+  *) echo "usage: mountain-taskmanager startup|startup-set FILE on|off|users|services|service VERB UNIT|device|processes|end PID" >&2; exit 2 ;;
 esac

@@ -14,22 +14,15 @@ askWhenKilling=false
 sortColumn=usage
 
 [Face-880000000002][Appearance]
-chartFace=org.kde.ksysguard.processtable
+chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Background processes
 
-[Face-880000000002][org.kde.ksysguard.processtable][General]
-sortedColumns=name,usage,memory,ioCharactersActuallyReadRate,ioCharactersActuallyWrittenRate,netInbound,netOutbound
-columnWidths=0.30,0.10,0.12,0.12,0.12,0.12,0.12
-columnDisplay={"name":"text","usage":"textScaled","memory":"text","ioCharactersActuallyReadRate":"text","ioCharactersActuallyWrittenRate":"text","netInbound":"text","netOutbound":"text"}
-showToolBar=false
-askWhenKilling=false
-sortColumn=usage
-viewMode=0
-userFilterMode=0
+[Face-880000000002][org.mountain.taskmanager.list][General]
+mode=processes
 
 [page]
-actionsFace=Face-880000000002
+actionsFace=Face-880000000001
 icon=view-process-system
 loadType=
 margin=2

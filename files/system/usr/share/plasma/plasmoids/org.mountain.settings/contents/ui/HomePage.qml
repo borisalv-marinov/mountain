@@ -126,7 +126,7 @@ ColumnLayout {
                             onClicked: app.setWallpaper(modelData.url)
                             Keys.onReturnPressed: clicked()
                             background: Rectangle {
-                                radius: 8
+                                radius: 6
                                 color: app.glassBottom
                                 border.width: app.wallpaper === tile.modelData.url || tile.visualFocus ? 2 : 1
                                 border.color: app.wallpaper === tile.modelData.url || tile.visualFocus ? app.accent

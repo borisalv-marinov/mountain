@@ -40,7 +40,8 @@ ColumnLayout {
             onMoved: volume.sink.volume = Math.round(value)
         }
         PC3.ToolButton {
-            icon.name: "audio-speakers-symbolic"
+            icon.name: "go-next-symbolic" // Windows' ">" output picker beside the volume slider
+
             display: PC3.AbstractButton.IconOnly
             text: i18n("Choose audio output")
             Accessible.name: text

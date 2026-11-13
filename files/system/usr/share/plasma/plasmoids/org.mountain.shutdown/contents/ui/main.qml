@@ -72,7 +72,7 @@ PlasmoidItem {
         Keys.onReturnPressed: clicked()
         Keys.onEnterPressed: clicked()
         background: Rectangle {
-            radius: 6
+            radius: 4
             border.width: btn.activeFocus ? 2 : 1
             border.color: btn.activeFocus ? "#5AB0FF" : Qt.rgba(1, 1, 1, 0.14)
             color: btn.highlighted ? (btn.pressed ? "#0063B1" : btn.hovered ? "#1A86D9" : "#0078D4")
@@ -81,7 +81,7 @@ PlasmoidItem {
         contentItem: Text {
             id: label
             text: btn.text
-            color: "#F2F3F5"
+            color: "#FFFFFF"
             font: Kirigami.Theme.defaultFont
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
@@ -94,7 +94,7 @@ PlasmoidItem {
         Layout.preferredWidth: 440
         Layout.preferredHeight: 236
         radius: 8
-        color: Qt.rgba(0.086, 0.09, 0.11, 0.97)
+        color: Qt.rgba(0.071, 0.071, 0.071, 0.97)
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         Accessible.role: Accessible.Dialog
@@ -114,7 +114,7 @@ PlasmoidItem {
             RowLayout { // title bar
                 spacing: 8
                 Kirigami.Icon { source: "system-shutdown"; implicitWidth: 16; implicitHeight: 16 }
-                Text { text: "Shut Down Mountain"; color: "#F2F3F5"; font: Kirigami.Theme.defaultFont; Layout.fillWidth: true }
+                Text { text: "Shut Down Mountain"; color: "#FFFFFF"; font: Kirigami.Theme.defaultFont; Layout.fillWidth: true }
                 QQC2.AbstractButton {
                     id: closeBtn
                     implicitWidth: 32; implicitHeight: 24
@@ -124,7 +124,7 @@ PlasmoidItem {
                     Accessible.name: "Close"
                     onClicked: app.close()
                     background: Rectangle { radius: 4; color: closeBtn.hovered ? "#C42B1C" : "transparent" }
-                    contentItem: Kirigami.Icon { source: "window-close-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#F2F3F5" }
+                    contentItem: Kirigami.Icon { source: "window-close-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#FFFFFF" }
                 }
             }
 
@@ -135,7 +135,7 @@ PlasmoidItem {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Text { text: "What do you want the computer to do?"; color: "#F2F3F5"; font: Kirigami.Theme.defaultFont }
+                    Text { text: "What do you want the computer to do?"; color: "#FFFFFF"; font: Kirigami.Theme.defaultFont }
                     QQC2.ComboBox {
                         id: combo
                         Layout.fillWidth: true
@@ -148,7 +148,7 @@ PlasmoidItem {
                         Keys.onEnterPressed: if (!popup.visible) app.ok()
                         Keys.onEscapePressed: if (popup.visible) popup.close(); else app.close()
                         background: Rectangle {
-                            radius: 6
+                            radius: 4
                             color: combo.hovered ? "#202227" : "#16171C"
                             border.width: combo.activeFocus ? 2 : 1
                             border.color: combo.activeFocus ? "#5AB0FF" : Qt.rgba(1, 1, 1, 0.16)
@@ -157,7 +157,7 @@ PlasmoidItem {
                     Text {
                         Layout.fillWidth: true
                         text: app.choices[combo.currentIndex] ? app.choices[combo.currentIndex].d : ""
-                        color: "#A4A9B2"
+                        color: "#C5C5C5"
                         wrapMode: Text.WordWrap
                         font: Kirigami.Theme.smallFont
                     }

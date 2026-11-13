@@ -84,7 +84,7 @@ ColumnLayout {
         Layout.preferredWidth: 320
         Layout.preferredHeight: 190
         Layout.bottomMargin: 6
-        radius: 10
+        radius: 8
         color: "#000000"
         border.width: 4
         border.color: "#3A3C42"
@@ -172,7 +172,7 @@ ColumnLayout {
                         onClicked: bg.setPicture(modelData.pkg)
                         Keys.onReturnPressed: clicked()
                         background: Rectangle {
-                            radius: 8
+                            radius: 6
                             color: "#000000"
                             border.width: tile.current || tile.visualFocus ? 2 : 1
                             border.color: tile.current || tile.visualFocus ? app.accent : (tile.hovered ? Qt.rgba(1, 1, 1, 0.4) : app.rim)

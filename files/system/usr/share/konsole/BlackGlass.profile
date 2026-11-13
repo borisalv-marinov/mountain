@@ -1,6 +1,6 @@
 [General]
-Name=Mountain
+Name=Black glass
 Parent=FALLBACK/
 
 [Appearance]
-ColorScheme=MountainBlack
+ColorScheme=BlackGlass

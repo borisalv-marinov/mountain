@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Turns the top bar (CPU and RAM; the tray and clock live on the taskbar) on or off. Usage: mountain-topbar [on|off|toggle]
+# Turns the top bar ("CPU 3%  RAM 31%" as text at the right; the tray and clock live on the taskbar) on or off.
+# Usage: mountain-topbar [on|off|toggle]
 set -euo pipefail
 js='
 const want = "@WANT@";
@@ -9,9 +10,20 @@ if ((want === "off" || want === "toggle") && on) { tops.forEach(p => p.remove())
 else if ((want === "on" || want === "toggle") && !on) {
   const top = new Panel(); top.location = "top"; top.lengthMode = "fill"; top.floating = false;
   top.opacity = "translucent"; top.height = Math.round(gridUnit * 1.6);
-  for (const id of ["org.kde.plasma.panelspacer", "org.kde.plasma.systemmonitor.cpu", "org.kde.plasma.systemmonitor.memory"])
-    if (knownWidgetTypes.indexOf(id) >= 0) top.addWidget(id);
+  if (knownWidgetTypes.indexOf("org.kde.plasma.panelspacer") >= 0) top.addWidget("org.kde.plasma.panelspacer");
+  // text face instead of tiny pie gauges; keys as libksysguard SensorFaceController reads them (Appearance/Sensors/SensorLabels)
+  for (const [id, sensor, label] of [["org.kde.plasma.systemmonitor.cpu", "cpu/all/usage", "CPU"],
+                                     ["org.kde.plasma.systemmonitor.memory", "memory/physical/usedPercent", "RAM"]]) {
+    if (knownWidgetTypes.indexOf(id) < 0) continue;
+    const w = top.addWidget(id);
+    w.currentConfigGroup = ["Appearance"]; w.writeConfig("chartFace", "org.kde.ksysguard.textonly"); w.writeConfig("showTitle", false);
+    w.currentConfigGroup = ["Sensors"];
+    w.writeConfig("highPrioritySensorIds", JSON.stringify([sensor])); w.writeConfig("lowPrioritySensorIds", "[]");
+    w.currentConfigGroup = ["SensorLabels"]; w.writeConfig(sensor, label);
+    w.reloadConfig(); // SystemMonitor::configChanged() reloads the face from this config
+  }
 }'
+
 want=${1:-toggle}
 [[ $want =~ ^(on|off|toggle)$ ]] || { echo "usage: mountain-topbar [on|off|toggle]" >&2; exit 2; }
 dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:${js//@WANT@/$want}" >/dev/null

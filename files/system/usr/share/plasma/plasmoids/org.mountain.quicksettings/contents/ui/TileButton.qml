@@ -16,7 +16,8 @@ QQC2.AbstractButton {
     Keys.onEnterPressed: clicked()
 
     background: Rectangle {
-        radius: 8
+        radius: 6 // tiles 6 px; cards and flyouts 8 px (audit radii tokens)
+
         // on = accent, off = raised surface, hover = hover tile (wave/theme.md palette)
         color: button.on ? (button.hovered ? "#1A86D9" : "#0078D4")
                          : (button.hovered && button.enabled ? "#2A2A2A" : "#1E1E1E")

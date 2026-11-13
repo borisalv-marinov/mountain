@@ -1,4 +1,4 @@
-// Mountain Task Manager list: one face, four tabs (Startup apps, Users, Services, device names).
+// Mountain Task Manager list: one face, five tabs (Background processes, Startup apps, Users, Services, device names).
 // Rows come from `/usr/libexec/mountain-taskmanager <mode>` (Startup apps: mountain-taskmanager-startup) as tab-separated
 // lines: a header line, then rows whose first field is an id.
 import QtQuick
@@ -14,7 +14,8 @@ Faces.SensorFace {
     readonly property string mode: controller.faceConfiguration.mode || "device"
     readonly property string helper: "/usr/libexec/mountain-taskmanager"
     readonly property string listCmd: mode === "startup" ? "bash " + helper + "-startup" : helper + " " + mode
-    readonly property bool actions: mode === "startup" || mode === "services"
+    readonly property bool actions: mode === "startup" || mode === "services" || mode === "processes"
+    property string error: ""
     property var header: []
     property var rows: [] // every row as parsed; rowModel holds the ones the search shows
     property string lastText: ""
@@ -87,6 +88,7 @@ Faces.SensorFace {
                 root.sync();
             } else {
                 root.busy = false;
+                root.error = data["exit code"] ? (data["stderr"] || "That did not work.").trim() : "";
                 root.refresh();
             }
         }
@@ -95,12 +97,32 @@ Faces.SensorFace {
     // live tabs refresh while shown, but not while the pointer is on the list or an action runs;
     // Startup apps and device names only change when you act
     Timer {
-        interval: root.mode === "services" ? 5000 : 3000
+        interval: root.mode === "services" ? 5000 : 3000 // processes: as often as Users
         repeat: true
-        running: root.visible && !root.busy && !listHover.hovered && (root.mode === "users" || root.mode === "services")
+        running: root.visible && !root.busy && !listHover.hovered && (root.mode === "users" || root.mode === "services" || root.mode === "processes")
         onTriggered: root.refresh()
     }
     Component.onCompleted: refresh()
+
+    // End task asks first: unsaved work in that process is lost
+    Kirigami.PromptDialog {
+        id: confirm
+        property string pid: ""
+        property string name: ""
+        title: "End " + name + "?"
+        subtitle: "If this process has unsaved work, it will be lost."
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: [
+            Kirigami.Action {
+                text: "End task"
+                icon.name: "process-stop"
+                onTriggered: {
+                    root.act("end " + root.quote(confirm.pid));
+                    confirm.close();
+                }
+            }
+        ]
+    }
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -114,7 +136,7 @@ Faces.SensorFace {
                 Layout.fillWidth: true
             }
             Kirigami.SearchField {
-                visible: root.mode === "services"
+                visible: root.mode === "services" || root.mode === "processes"
                 onTextChanged: root.filter = text.toLowerCase()
             }
             QQC2.BusyIndicator {
@@ -127,10 +149,19 @@ Faces.SensorFace {
             Layout.fillWidth: true
             Layout.leftMargin: Kirigami.Units.largeSpacing
             Layout.bottomMargin: Kirigami.Units.smallSpacing
-            visible: root.actions
+            visible: root.mode === "startup" || root.mode === "services"
             wrapMode: Text.WordWrap
             text: root.mode === "startup" ? "These apps start when you sign in. A change takes effect at your next sign-in."
                                           : "Starting or stopping a service asks for the administrator password."
+        }
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            type: Kirigami.MessageType.Error
+            showCloseButton: true
+            visible: root.error !== ""
+            text: root.error
+            onVisibleChanged: if (!visible) root.error = ""
         }
 
         // column header (device names have none)
@@ -196,13 +227,24 @@ Faces.SensorFace {
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 7
                         }
                     }
-                    // Startup apps: Enable/Disable. Services: Start, or Stop and Restart.
+                    // Startup apps: Enable/Disable. Services: Start, or Stop and Restart. Processes: End task.
                     RowLayout {
                         id: buttons
                         visible: root.actions
                         Layout.preferredWidth: Kirigami.Units.gridUnit * 10
                         readonly property bool on: root.mode === "startup" ? line.modelData[3] === "Enabled" : line.modelData[3] === "Running"
                         QQC2.Button {
+                            visible: root.mode === "processes"
+                            text: "End task"
+                            enabled: !root.busy
+                            onClicked: {
+                                confirm.pid = line.modelData[0];
+                                confirm.name = line.modelData[1];
+                                confirm.open();
+                            }
+                        }
+                        QQC2.Button {
+                            visible: root.mode !== "processes"
                             text: root.mode === "startup" ? (buttons.on ? "Disable" : "Enable") : (buttons.on ? "Stop" : "Start")
                             enabled: !root.busy
                             onClicked: root.act(root.mode === "startup"

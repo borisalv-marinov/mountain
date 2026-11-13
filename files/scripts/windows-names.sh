@@ -37,7 +37,7 @@ done
 # Start search: no KDE System Settings ("All Settings" stays runnable from Settings > System > About), no Bazzite GPU and
 # firewalld tools; the Welcome app says what it is
 for f in $(grep -lE '^(Name=Cardwire|Exec=firewall-config)' "$a"/*.desktop 2>/dev/null); do f=${f##*/}; hide+=("${f%.desktop}"); done
-sed -i -E '/^(GenericName|Comment)(\[|=)/d; 0,/^Name=/{/^Name=/a GenericName=Get started with Mountain
+sed -i -E '/^(GenericName|Comment)(\[|=)/d; 0,/^Name=/{/^Name=/a GenericName=Get started with your PC
 }' "$a/io.github.ublue_os.yafti_gtk.desktop"
 for f in systemsettings "${hide[@]}" kvantummanager org.kde.kwalletmanager kwalletmanager5-kwalletd org.kde.khelpcenter input-remapper-gtk \
          org.kde.kdebugsettings org.kde.kjournaldbrowser org.kde.kcolorschemeeditor org.kde.keditbookmarks \
@@ -67,7 +67,29 @@ names = {'Dolphin': 'File Explorer', 'Konsole': 'Terminal', 'System Monitor': 'T
 ui = {'@title:menu Create new folder, file, link, etc.\x04Create New': 'New', '@action:inmenu View\x04Sort By': 'Sort',
       '@item\x04Places': 'Quick access', '@item\x04Remote': 'Network', '@item\x04Devices': 'This PC',
       '@action\x04End Process': 'End task', '@action\x04Quit Application': 'End task'}
-uicat = re.compile(r'(dolphin|kio6|.*systemmonitor.*)\.mo$')
+uicat = {k: r'dolphin|kio6|.*systemmonitor.*' for k in ui}
+# App texts that name KDE projects: exact msgids from the apps' de .po files (25.12/26.04), only in that app's catalog
+apps = {
+    'kdeconnect-app': {'About KDE Connect': 'About Phone Link',
+        '@info\x04Make sure to install KDE Connect on your other devices.': 'Install the companion app on your phone, then pair it here.',
+        '@title:context\x04KDE Connect Android App': 'Android phone app', '@title:context\x04KDE Connect iOS App': 'iPhone app',
+        'Apple Store': 'App Store',
+        'If you are having problems, visit the <a href="https://userbase.kde.org/KDEConnect"><span style=" text-decoration: underline;">'
+        'KDE Connect Community wiki</span></a> for help.': 'If you are having problems, see the <a href="https://userbase.kde.org/KDEConnect">'
+        '<span style=" text-decoration: underline;">Phone Link help</span></a>.'},
+    'kdeconnect-core': {'KDE Connect failed to start': 'Phone Link failed to start'},
+    'kdeconnect-fileitemaction': {'Send via KDE Connect': 'Send to phone', "Send to '%1' via KDE Connect": "Send to '%1'"},
+    r'plasma_applet_org\.kde\.kdeconnect': {'KDE Connect Settings\u2026': 'Phone Link settings\u2026'},
+    'kate': {'Recent Documents': 'Recent files', 'No recent documents': 'No recent files', 'Visit homepage': 'Learn more',
+             'Get involved': 'Send feedback', 'Read handbook': 'Get help'},
+    'kamoso': {'Configure Kamoso': 'Camera settings', 'Configure Kamoso...': 'Camera settings...',
+               'Choose the folder where Kamoso will save pictures': 'Choose the folder where Camera saves photos',
+               'Choose the folder where Kamoso will save videos': 'Choose the folder where Camera saves videos'},
+    'kclock': {'The clock daemon was not found. Please start kclockd in order to have alarm functionality.':
+                   'The alarm service is not running. Sign out and back in to use alarms.',
+               'The clock daemon was not found. Please start kclockd in order to have timer functionality.':
+                   'The alarm service is not running. Sign out and back in to use timers.'}}
+for c, d in apps.items(): ui.update(d); uicat.update({k: c for k in d})
 loc = sys.argv[1]; found = {}  # catalog -> {key: new}; contexts are read from real translations (de/fr), never guessed
 for mo in glob.glob(f'{loc}/de/LC_MESSAGES/*.mo') + glob.glob(f'{loc}/fr/LC_MESSAGES/*.mo'):
     try: cat = gettext.GNUTranslations(open(mo, 'rb'))._catalog
@@ -75,9 +97,10 @@ for mo in glob.glob(f'{loc}/de/LC_MESSAGES/*.mo') + glob.glob(f'{loc}/fr/LC_MESS
     for k in cat:
         if isinstance(k, str) and k.split('\x04')[-1] in names:
             found.setdefault(os.path.basename(mo), {})[k] = names[k.split('\x04')[-1]]
-        elif isinstance(k, str) and k in ui and uicat.match(os.path.basename(mo)):
+        elif isinstance(k, str) and k in ui and re.fullmatch(f'({uicat[k]})\\.mo', os.path.basename(mo)):
             found.setdefault(os.path.basename(mo), {})[k] = ui[k]
 def write(path, d):
+    d = {'': 'Content-Type: text/plain; charset=UTF-8\n', **d}  # with no charset, non-ASCII text does not read back
     keys = sorted(d); ids = [k.encode() for k in keys]; strs = [d[k].encode() for k in keys]
     n = len(ids); o = 28 + 16 * n; tab, data = [], b''
     for b in ids + strs: tab.append((len(b), o + len(data))); data += b + b'\0'
@@ -91,5 +114,6 @@ assert {'KCalc', 'Okular', 'Konsole', 'KolourPaint'} <= seen, 'app display names
 uiseen = {k for d in found.values() for k in d if k in ui}
 print('windows-names: labels not found:', sorted(k.split('\x04')[-1] for k in set(ui) - uiseen) or 'none')
 assert {'Create New', 'Sort By', 'Places'} <= {k.split('\x04')[-1] for k in uiseen}, 'File Explorer labels not found'
+print('windows-names: app texts renamed:', len([k for k in uiseen if uicat[k] in apps]), 'of', sum(map(len, apps.values())))
 PY
 exit 0

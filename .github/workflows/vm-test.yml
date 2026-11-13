@@ -343,6 +343,7 @@ jobs:
           chk "greeter QML has no errors" 0 "journalctl -b --no-pager | grep -E 'kscreenlocker_greet|plasmalogin' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError' || true" '^0$'
           QM click $((W/2)) $((H/4)); sleep 3; shot lock-hello
           QM type wrongpass; QM key ret; sleep 4; shot lock-wrong-password # one wrong try (5 lock the account)
+          chk "greeter QML has no errors after a wrong password" 0 "journalctl -b --no-pager | grep -E 'kscreenlocker_greet|plasmalogin' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError|mtOk|mtLocale' || true" '^0$'
           chk "a wrong password keeps the screen locked" 1 "$SS" 'boolean true'
           QM click $((W/2)) $((H/4)); sleep 2
           QM type $LPW; QM key ret; sleep 6; shot unlocked
@@ -356,6 +357,11 @@ jobs:
           QM type firewall; sleep 3; shot start-search-firewall; QM key esc; sleep 1 # Mountain's Security, no KDE or firewalld pages
           QM move $((1180*W/1280)) $((780*H/800)); sleep 3; shot taskbar-hover-clock; QM move $((640*W/1280)) $((400*H/800))
           QM rclick $((1000*W/1280)) $((780*H/800)); sleep 2; shot taskbar-context-menu; QM key esc; sleep 1
+          QM key meta_l; sleep 3; QM move $((915*W/1280)) $((194*H/800)); sleep 1; shot start-all-pill-hover
+          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-all-apps
+          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
+          QM key meta_l; sleep 3; QM type calc; sleep 3; shot start-search-best-match; QM key esc; QM key esc; sleep 1
+          chk "start search has Best match" 0 "grep -c 'i18n(\"Best match\")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemMultiGridView.qml" '^1$'
           QM key meta_l; sleep 3 # the start menu open again for the steps below
           chk "menu.11.enhanced no QML errors" 0 "journalctl -b --no-pager -t plasmashell | grep -E 'menu\.11\.enhanced|org\.mountain' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError|Error loading' || true" '^0$'
           chk "start launcher applet in appletsrc" 0 "grep -c '^plugin=menu.11.enhanced$' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^1$'
@@ -370,6 +376,9 @@ jobs:
           for c in system bluetooth network personalization apps accounts time gaming accessibility privacy updates; do
             i=$((i+1)); QM click $((150*W/1280)) $(( (167 + 36*i) * H/800 )); sleep 2; shot "settings-$c"
           done
+          QM click $((150*W/1280)) $(( (167 + 36*3) * H/800 )); sleep 3; shot settings-network-page
+          chk "Settings Network page loads (no QML errors)" 0 "journalctl -b --no-pager | grep -E 'NetworkPage.qml' | grep -ciE 'is not a type|is not installed|ReferenceError|TypeError|Error loading' || true" '^0$'
+          QM key tab; sleep 1; shot settings-nav-focus # white focus ring vs the selected pill
           for q in bluetooth wallpaper display; do
             QM click $((640*W/1280)) $((60*H/800)); QM key ctrl a; QM type $q; sleep 2; shot "settings-search-$q"
           done
@@ -407,6 +416,7 @@ jobs:
           chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
           sleep 1; shot taskbar-tray # review crop: x 880-1280, y 744-800 (^ ENG | net vol | time / date | bell | sliver)
+          QM move $((1086*W/1280)) $((776*H/800)); sleep 2; shot taskbar-quicksettings-hover; QM move $((640*W/1280)) $((400*H/800)) # 40 px hover tile
           chk "clock shows a 4-digit year" 0 "grep -h '^customDateFormat=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" 'M/d/yyyy'
           QM click $((1276*W/1280)) $((776*H/800)); sleep 2; shot show-desktop-sliver; QM click $((1276*W/1280)) $((776*H/800)); sleep 1
           chk "desktop label shadow strengthened" 0 "grep -c 'spread: 0.55' \$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -path '*org/kde/plasma/extras/ShadowedLabel.qml' 2>/dev/null | head -1)" '^1$'
@@ -626,6 +636,9 @@ jobs:
           # top bar switch
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 3; shot topbar-off
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar on"; sleep 3; shot topbar-on
+          for _ in $(seq 15); do R "grep -q '^chartFace=org.kde.ksysguard.textonly' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" && break; sleep 2; done
+          chk "top bar: CPU and RAM as text" 0 "grep -c '^chartFace=org.kde.ksysguard.textonly' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^2$'
+          chk "top bar: labels" 0 "grep -hE '^(cpu/all/usage|memory/physical/usedPercent)=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort | paste -sd' '" 'cpu/all/usage=CPU memory/physical/usedPercent=RAM'
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 2
 
           # 10. latency
@@ -718,13 +731,18 @@ jobs:
           for pg in 1-processes 2-performance 3-apphistory 4-startup 5-users 6-details 7-services; do
             K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-$pg.page"; sleep 8; shot "taskmanager-${pg#*-}"
           done
-          # End task on Processes (maximized): search the test process, click its row, Delete, confirm
-          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8
-          QM key meta_l pgup; sleep 2; QM click $((565*W/1280)) $((55*H/800)); sleep 1; QM type endtasktest; sleep 3
-          QM click $((300*W/1280)) $((515*H/800)); sleep 1; shot taskmanager-endtask-select
-          chk "End task test process is running" 0 "pgrep -u looktest -x endtasktest" '^[0-9]+'
-          QM key delete; sleep 2; shot taskmanager-endtask-confirm; shot taskmanager-header; QM key ret; sleep 3
+          # End task: Mountain's Background processes list (Windows names, own processes only)
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 10; shot taskmanager-background
+          chk "Background processes: Windows names" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'Desktop Window Manager'
+          chk "Background processes: shell named like Windows" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'Windows Explorer'
+          chk "Background processes: CPU at most 100 %" 0 "$(TL '/usr/libexec/mountain-taskmanager processes') | awk -F'\t' 'NR>1 && \$3+0>100 {b=1} END {print b ? \"over\" : \"ok\"}'" '^ok$'
+          chk "Background processes: memory in MB/GB" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | sed -n 2p | cut -f4')" '^[0-9.]+ (MB|GB)$'
+          chk "Background processes lists the test process" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'endtasktest'
+          chk "End task refuses a root process" 0 "$(TL '/usr/libexec/mountain-taskmanager end 1 || echo refused')" 'refused'
+          chk "End task refuses the session core" 0 "$(TL '/usr/libexec/mountain-taskmanager end $(pgrep -u looktest -x kwin_wayland | head -1) || echo refused')" 'refused'
+          R "$(TL '/usr/libexec/mountain-taskmanager end $(pgrep -u looktest -x endtasktest | head -1)')"; sleep 1
           chk "Task Manager: End task ends the process" 0 "pgrep -u looktest -x endtasktest || echo ended" '^ended$'
+          chk "Phone Link app strings renamed" 0 "python3 -c 'import gettext; print(gettext.GNUTranslations(open(\"/usr/share/locale/en@mountain/LC_MESSAGES/kdeconnect-app.mo\",\"rb\"))._catalog.get(\"About KDE Connect\"))'" '^About Phone Link$'
           K -x endtasktest
           chk "startup test app ran at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' >/dev/null && echo running" '^running$'
           chk "Startup apps tab lists it" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'mtm-autostart-test.desktop'
@@ -733,7 +751,7 @@ jobs:
           chk "Task Manager services list" 2 "$(TL '/usr/libexec/mountain-taskmanager services | head -4 | tr "\t" " "')" 'Running'
           chk "Task Manager device names" 2 "$(TL '/usr/libexec/mountain-taskmanager device | tr "\t" " " | paste -sd";"')" 'Processor'
           chk "Task Manager pages: no Edit Page in header (actionsFace on every page)" 0 "grep -L '^actionsFace=Face-' /usr/share/plasma-systemmonitor/mountain-*.page | wc -l" '^0$'
-          chk "Task Manager CPU column scaled to 0-100 % of all cores" 0 "grep -c '\"usage\":\"textScaled\"' /usr/share/plasma-systemmonitor/mountain-1-processes.page" '^2$'
+          chk "Task Manager CPU column scaled to 0-100 % of all cores" 0 "grep -c '\"usage\":\"textScaled\"' /usr/share/plasma-systemmonitor/mountain-1-processes.page" '^1$'
           chk "Users tab CPU at most 100 %" 0 "$(TL '/usr/libexec/mountain-taskmanager users') | awk -F'\t' 'NR>1 && \$4+0>100 {b=1} END {print b ? \"over\" : \"ok\"}'" '^ok$'
           R "$(TL 'printf "[Desktop Entry]\nType=Application\nName=Тест App\nExec=true\n" > ~/.config/autostart/"Тест App.desktop"')"
           chk "Startup apps: name with a space and Cyrillic is listed" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'Тест App\.desktop'

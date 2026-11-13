@@ -50,4 +50,26 @@ bad=$(grep -ho 'SensorIds=.*\|totalSensors=.*' "$P"/*.page | grep -o '"[^"]*"' |
 ok '[[ -z $bad ]]' "pages use only always-present sensors${bad:+ (not: $bad)}"
 Q=$(dirname "$0")/../files/system/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
 ok 'grep -q "model: rowModel" "$Q" && grep -q "out === root.lastText" "$Q" && grep -q "!root.busy && !listHover.hovered" "$Q"' "list updates in place, pauses under the pointer"
+# Background processes: Windows names, CPU as a share of all cores (max 100 %), MB/GB, apps (app-*.scope) left out
+F=$T/proc; hz=$(getconf CLK_TCK); pg=$(getconf PAGESIZE)
+st() { # PID COMM TICKS RSS-MB: a /proc/PID/stat line (utime = TICKS, rss in pages)
+  mkdir -p "$F/$1"; printf '%s (%s) S 1 1 1 0 -1 0 0 0 0 0 %s 0 0 0 20 0 1 0 0 0 %s 0\n' "$1" "$2" "$3" $(($4 * 1048576 / pg)) > "$F/$1/stat"
+  [[ -e $F/$1/cgroup ]] || echo "0::/user.slice/session.slice/x.service" > "$F/$1/cgroup"; }
+st 101 kwin_wayland 0 300; st 102 plasmashell 0 2048; st 103 "my (odd) tool" 0 5; st 104 polkit-kde-auth 0 20
+st 105 dolphin 0 100; echo "0::/user.slice/app.slice/app-org.kde.dolphin@1.scope" > "$F/105/cgroup"
+# during the half-second sample, kwin uses a quarter of 4 cores and plasmashell more than all of them
+(sleep 0.2; st 101 kwin_wayland $((hz / 2)) 300; st 102 plasmashell $((hz * 9)) 2048) &
+L=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 bash "$S" processes); wait
+ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tCPU\tMemory'"'"' ]]' "processes: header"
+ok 'grep -q $'"'"'^101\tDesktop Window Manager\t25.0 %\t300.0 MB$'"'"' <<<"$L"' "processes: kwin named, CPU normalised by cores, MB"
+ok 'grep -q $'"'"'^102\tWindows Explorer\t100.0 %\t2.0 GB$'"'"' <<<"$L"' "processes: CPU capped at 100 %, GB"
+ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t'"'"' <<<"$L"' "processes: 15-char comm still named"
+ok 'grep -q $'"'"'^103\tmy (odd) tool\t0.0 %'"'"' <<<"$L"' "processes: unknown names kept, parentheses survive"
+ok '! grep -q "^105" <<<"$L"' "processes: apps (app scopes) left out"
+ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
+ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"
+if ((EUID != 0)) && [[ -e /proc/1 && ! -O /proc/1 ]]; then ok '! bash "$S" end 1 2>/dev/null' "end: refuses another user's process"; fi
+sleep 30 & p=$!
+ok 'bash "$S" end $p 2>/dev/null; ! kill -0 $p 2>/dev/null' "end: ends own process"
+wait $p 2>/dev/null
 rm -rf "$T"; exit $rc

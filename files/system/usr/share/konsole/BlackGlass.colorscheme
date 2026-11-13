@@ -1,6 +1,6 @@
-# Terminal in Mountain's black glass: the shared base #121212 at 0.82 with blur, Windows Terminal's default text colours
+# Terminal in the black glass palette: the shared base #121212 at 0.82 with blur, Windows Terminal's default text colours
 [General]
-Description=Mountain Black
+Description=Black glass
 Opacity=0.82
 Blur=true
 

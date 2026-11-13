@@ -122,7 +122,7 @@ PlasmoidItem {
 
     component Glass: Rectangle {
         radius: 8
-        color: Qt.rgba(0.086, 0.09, 0.11, 0.97)
+        color: Qt.rgba(0.071, 0.071, 0.071, 0.97)
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         Rectangle {
@@ -163,7 +163,7 @@ PlasmoidItem {
                 anchors { left: parent.left; leftMargin: 14; right: chevron.left; verticalCenter: parent.verticalCenter }
                 text: row.entry.sep ? "" : row.label(row.entry.t, row.entry.k)
                 textFormat: Text.StyledText
-                color: "#F2F3F5"
+                color: "#FFFFFF"
                 font: Kirigami.Theme.defaultFont
                 elide: Text.ElideRight
             }
@@ -171,7 +171,7 @@ PlasmoidItem {
                 id: chevron
                 anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 text: row.entry.submenu ? "›" : ""
-                color: "#A4A9B2"
+                color: "#C5C5C5"
                 font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.3
             }
             MouseArea {

@@ -12,6 +12,12 @@ squashEnabled=true
 BlurStrength=10
 NoiseStrength=3
 
+[Effect-overview]
+# Windows 11 Task view: no hot corner (9 = ElectricNone), windows in an organized grid, minimized ones shown
+BorderActivate=9
+OrganizedGrid=true
+IgnoreMinimized=false
+
 [Compositing]
 Enabled=true
 
