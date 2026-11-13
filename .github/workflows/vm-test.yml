@@ -54,8 +54,10 @@ jobs:
 
       - name: Find image tag
         id: tag
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          [ -n "${{ inputs.tag }}" ] && { echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"; echo "Using tag: ${{ inputs.tag }}"; exit 0; }
+          [ -n "$TAG" ] && { echo "tag=$TAG" >> "$GITHUB_OUTPUT"; echo "Using tag: $TAG"; exit 0; }
           SAFE="${BRANCH//\//-}"
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
           TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
@@ -890,8 +892,9 @@ jobs:
           chk "attack: the attacker's network lands in zone" 2 "firewall-cmd --get-zone-of-interface=vatk 2>/dev/null || firewall-cmd --get-default-zone" '.'
           OPEN=$(R "ip netns exec attacker bash -c 'for p in \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
           [ "$OPEN" = 22 ] && r=PASS || r=FAIL; echo "| attack: port scan from the network (22 is this test's own SSH) | $r | open: ${OPEN:-none} |" >> report.md; echo "$r port scan"
-          R "useradd -G wheel rtadmin && echo rtadmin:Rt-Admin-2026 | chpasswd"
-          R "printf '#!/bin/sh\necho wrongpass\n' > /tmp/rt-wrong.sh; printf '#!/bin/sh\necho $LPW\n' > /tmp/rt-right.sh; printf '#!/bin/sh\necho Rt-Admin-2026\n' > /tmp/rt-admin.sh; chmod 755 /tmp/rt-wrong.sh /tmp/rt-right.sh /tmp/rt-admin.sh"
+          RTPW=$(openssl rand -hex 12); echo "::add-mask::$RTPW"
+          R "useradd -G wheel rtadmin && echo rtadmin:$RTPW | chpasswd"
+          R "printf '#!/bin/sh\necho wrongpass\n' > /tmp/rt-wrong.sh; printf '#!/bin/sh\necho $LPW\n' > /tmp/rt-right.sh; printf '#!/bin/sh\necho $RTPW\n' > /tmp/rt-admin.sh; chmod 755 /tmp/rt-wrong.sh /tmp/rt-right.sh /tmp/rt-admin.sh"
           SSHA="ip netns exec attacker env SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w ssh -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5"
           chk "attack: a correct password for another account logs in (control)" 0 "SSH_ASKPASS=/tmp/rt-admin.sh $SSHA rtadmin@10.99.0.1 echo GOT-IN </dev/null 2>/dev/null || echo refused" 'GOT-IN'
           R "for i in 1 2 3 4 5 6; do SSH_ASKPASS=/tmp/rt-wrong.sh $SSHA looktest@10.99.0.1 true </dev/null >/dev/null 2>&1; done; true"

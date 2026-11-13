@@ -101,7 +101,8 @@ modules:
 
   - type: signing
 
-  # last module: a failing check stops the build before anything is pushed (CI copies tests/check-image.sh here first)
+  # last module: a failing check stops the build before anything is pushed (CI copies tests/check-image.sh here first;
+  # for a build on your own PC run `cp tests/check-image.sh files/scripts/` before `bluebuild build`)
   - type: script
     scripts:
       - check-image.sh

@@ -25,7 +25,7 @@ p=$t; [[ $p == \"*\" && ${#p} -gt 1 ]] && p=${p:1:${#p}-2}
 [[ $p == "~" || $p == "~/"* ]] && p=$HOME${p:1}
 if [[ $p =~ ^[A-Za-z][A-Za-z0-9+.-]*:// || $p == mailto:* ]]; then go xdg-open "$p"
 elif [[ $p == www.* ]]; then go xdg-open "https://$p"
-elif [[ -e $p ]]; then
+elif [[ -e $p ]] && { [[ $p == */* ]] || ! command -v -- "${p%% *}" >/dev/null 2>&1; }; then
   if [[ -f $p && -x $p ]]; then go "$p"; else go xdg-open "$p"; fi
 else
   read -r w rest <<<"$t"

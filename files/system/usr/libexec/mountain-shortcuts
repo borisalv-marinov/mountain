@@ -11,11 +11,11 @@ js='var n = 0, seen = [], keys = { "org.mountain.quicksettings": "Meta+A", "org.
 }); });
 print("set=" + n + " in " + seen.join(" "));'
 timeout 60 gdbus wait --session org.kde.plasmashell 2>/dev/null # no polling until Plasma is on the bus
-for _ in $(seq 10); do # the tray loads its applets a little after the panel
+for _ in $(seq 60); do # the tray loads its applets a little after the panel (much later on a slow first sign-in)
   out=$(dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell         org.kde.PlasmaShell.evaluateScript "string:$js" 2>/dev/null) && [[ $out == *quicksettings* && $out == *notifications* ]] && break
   sleep 2
 done
-# done also when an applet was removed (or the panel layout already set the keys): stop retrying at every login
 mkdir -p "${mark%/*}"; echo "${out:-plasmashell not reachable}" > "$mark.log"
-[[ -n $out ]] && touch "$mark" # not reachable: try again at the next login
+# done only once both applets were found and set; otherwise (tray still loading, an applet removed) try again at the next login
+[[ $out == *quicksettings* && $out == *notifications* && $out == *set=[2-9]* ]] && touch "$mark"
 exit 0

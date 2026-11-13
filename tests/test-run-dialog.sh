@@ -23,4 +23,7 @@ ok '[[ $(bash "$r" --history | grep -cx "Firefox") == 1 ]] && ! bash "$r" --hist
 bash "$r" firefox >/dev/null
 ok '[[ $(bash "$r" --history | grep -cix firefox) == 2 ]]' "repeat moves to the top, no duplicate"
 ok '[[ $(bash "$r" control) == "sh -c sleep 0.5; exec plasmawindowed org.mountain.settings" ]]' "control opens Settings after Run closes"
+mkdir -p "$tmp/bash" "$tmp/notes"
+ok '[[ $(cd "$tmp" && bash "$r" bash) != xdg-open* ]]' "a program wins over a folder of the same name"
+ok '[[ $(cd "$tmp" && bash "$r" notes) == "xdg-open notes" ]]' "a folder name that is no program still opens"
 exit $rc

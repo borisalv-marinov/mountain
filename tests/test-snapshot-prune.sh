@@ -18,4 +18,12 @@ ok 'grep -qx "2026-11-09_1200" <<<"$low"' "low disk: 4th day and older freed"
 ok '[[ $(wc -l <<<"$low") == $(( $(wc -l <<<"$names") - 3 - 2 )) ]]' "low disk: newest 3 (all today) + 2 older dailies kept"
 ok 'grep -q "recent=3; days=3" "$(dirname "$0")/../files/system/usr/libexec/mountain-snapshot"' "low disk keeps 3 dailies"
 ok '[[ -z $(prune_list 24 7 <<<"") ]]' "nothing to do"
+# a program starting the unit again and again (snapshots by hand) cannot push out today's hourly ones
+M=$(mktemp); spam=$(for m in $(seq -w 1 30); do echo "2026-11-12_23$m"; done); printf '%s\n' "$spam" > "$M"
+del=$(printf '%s\n%s\n' "$names" "$spam" | to_prune 24 7 "$M")
+ok '! grep -q "2026-11-12_[0-9][0-9]00" <<<"$del" && ! grep -qx "2026-11-11_2300" <<<"$del"' "hand-made snapshots never take the hourly slots"
+ok '[[ $(grep -cxFf "$M" <<<"$del") == 27 ]] && ! grep -qx "2026-11-12_2330" <<<"$del"' "only the newest 3 hand-made snapshots are kept"
+: > "$M"; ok '[[ $(to_prune 24 7 "$M" <<<"$names") == "$(prune_list 24 7 <<<"$names")" ]]' "no hand-made snapshots: the usual rule"
+ok '[[ -z $(to_prune 24 7 "$M" </dev/null) ]]' "no snapshots: nothing to delete"
+rm -f "$M"
 exit $rc

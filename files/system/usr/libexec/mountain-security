@@ -113,7 +113,9 @@ scan() { # [--no-update] quick|full|DIR...
   fi
   # games are never scanned: Steam, Proton prefixes, Heroic and Lutris folders (big, slow, and not where downloads land)
   # no network and no new privileges for the parser; used only when the user manager can set that up (probe), else plain
-  systemd-run --user --wait --pipe --quiet --collect -p PrivateNetwork=yes -p NoNewPrivileges=yes true >/dev/null 2>&1 &&
+  # Active Protection runs this inside its own stricter sandbox (no user bus) and moves threats itself: report only
+  local mvq=(--move="$quarantine"); [[ ${MOUNTAIN_SCAN_REPORT_ONLY:-} == 1 ]] && mvq=()
+  [[ -z ${mvq[*]} ]] || ! systemd-run --user --wait --pipe --quiet --collect -p PrivateNetwork=yes -p NoNewPrivileges=yes true >/dev/null 2>&1 ||
     sb=(systemd-run --user --wait --pipe --quiet --collect -p PrivateNetwork=yes -p NoNewPrivileges=yes --)
   local h x ex=() # anchored to this home: ~/Downloads/Games-crack is still scanned
   h=$(re_esc "$HOME")
@@ -121,7 +123,7 @@ scan() { # [--no-update] quick|full|DIR...
     ex+=("--exclude-dir=^$h/$(re_esc "$x")(/|\$)")
   done
   ex+=("--exclude-dir=^$(re_esc "$quarantine")(/|\$)")
-  out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i --database="$db" --move="$quarantine" \
+  out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i --database="$db" "${mvq[@]}" \
         "${ex[@]}" \
         --exclude='\.(part|crdownload|tmp)$' "$@" 2>&1)
   rc=$?
@@ -133,7 +135,7 @@ scan() { # [--no-update] quick|full|DIR...
       [[ -e $f ]] && echo "note=could not quarantine $f" # shows in the scan output and the Active Protection log
     fi
     rmdir "${f%/*}"/.clamav-unlink-* 2>/dev/null
-  done < <(sed -n 's/: [^:]* FOUND$//p' <<<"$out")
+  done < <([[ -n ${mvq[*]} ]] && sed -n 's/: [^:]* FOUND$//p' <<<"$out")
   find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
   found=$(awk -F': *' '/^Infected files:/ {print $2}' <<<"$out")
   case $rc in 0) r=clean ;; 1) r=found ;; *) r=error ;; esac
@@ -171,8 +173,12 @@ restore() { # NAME: back to Downloads, and tell Active Protection so it is not q
   [[ -e $d/$1 ]] && { echo "already exists in $d: $1" >&2; exit 1; }
   chmod 0600 "$quarantine/$1"
   # hash recorded before the move, so Active Protection never sees the restored file as new
+  local h a=$state/protect/allowed t; h=$(sha256sum -- "$quarantine/$1" | cut -d' ' -f1)
   [[ -x /usr/libexec/mountain-protect ]] && /usr/libexec/mountain-protect allow-hash "$quarantine/$1" >/dev/null 2>&1
-  mv -n "$quarantine/$1" "$d/" || exit 1
+  if ! mv -n -- "$quarantine/$1" "$d/" || [[ -e $quarantine/$1 ]]; then # not restored: no allow entry, still never runs
+    chmod 0400 "$quarantine/$1"; t=$(mktemp "$a.XXXXXX") && { grep -vxF -- "$h" "$a" > "$t"; mv -f -- "$t" "$a"; }
+    echo "could not restore $1" >&2; exit 1
+  fi
   echo "restored=$d/$1"
 }
 

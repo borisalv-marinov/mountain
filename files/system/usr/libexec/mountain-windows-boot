@@ -2,7 +2,8 @@
 # Restart into Windows (dual boot): a one-time boot (EFI BootNext) of the Windows Boot Manager, then restart.
 #   mountain-windows-boot check        print the Windows entry number; exit 1 when there is none (the menu item is hidden)
 #   mountain-windows-boot go [--no-restart]   set BootNext, then restart as you through logind (the menus use --no-restart, then Plasma's restart prompt)
-# The root part (pkexec, org.mountain.windows-boot.policy) only sets BootNext and takes only "go --no-restart"; it never reboots.
+#   mountain-windows-boot clear       cancel the one-time boot (after a refused restart)
+# The root part (pkexec, org.mountain.windows-boot.policy) only sets or clears BootNext ("go --no-restart", "clear"); it never reboots.
 set -uo pipefail
 efi=${MOUNTAIN_EFIBOOTMGR:-efibootmgr}
 entry() { "$efi" 2>/dev/null | sed -n -E 's/^Boot([0-9A-Fa-f]{4})\*? +Windows Boot Manager.*/\1/p' | head -1; }
@@ -14,9 +15,12 @@ case ${1:-} in
       [[ ${2:-} == --no-restart ]] || { echo "root only sets the one-time boot: use go --no-restart" >&2; exit 2; }
     else
       pkexec "$0" go --no-restart || exit 1; echo "bootnext=$e"
-      [[ ${2:-} == --no-restart ]] || systemctl reboot; exit
+      [[ ${2:-} == --no-restart ]] && exit 0
+      systemctl reboot && exit 0
+      echo "the restart was refused: Windows will not start next time" >&2; pkexec "$0" clear; exit 1
     fi
     "$efi" --bootnext "$e" >/dev/null || exit 1
     echo "bootnext=$e" ;;
-  *) echo "usage: mountain-windows-boot check|go [--no-restart]" >&2; exit 2 ;;
+  clear) [[ $(id -u) == 0 ]] || exec pkexec "$0" clear; "$efi" --delete-bootnext >/dev/null 2>&1; echo "bootnext=none" ;;
+  *) echo "usage: mountain-windows-boot check|go [--no-restart]|clear" >&2; exit 2 ;;
 esac

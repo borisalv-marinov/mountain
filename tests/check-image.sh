@@ -106,7 +106,8 @@ echo "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation [10de:2484]"
     out=$(PATH="$d:$PATH" "$s" --dry-run); [[ $out == "already switched" ]] || fail "expected 'already switched', got: $out"
   fi
   # detect only at boot: the switch runs only after a click (--switch, from the sign-in notification), never waits for the network
-  grep -q 'bootc switch' "$s" && ! grep -q -- '--switch' "$s" && fail "gpu-check switches without a click"
+  # every bootc switch call sits in the --switch) branch, and there is one
+  awk '/^[[:space:]]*--switch\)/ { b = 1 } /bootc switch/ && !/^[[:space:]]*#/ { if (b) n++; else bad = 1 } b && /;;/ { b = 0 } END { exit bad || !n }' "$s" || fail "gpu-check switches without a click"
   assert_grep '--notify' /etc/xdg/autostart/mountain-gpu-notify.desktop
   assert_grep '-A switch=Switch' "$s"
   ! grep -q network-online /usr/lib/systemd/system/mountain-gpu-check.service || fail "gpu-check waits for the network"
@@ -651,6 +652,7 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   done
   assert_file /usr/libexec/mountain-shortcuts; [[ -x /usr/libexec/mountain-shortcuts ]] || fail "mountain-shortcuts not executable"
   assert_grep 'Meta+N' /usr/libexec/mountain-shortcuts
+  grep -q 'out == \*set=\[2-9\]\*' /usr/libexec/mountain-shortcuts || fail "mountain-shortcuts marks itself done before both applets are set"
   assert_grep '^Exec=/usr/libexec/mountain-shortcuts$' /etc/xdg/autostart/mountain-shortcuts.desktop
   assert_grep 'FirewallD1.info' /usr/share/polkit-1/rules.d/60-mountain.rules
   assert_grep '^X-KDE-Shortcuts=Meta+X$' /usr/share/applications/mountain-winx.desktop
@@ -692,7 +694,7 @@ check_phase33() { # v6 fix wave: Windows names, flyouts, File Explorer, Settings
   local a=/usr/share/applications f t d s ui=/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
   local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
   # lite mode once per account; Flatpak policy marker
-  assert_grep 'lite-mode' /usr/libexec/mountain-lite-mode
+  grep -qF '&& -e $mark ]]; then exit 0' /usr/libexec/mountain-lite-mode || fail "lite mode no longer runs once per account"
   assert_grep 'flatpak-tight-' /usr/libexec/mountain-flatpak-policy
   # Windows app names in menus and title bars, toast headers, PDF Reader icon
   for t in "org.kde.okular:PDF Reader" "org.kde.kcalc:Calculator" "org.kde.kolourpaint:Paint" "org.kde.kwrite:Notepad" "org.kde.konsole:Terminal" "org.kde.plasma-systemmonitor:Task Manager" "org.kde.kdeconnect.app:Phone Link"; do
@@ -710,7 +712,7 @@ check_phase33() { # v6 fix wave: Windows names, flyouts, File Explorer, Settings
   done
   # org.kde.kwin has an uncreatable Window type of its own: a KWin script's own window must be QtQuick's, by qualified name
   for f in $(grep -rl '^import org.kde.kwin' /usr/share/kwin/scripts/org.mountain.* 2>/dev/null || true); do
-    ! grep -qE '(^|[^.A-Za-z])Window \{' "$f" || fail "bare Window {} in a KWin script resolves to KWin's own type: $f"
+    ! grep -qzP '(?<![.\w])Window\s*\{' "$f" || fail "bare Window {} in a KWin script resolves to KWin's own type: $f"
   done
   assert_grep '^MountainSnapLayouts=Meta+Z,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^MountainClipboard=Meta+V,' /etc/skel/.config/kglobalshortcutsrc

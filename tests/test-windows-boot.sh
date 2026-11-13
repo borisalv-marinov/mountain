@@ -9,4 +9,9 @@ ok '[[ $(MOUNTAIN_EFIBOOTMGR=$T/efi bash "$S" check) == 0003 ]]' "finds the Wind
 fake '"Boot0001* Mountain	HD(1,GPT)" "Boot0002* UEFI QEMU HARDDISK"'
 ok '! MOUNTAIN_EFIBOOTMGR=$T/efi bash "$S" check >/dev/null' "no Windows entry: hidden"
 ok '! MOUNTAIN_EFIBOOTMGR=$T/efi bash "$S" go 2>/dev/null' "go refuses without an entry"
+# a refused restart cancels the one-time Windows boot again
+fake '"Boot0003* Windows Boot Manager	HD(2,GPT)"'
+printf '#!/bin/sh\necho "$*" >> "%s/pkexec.log"\n' "$T" > "$T/pkexec"; printf '#!/bin/sh\nexit 1\n' > "$T/systemctl"; chmod +x "$T/pkexec" "$T/systemctl"
+ok '! PATH=$T:$PATH MOUNTAIN_EFIBOOTMGR=$T/efi bash "$S" go 2>/dev/null && grep -q " clear$" "$T/pkexec.log"' "a refused restart clears BootNext"
+ok 'PATH=$T:$PATH MOUNTAIN_EFIBOOTMGR=$T/efi bash "$S" go --no-restart >/dev/null && ! grep -q " clear$" <(tail -1 "$T/pkexec.log")' "go --no-restart leaves it set (Plasma asks to restart)"
 rm -rf "$T"; exit $rc
