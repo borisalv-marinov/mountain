@@ -41,6 +41,8 @@ jobs:
         run: bash tests/test-protect.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
+      - name: KWin flyout scripts load and open on their shortcuts (Win+V, Win+Z)
+        run: pip install -q pyside6==6.11.1 && QT_QPA_PLATFORM=offscreen python tests/test-kwin-qml.py
       - name: Run dialog (Win+R) test
         run: bash tests/test-run-dialog.sh
       - name: Check Flathub IDs

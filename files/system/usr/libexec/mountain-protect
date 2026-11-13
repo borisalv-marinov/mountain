@@ -48,7 +48,7 @@ risky() { # FILE REASON: worth a ClamAV scan? Downloads and drives: everything; 
 }
 
 check() { # FILE...: count, flag unverified, scan the risky ones in a separate sandboxed low-priority unit
-  local f r sig out d one= files=() new=() props=() tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
+  local f r sig out d one="" files=() new=() props=() tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
   local -A dirs=()
   for f in "$@"; do
     [[ $f == /* && $f != *[$'\n\t']* && -f $f && ! -L $f ]] || continue # a newline or tab in a name splits it: skipped
