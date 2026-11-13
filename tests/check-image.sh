@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail # -E: the FAIL line trap also fires inside the phase functions
-trap 'echo "FAIL: line $LINENO: $BASH_COMMAND"' ERR
+trap 'echo "FAIL: line $LINENO: $BASH_COMMAND" >&2' ERR # stderr: never captured into a $(...) list
 
 # Runs inside the built image (also as the last recipe module, so a failure stops the push). Runs every check_phaseN.
 
@@ -663,7 +663,7 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
 check_phase32() { # v6: the start menu, panels and login/lock greeter load their QML (a broken import must fail the build, not ship)
   local f m p q d n Q='/usr/lib64/qt6/qml /usr/lib/qt6/qml'
   # every dotted "import X.Y" in our plasmoids, sensor face and the lock screen shell must resolve to an installed module
-  for m in $(grep -rhoE '^import +[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+' /usr/share/plasma/plasmoids/{menu.11.enhanced,org.mountain.*}       /usr/share/ksysguard/sensorfaces/org.mountain.* /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen 2>/dev/null | awk '{print $2}' | sort -u); do
+  for m in $({ grep -rhoE '^import +[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+' /usr/share/plasma/plasmoids/{menu.11.enhanced,org.mountain.*}       /usr/share/ksysguard/sensorfaces/org.mountain.* /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen 2>/dev/null || true; } | awk '{print $2}' | sort -u); do
     p=${m//.//}; n=0
     for q in $Q; do [[ -f $q/$p/qmldir ]] && n=1; done
     [[ $n == 1 ]] || fail "QML module not installed: $m (start menu or panels would fail to load)"
@@ -676,7 +676,7 @@ check_phase32() { # v6: the start menu, panels and login/lock greeter load their
   done
   ! grep -q '^prefer ' "$d/qmldir" || fail "breeze qmldir still prefers the compiled copy"
   for f in "$d"/*.qml; do
-    for m in $(grep -hoE '^import +[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+' "$f" | awk '{print $2}' | sort -u); do
+    for m in $({ grep -hoE '^import +[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+' "$f" || true; } | awk '{print $2}' | sort -u); do # || true: no dotted import is fine (the ERR trap would print into the list)
       p=${m//.//}; n=0
       for q in $Q; do [[ -f $q/$p/qmldir ]] && n=1; done
       [[ $n == 1 ]] || fail "$(basename "$f"): QML module not installed: $m"
