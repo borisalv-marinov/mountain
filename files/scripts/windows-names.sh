@@ -8,6 +8,9 @@ ren() { # file new-name; translated Name[xx] lines are dropped so every language
 }
 ren systemsettings.desktop "All Settings" # the full KDE app; "Settings" is our Windows-style one (org.mountain.settings)
 ren org.kde.dolphin.desktop "File Explorer"
+# Desktop folders open through desktop:/ (shortcut names without ".desktop"); the wrapper passes everything else to Dolphin
+sed -i -E 's#^Exec=dolphin( |$)#Exec=/usr/libexec/mountain-explorer\1#' "$a/org.kde.dolphin.desktop"
+grep -q '^Exec=/usr/libexec/mountain-explorer' "$a/org.kde.dolphin.desktop" || { echo "windows-names: File Explorer Exec not set"; exit 1; }
 ren org.kde.konsole.desktop "Terminal"
 ren org.kde.plasma-systemmonitor.desktop "Task Manager"
 ren org.kde.kinfocenter.desktop "System Information"

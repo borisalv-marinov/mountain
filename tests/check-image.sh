@@ -284,6 +284,8 @@ check_phase21() { # Windows-like start menu and names
   for f in $(grep -lE '^(Name=Cardwire|Exec=firewall-config)' $a/*.desktop 2>/dev/null || true); do assert_grep '^NoDisplay=true$' "$f"; done
   ! grep -qiE '^(GenericName|Comment)=.*(Windows Security style|setup your PC)' $a/org.mountain.security.desktop $a/io.github.ublue_os.yafti_gtk.desktop || fail "Start search descriptions"
   assert_grep '^Name=File Explorer$' $a/org.kde.dolphin.desktop
+  assert_grep '^Exec=/usr/libexec/mountain-explorer' $a/org.kde.dolphin.desktop # Desktop folders via desktop:/ (no ".desktop" labels)
+  [[ -x /usr/libexec/mountain-explorer ]] || fail "mountain-explorer not executable"
   assert_grep '^Name=Task Manager$' $a/org.kde.plasma-systemmonitor.desktop
   assert_grep '^Name=Terminal$' $a/org.kde.konsole.desktop
   for f in kvantummanager org.kde.kwalletmanager org.kde.khelpcenter; do

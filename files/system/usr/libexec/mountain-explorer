@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# File Explorer: folders inside your Desktop open through desktop:/, which shows shortcuts by their name ("Terminal", not
+# "Terminal.desktop", as Windows hides ".lnk"); Plasma's desktop opens them by their file:// path. Everything else passes through.
+d=$(xdg-user-dir DESKTOP 2>/dev/null); [[ -n $d && $d != "$HOME" ]] || d=$HOME/Desktop
+a=()
+for u; do
+  p=$u; [[ $p == file://* ]] && { p=${p#file://}; p=$(printf '%b' "${p//%/\\x}"); } # file:///a%20b -> /a b
+  if [[ $p == "$d" || $p == "$d"/* ]]; then u="desktop:/${p#"$d"}"; u=${u/#desktop:\/\//desktop:\/}; fi
+  a+=("$u")
+done
+exec "${MOUNTAIN_DOLPHIN:-/usr/bin/dolphin}" "${a[@]}"

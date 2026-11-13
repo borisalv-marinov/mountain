@@ -538,6 +538,8 @@ jobs:
           # 3. double-click the first desktop icon (folder AI)
           QM dclick $((58*W/1280)) $((75*H/800))
           wchk "desktop folder opens (dolphin)" 0 dolphin 15; sleep 3; shot folder-open
+          chk "a desktop folder opens through desktop:/ (labels without .desktop)" 0 "pgrep -a -u looktest -x dolphin | head -1" 'desktop:/'
+          chk "File Explorer label of a launcher has no .desktop" 0 "$LT QT_QPA_PLATFORM=offscreen kioclient stat 'desktop:/Coding/Terminal.desktop' | sed -n 's/^DISPLAY_NAME *//p'" '^Terminal$'
           K -x dolphin
 
           # 4. file explorer

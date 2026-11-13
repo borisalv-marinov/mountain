@@ -41,6 +41,8 @@ jobs:
         run: bash tests/test-protect.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
+      - name: File Explorer opens Desktop folders through desktop:/
+        run: bash tests/test-explorer.sh
       - name: Firewall profile picks the default-route connection
         run: bash tests/test-security-conn.sh
       - name: KWin flyout scripts load and open on their shortcuts (Win+V, Win+Z)
