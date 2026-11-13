@@ -7,7 +7,10 @@ set -euo pipefail
 tight() {
   local m=/var/lib/mountain/flatpak-tight-${*: -1}
   [[ -e $m ]] && return 0
-  flatpak override --system --nofilesystem=home --nofilesystem=host --filesystem=xdg-download "$@" && { mkdir -p "${m%/*}"; touch "$m"; } || echo "mountain-flatpak-policy: skipped ${*: -1}"
+  if flatpak override --system --nofilesystem=home --nofilesystem=host --filesystem=xdg-download "$@"; then mkdir -p "${m%/*}"; touch "$m"
+  else echo "mountain-flatpak-policy: could not tighten ${*: -1}" >&2; rc=1; fi # the unit fails, so it shows in systemctl --failed
 }
+rc=0
 for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox; do tight "$a"; done
 tight --filesystem=xdg-documents --filesystem=xdg-desktop org.onlyoffice.desktopeditors
+exit $rc

@@ -1,7 +1,6 @@
 [Unit]
 Description=Mountain: download virus definitions (only when you click Scan now or Update definitions)
-Wants=network-online.target
-After=network-online.target
+# no network-online ordering: offline, Scan now skips the update itself (nm-online), and freshclam fails fast on its own
 # Scan now may start this without a password: at most 3 downloads an hour, so a loop can't get the PC blocked by the ClamAV CDN
 StartLimitIntervalSec=1h
 StartLimitBurst=3

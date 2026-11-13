@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Task Manager's Startup apps as Windows shows them: Name, Publisher, Status, Startup impact.
+# Mountain's own helpers and desktop internals are left out (they are not apps you sign in to);
+# switching an entry on/off is still `mountain-taskmanager startup-set FILE on|off`.
+set -uo pipefail
+# ids (file names) of OS parts; anything started from /usr/libexec or /usr/lib is one too
+hide='^(mountain-|baloo|org\.kde\.baloo|input-remapper|org\.kde\.kunifiedpush|org\.gnome\.SettingsDaemon\.|org\.kde\.xwaylandvideobridge|org\.kde\.discover\.notifier|org\.kde\.kalendarac|org\.kde\.kded|org\.kde\.kwalletd|org\.freedesktop\.problems|abrt|kde-systemd-start-condition|user-dirs-update|imsettings|tracker-|ublue-|bazzite-|xapp-|nvidia-)'
+bash "$(dirname "$0")/mountain-taskmanager" startup | hide=$hide awk -F'\t' -v OFS='\t' '
+  NR == 1 { print "id", "Name", "Publisher", "Status", "Startup impact"; next }
+  $1 ~ ENVIRON["hide"] || $4 ~ /^\/usr\/lib(exec)?\// { next }
+  {
+    name = $2; if ($1 ~ /^org\.kde\.kdeconnect/) name = "Phone Link"
+    pub = ""
+    if ($1 ~ /^org\.kde\./) pub = "KDE"; else if ($1 ~ /^org\.gnome\./) pub = "GNOME"
+    else if ($1 ~ /^(steam|com\.valvesoftware\.)/) pub = "Valve"; else if ($1 ~ /^org\.mozilla\./) pub = "Mozilla"
+    # Windows says "Not measured" until it has timed a sign-in; Mountain never times one
+    print $1, name, pub, $3, ($3 == "Enabled" ? "Not measured" : "None")
+  }'

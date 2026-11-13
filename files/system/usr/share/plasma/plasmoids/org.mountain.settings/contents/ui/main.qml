@@ -177,7 +177,8 @@ PlasmoidItem {
     function setWallpaper(url) { // a Mountain picture: apply its package so the right size and dark variant are used
         wallpaper = url;
         const f = url.replace("file://", ""), i = f.indexOf("/contents/");
-        run("/usr/libexec/mountain-background picture '" + (i > 0 ? f.slice(0, i + 1) : f) + "'");
+        const p = i > 0 ? f.slice(0, i + 1) : f; // shell-quoted: a ' in a file name can't end the argument and run a command
+        run("/usr/libexec/mountain-background picture '" + p.split("'").join("'\\''") + "'");
     }
 
     function setColorMode(mode) {

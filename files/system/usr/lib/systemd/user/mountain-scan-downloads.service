@@ -1,9 +1,0 @@
-[Unit]
-Description=Mountain Security: scan new files in Downloads (uses the definitions you have; never downloads)
-
-[Service]
-Type=oneshot
-ExecStartPre=/usr/bin/sleep 5
-ExecStart=/usr/libexec/mountain-security scan-new
-Nice=19
-IOSchedulingClass=idle

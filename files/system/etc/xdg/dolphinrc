@@ -5,3 +5,9 @@ AlwaysShowTabBar=false
 # Small: "N items" only; the free-space part read "0 B free" for local folders (the read-only system image), Windows shows none
 ShowStatusBar=Small
 RememberOpenedTabs=false
+
+# Details pane like Windows: shows the selected file (not the one under the mouse), dates as "11/9/26 at 2:03 PM"
+# instead of the long "Monday, November 9, 2026 at 2:03 PM" that wrapped in the narrow pane
+[InformationPanel]
+showHovered=false
+dateFormat=ShortFormat

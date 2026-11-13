@@ -41,8 +41,12 @@ jobs:
         run: bash tests/test-protect.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
+      - name: Firewall profile picks the default-route connection
+        run: bash tests/test-security-conn.sh
       - name: KWin flyout scripts load and open on their shortcuts (Win+V, Win+Z)
-        run: pip install -q pyside6==6.11.1 && QT_QPA_PLATFORM=offscreen python tests/test-kwin-qml.py
+        run: | # Qt needs the EGL/GL and xkb client libraries even offscreen (Ubuntu's runner image lacks libEGL)
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 >/dev/null
+          pip install -q pyside6==6.11.1 && QT_QPA_PLATFORM=offscreen python tests/test-kwin-qml.py
       - name: Run dialog (Win+R) test
         run: bash tests/test-run-dialog.sh
       - name: Check Flathub IDs

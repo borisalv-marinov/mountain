@@ -30,4 +30,7 @@ ok 'grep -qx "Enabled=false" "$H/.config/kwalletrc"' "wallet off for an autologi
 rm -f "$A"
 echo edited > "$f"; HOME=$H XDG_DATA_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok '[[ $(cat "$f") == edited ]]' "existing file kept"
+P=$H/.local/share/plasma-systemmonitor; mkdir -p "$P"; echo '"gpu/all/usage"' > "$P/mountain-2-performance.page"; echo '"cpu/all/usage"' > "$P/mountain-1-processes.page"
+HOME=$H XDG_DATA_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok '[[ ! -e $P/mountain-2-performance.page && -e $P/mountain-1-processes.page ]]' "an old Task Manager page with the GPU chart is dropped, others kept"
 rm -rf "$H"; exit $rc

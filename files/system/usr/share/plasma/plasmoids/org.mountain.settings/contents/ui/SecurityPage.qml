@@ -45,9 +45,11 @@ ColumnLayout {
                 return;
             }
             if (sec.running === "scan") {
-                sec.note = out.indexOf("av_result=found") >= 0 ? "Threats found. They were moved to quarantine, where they can't run."
+                sec.note = out.indexOf("av_result=cancelled") >= 0 ? ""
+                         : out.indexOf("av_result=found") >= 0 ? "Threats found. They were moved to quarantine, where they can't run."
                          : out.indexOf("av_result=clean") >= 0 ? "Scan finished: no threats found."
-                         : "The scan could not finish. Check your internet connection (definitions download first) and try again.";
+                         : out.indexOf("av_result=no-definitions") >= 0 ? "No virus definitions yet. Connect to the internet and press Scan now to download them."
+                         : "The scan could not finish. Try again, or see Active Protection's log.";
             } else if (sec.running === "rollback") {
                 sec.note = data["exit code"] === 0 ? "Done. Restart your PC to go back to the previous version." : "Going back was cancelled.";
             }
@@ -100,7 +102,7 @@ ColumnLayout {
                 GlassButton { text: "Active Protection"; onClicked: app.page = "protection" },
                 GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
                 GlassButton { text: "Full scan"; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
-                GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") && " + sec.helper + " scan \"$d\"") },
+                GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") || { echo av_result=cancelled; exit 0; }; " + sec.helper + " scan \"$d\"") },
                 GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }

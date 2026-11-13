@@ -10,6 +10,8 @@ printf '#!/bin/sh\necho hi\n' > "$T/run-me"; echo text > "$T/notes.txt"; echo x 
 ok '[[ $(is_unverified "$T/run-me") == script ]]' "a script with a shebang is unverified"
 ok '[[ $(is_unverified "$T/setup.exe") == "program or script" ]]' "an .exe is unverified"
 ok '[[ $(is_unverified "$T/.config/autostart/evil.desktop") == "starts at sign-in" ]]' "a new autostart entry is flagged"
+mkdir -p "$T/.local/share/kwin/scripts/x/contents/code"; echo 'callDBus()' > "$T/.local/share/kwin/scripts/x/contents/code/main.js"
+ok '[[ $(is_unverified "$T/.local/share/kwin/scripts/x/contents/code/main.js") == "starts at sign-in" ]]' "a new KWin script is flagged"
 ok '! is_unverified "$T/notes.txt" >/dev/null' "a text file is fine"
 sha256sum "$T/run-me" | cut -d' ' -f1 > "$allowed"
 ok '! is_unverified "$T/run-me" >/dev/null' "an allowed file is no longer flagged"

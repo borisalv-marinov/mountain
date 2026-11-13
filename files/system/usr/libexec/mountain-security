@@ -2,7 +2,6 @@
 # Data and actions behind Settings > Privacy & security (the Windows Security style page). Runs as the signed-in user.
 #   mountain-security status          key=value lines for every card
 #   mountain-security scan quick|full|DIR...   update virus definitions, then scan; found files go to quarantine
-#   mountain-security scan-new        scan new files in Downloads with the definitions you have (the Downloads watcher)
 #   mountain-security scan-notify F.. right-click "Scan with Mountain Security": scan, then a notification
 #   mountain-security quarantine-list | quarantine-restore NAME | quarantine-delete NAME
 #   mountain-security allow SERVICE on|off [public]   firewall "Allow an app" in the Home zone (also Public with "public"; off removes from both)
@@ -39,7 +38,8 @@ status_av() { # only the antivirus lines (cheap: no firewall, rpm-ostree, nmcli)
   [[ -r $state/last-scan ]] && cat "$state/last-scan" || echo "av_last=never"
   v=$(newest_def); echo "av_defs=${v:-none}"
   echo "av_quarantine=$(find "$quarantine" -type f 2>/dev/null | wc -l)"
-  [[ $(systemctl --user is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] && echo dl_watch=on || echo dl_watch=off
+  # new downloads are checked by Active Protection (it watches the real, translated Downloads folder)
+  [[ $(systemctl --user is-active mountain-protect.service 2>/dev/null) == active ]] && echo dl_watch=on || echo dl_watch=off
 }
 
 status() {
@@ -49,8 +49,8 @@ status() {
   # read without admin rights (firewall-cmd queries need polkit): the unit, the default zone and the zone files
   if [[ $(systemctl is-active firewalld 2>/dev/null) == active ]]; then
     v=$(sed -n 's/^DefaultZone=//p' /etc/firewalld/firewalld.conf 2>/dev/null); echo "fw=on"; echo "fw_zone=${v:-mountain}"
-    local c z zf s on open; c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
-    z=$(nmcli -g connection.zone connection show "$c" 2>/dev/null); z=${z:-${v:-mountain}}
+    local c z zf s on open; c=$(conn)
+    z=$([[ -n $c ]] && nmcli -g connection.zone connection show uuid "$c" 2>/dev/null); z=${z:-${v:-mountain}}
     [[ $z == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$z"
     open=$(zone_open "$z"); echo "fw_open=$open"
     open=$(zone_open mountain-home) # the "Allow an app" rows always show the Home zone, which "allow" edits by default
@@ -125,7 +125,7 @@ scan() { # [--no-update] quick|full|DIR...
   ex+=("--exclude-dir=^$(re_esc "$quarantine")(/|\$)")
   out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i --database="$db" "${mvq[@]}" \
         "${ex[@]}" \
-        --exclude='\.(part|crdownload|tmp)$' "$@" 2>&1)
+        --exclude='\.(part|crdownload)$' "$@" 2>&1)
   rc=$?
   local f # clamscan's own move fails on FAT/exFAT USB drives: move what it found and left behind
   while IFS= read -r f; do
@@ -145,17 +145,6 @@ scan() { # [--no-update] quick|full|DIR...
   echo "av_result=$r"; echo "av_found=${found:-0}"
   grep ' FOUND$' <<<"$out" | head -20
   [[ $r == error ]] && return 2 || return 0
-}
-
-scan_new() { # the Downloads watcher: only files changed since the last run, never downloads definitions
-  local stamp=$state/downloads-scanned files
-  [[ -z $(newest_def) ]] && exit 0 # no definitions yet: nothing to scan with (Scan now fetches them)
-  mkdir -p "$state"; [[ -e $stamp ]] || touch -d '1 hour ago' "$stamp"
-  mapfile -t files < <(find "$(xdg DOWNLOAD Downloads)" -maxdepth 2 -type f -newer "$stamp" ! -name '*.part' ! -name '*.crdownload' 2>/dev/null)
-  touch "$stamp"; [[ ${#files[@]} -gt 0 ]] || exit 0
-  out=$(scan --no-update "${files[@]}")
-  grep -q 'av_result=found' <<<"$out" && notify-send -a "Security" -u critical -i security-low -h string:desktop-entry:org.mountain.security "Mountain Security" "A threat was found in Downloads and moved to quarantine." 2>/dev/null
-  echo "$out"
 }
 
 scan_notify() { # right-click > Scan with Mountain Security
@@ -195,11 +184,21 @@ allow() { # SERVICE on|off [public]: only the services in the "Allow an app" lis
   firewall-cmd --reload >/dev/null && echo "fw_app=$svc:$( [[ $want == on ]] && echo yes || echo no)"
 }
 
+conn() { # UUID of the connection that carries the default route (not whichever VPN, bridge or docker link nmcli lists first)
+  local dev u; dev=$(ip -o route show default 2>/dev/null | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit } }')
+  [[ -n $dev ]] && u=$(nmcli -g GENERAL.CON-UUID device show "$dev" 2>/dev/null | head -1)
+  [[ -n ${u:-} ]] || u=$(nmcli -g UUID,TYPE connection show --active 2>/dev/null | awk -F: '$2 != "loopback" { print $1; exit }')
+  echo "${u:-}"
+}
 profile() { # home|public for the active connection; Home also allows file sharing discovery and Phone Link
   local z c; case ${1:-} in home) z=mountain-home ;; public) z=mountain ;; *) return 2 ;; esac
-  c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
+  c=$(conn)
   [[ -n $c ]] || { echo "no network connection" >&2; return 1; }
-  nmcli connection modify "$c" connection.zone "$z" && nmcli connection up "$c" >/dev/null 2>&1; echo "fw_profile=$1"
+  # reapply on the device keeps the link up (a full "connection up" drops the network for a moment)
+  nmcli connection modify uuid "$c" connection.zone "$z" || return 1
+  nmcli device reapply "$(nmcli -g GENERAL.DEVICES connection show uuid "$c" 2>/dev/null | head -1)" >/dev/null 2>&1 ||
+    nmcli connection up uuid "$c" >/dev/null 2>&1
+  echo "fw_profile=$1"
 }
 
 repair_etc() { # PATH under /etc, e.g. xdg/kdeglobals: put back the image's default (Go back does not undo /etc edits)
@@ -224,7 +223,6 @@ rollback() {
 case ${1:-} in
   status) status ;;
   scan) shift; scan "$@" ;;
-  scan-new) scan_new ;;
   scan-notify) shift; scan_notify "$@" ;;
   quarantine-list) ls -1 "$quarantine" 2>/dev/null ;;
   quarantine-restore) restore "${2:-}" ;;
@@ -235,5 +233,5 @@ case ${1:-} in
   rollback) rollback ;;
   reset) reset_pc ;;
   repair-etc) repair_etc "${2:-}" ;;
-  *) echo "usage: mountain-security status|scan|scan-new|scan-notify|quarantine-*|allow|profile|usb|rollback|reset" >&2; exit 2 ;;
+  *) echo "usage: mountain-security status|scan|scan-notify|quarantine-*|allow|profile|usb|rollback|reset" >&2; exit 2 ;;
 esac

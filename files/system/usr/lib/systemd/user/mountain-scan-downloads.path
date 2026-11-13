@@ -1,9 +1,0 @@
-[Unit]
-Description=Mountain Security: scan new downloads
-
-[Path]
-PathChanged=%h/Downloads
-MakeDirectory=true
-
-[Install]
-WantedBy=default.target

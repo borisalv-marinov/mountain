@@ -29,4 +29,25 @@ ok '! grep -q Hidden "$T/home/.config/autostart/steam.desktop"' "user entry back
 ok '! run startup-set "../evil.desktop" off 2>/dev/null' "rejects paths"
 ok '! run service stop "foo; rm -rf ~" 2>/dev/null' "rejects bad unit names"
 ok '[[ $(run device | head -1) == $'"'"'id\tPart\tModel'"'"' ]]' "device header"
+# Startup apps as Windows shows them: Mountain/desktop internals hidden, friendly names, no command paths
+printf '[Desktop Entry]\nName=Lite Mode\nExec=/usr/libexec/mountain-lite-mode\n' > "$T/sys/mountain-lite-mode.desktop"
+printf '[Desktop Entry]\nName=Baloo File Daemon\nExec=baloo_file\n' > "$T/sys/baloo_file.desktop"
+printf '[Desktop Entry]\nName=Helper\nExec=/usr/libexec/some-helper --x\n' > "$T/sys/helper.desktop"
+printf '[Desktop Entry]\nName=KDE Connect\nExec=kdeconnectd\n' > "$T/sys/org.kde.kdeconnect.daemon.desktop"
+runs() { HOME=$T/home XDG_CONFIG_HOME= MOUNTAIN_AUTOSTART_SYSTEM=$T/sys bash "$S-startup"; }
+L=$(runs)
+ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tPublisher\tStatus\tStartup impact'"'"' ]]' "startup: Windows columns"
+ok '! grep -q -e mountain-lite -e baloo -e helper.desktop -e /usr/libexec <<<"$L"' "startup: internals and libexec helpers hidden"
+ok 'grep -q $'"'"'^org.kde.kdeconnect.daemon.desktop\tPhone Link\tKDE\tEnabled\tNot measured$'"'"' <<<"$L"' "startup: friendly name and publisher"
+ok 'grep -q $'"'"'^steam.desktop\tSteam\tValve\tEnabled\tNot measured$'"'"' <<<"$L"' "startup: user app with publisher"
+run startup-set chat.desktop off
+ok 'runs | grep -q $'"'"'^chat.desktop\tChat\t\tDisabled\tNone$'"'"'' "startup: disabled has no impact"
+run startup-set chat.desktop on
+# pages: only sensors every PC has (anything else shows "This page is missing some sensors")
+P=$(dirname "$0")/../files/system/usr/share/plasma-systemmonitor
+bad=$(grep -ho 'SensorIds=.*\|totalSensors=.*' "$P"/*.page | grep -o '"[^"]*"' | tr -d '"' | sort -u |
+  grep -vxE 'cpu/all/usage|memory/physical/(used|total)|disk/all/(read|write)|network/all/(download|upload)')
+ok '[[ -z $bad ]]' "pages use only always-present sensors${bad:+ (not: $bad)}"
+Q=$(dirname "$0")/../files/system/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
+ok 'grep -q "model: rowModel" "$Q" && grep -q "out === root.lastText" "$Q" && grep -q "!root.busy && !listHover.hovered" "$Q"' "list updates in place, pauses under the pointer"
 rm -rf "$T"; exit $rc

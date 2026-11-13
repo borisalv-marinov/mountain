@@ -31,7 +31,7 @@ is_unverified() { # FILE -> reason, or nothing
   [[ -f $f ]] || return 1
   grep -qsxF -- "$(sha256sum -- "$f" 2>/dev/null | cut -d' ' -f1)" "$allowed" && return 1
   case $f in
-    */.config/autostart/*|*/.config/systemd/user/*|*/.config/plasma-workspace/env/*) echo "starts at sign-in"; return 0 ;;
+    */.config/autostart/*|*/.config/systemd/user/*|*/.config/plasma-workspace/env/*|*/.local/share/kwin/scripts/*) echo "starts at sign-in"; return 0 ;;
     *.sh|*.py|*.pl|*.rb|*.desktop|*.AppImage|*.appimage|*.run|*.bin|*.exe|*.msi|*.bat|*.cmd|*.ps1|*.jar|*.deb|*.rpm|*.flatpakref) echo "program or script"; return 0 ;;
   esac
   head=$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')
@@ -85,6 +85,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   props=(-p PrivateNetwork=yes -p NoNewPrivileges=yes -p RestrictAddressFamilies=AF_UNIX -p ProtectSystem=strict -p ProtectHome=read-only
          -p MemoryMax=1800M -p "ReadOnlyPaths=$(rwq "$pdir")" -p "ReadWritePaths=$(rwq "$state")" -p "ReadWritePaths=$(rwq "$tmp")"
          -p "InaccessiblePaths=$(rwq "$rt/bus")" -p "InaccessiblePaths=$(rwq "$rt/systemd")"
+         -p SystemCallFilter=@system-service -p SystemCallArchitectures=native -p LockPersonality=yes -p RestrictNamespaces=yes
          -p Environment=MOUNTAIN_SCAN_REPORT_ONLY=1 -p "Environment=TMPDIR=$tmp") # the full ClamAV database peaks at about 1.2 GB
   if ((${#files[@]})); then
     echo "checking ${#files[@]} file(s): ${files[0]}" # to the journal (journalctl --user -u mountain-protect)
@@ -118,7 +119,8 @@ daemon() {
   local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch ev t0 pids=()
   command -v inotifywait >/dev/null || { echo "inotifywait is missing" >&2; exit 1; }
   userdirs
-  local rec=("$dl" "$desk" "$docs" "$home/.local/bin" "$home/.config/autostart" "$home/.config/systemd/user" "$home/.config/plasma-workspace/env")
+  local rec=("$dl" "$desk" "$docs" "$home/.local/bin" "$home/.config/autostart" "$home/.config/systemd/user" "$home/.config/plasma-workspace/env"
+             "$home/.local/share/applications" "$home/.local/share/kwin/scripts")
   mkdir -p "${rec[@]}"
   find "$pdir" -name 'checked-*' -mtime +30 -delete 2>/dev/null
   rm -f "$fifo"; mkfifo -m 600 "$fifo"; exec 3<>"$fifo"

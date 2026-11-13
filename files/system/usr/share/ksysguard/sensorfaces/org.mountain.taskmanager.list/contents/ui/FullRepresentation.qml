@@ -1,5 +1,6 @@
 // Mountain Task Manager list: one face, four tabs (Startup apps, Users, Services, device names).
-// Rows come from `/usr/libexec/mountain-taskmanager <mode>` as tab-separated lines: a header line, then rows whose first field is an id.
+// Rows come from `/usr/libexec/mountain-taskmanager <mode>` (Startup apps: mountain-taskmanager-startup) as tab-separated
+// lines: a header line, then rows whose first field is an id.
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
@@ -12,10 +13,11 @@ Faces.SensorFace {
 
     readonly property string mode: controller.faceConfiguration.mode || "device"
     readonly property string helper: "/usr/libexec/mountain-taskmanager"
-    readonly property string listCmd: helper + " " + mode
+    readonly property string listCmd: mode === "startup" ? "bash " + helper + "-startup" : helper + " " + mode
     readonly property bool actions: mode === "startup" || mode === "services"
     property var header: []
-    property var rows: []
+    property var rows: [] // every row as parsed; rowModel holds the ones the search shows
+    property string lastText: ""
     property bool busy: false
     property string filter: ""
 
@@ -27,6 +29,39 @@ Faces.SensorFace {
     }
     function refresh() {
         exec.connectSource(listCmd);
+    }
+    // Update rows in place, keyed on the id, so delegates (and the selection, and the button under the pointer)
+    // stay with their service or app; new rows go at the end, gone rows are removed.
+    function sync() {
+        const want = Object.create(null), order = [], seen = Object.create(null);
+        for (const r of rows) {
+            if (filter !== "" && r.join(" ").toLowerCase().indexOf(filter) < 0)
+                continue;
+            const key = r[0] + "#" + (seen[r[0]] = (seen[r[0]] || 0) + 1); // device rows share ids (two disks)
+            want[key] = r.join("\t");
+            order.push(key);
+        }
+        for (let i = rowModel.count - 1; i >= 0; i--) {
+            const key = rowModel.get(i).key;
+            if (!(key in want)) {
+                rowModel.remove(i);
+            } else {
+                if (rowModel.get(i).cells !== want[key])
+                    rowModel.setProperty(i, "cells", want[key]);
+                delete want[key];
+            }
+        }
+        for (const key of order)
+            if (key in want)
+                rowModel.append({ key: key, cells: want[key] });
+    }
+    onFilterChanged: {
+        rowModel.clear(); // a new search shows its matches in list order
+        sync();
+    }
+
+    ListModel {
+        id: rowModel
     }
     function act(args) {
         busy = true;
@@ -40,9 +75,16 @@ Faces.SensorFace {
         onNewData: (source, data) => {
             disconnectSource(source);
             if (source === root.listCmd) {
-                const lines = (data["stdout"] || "").split("\n").filter(l => l !== "");
-                root.header = lines.length > 0 ? lines[0].split("\t") : [];
+                const out = data["stdout"] || "";
+                if (out === root.lastText)
+                    return; // nothing changed: leave the list alone
+                root.lastText = out;
+                const lines = out.split("\n").filter(l => l !== "");
+                const head = lines.length > 0 ? lines[0].split("\t") : [];
+                if (head.join("\t") !== root.header.join("\t"))
+                    root.header = head;
                 root.rows = lines.slice(1).map(l => l.split("\t"));
+                root.sync();
             } else {
                 root.busy = false;
                 root.refresh();
@@ -50,11 +92,12 @@ Faces.SensorFace {
         }
     }
 
-    // live tabs refresh while shown; Startup apps and device names only change when you act
+    // live tabs refresh while shown, but not while the pointer is on the list or an action runs;
+    // Startup apps and device names only change when you act
     Timer {
         interval: root.mode === "services" ? 5000 : 3000
         repeat: true
-        running: root.visible && (root.mode === "users" || root.mode === "services")
+        running: root.visible && !root.busy && !listHover.hovered && (root.mode === "users" || root.mode === "services")
         onTriggered: root.refresh()
     }
     Component.onCompleted: refresh()
@@ -125,12 +168,16 @@ Faces.SensorFace {
             Layout.fillHeight: true
             Layout.preferredHeight: contentHeight
             clip: true
-            model: root.filter === "" ? root.rows : root.rows.filter(r => r.join(" ").toLowerCase().indexOf(root.filter) >= 0)
+            model: rowModel
             QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
+            HoverHandler {
+                id: listHover
+            }
             delegate: QQC2.ItemDelegate {
                 id: line
-                required property var modelData
+                required property string cells
                 required property int index
+                readonly property var modelData: cells.split("\t")
                 width: ListView.view.width
                 highlighted: ListView.isCurrentItem
                 onClicked: list.currentIndex = index
@@ -154,7 +201,7 @@ Faces.SensorFace {
                         id: buttons
                         visible: root.actions
                         Layout.preferredWidth: Kirigami.Units.gridUnit * 10
-                        readonly property bool on: root.mode === "startup" ? line.modelData[2] === "Enabled" : line.modelData[3] === "Running"
+                        readonly property bool on: root.mode === "startup" ? line.modelData[3] === "Enabled" : line.modelData[3] === "Running"
                         QQC2.Button {
                             text: root.mode === "startup" ? (buttons.on ? "Disable" : "Enable") : (buttons.on ? "Stop" : "Start")
                             enabled: !root.busy

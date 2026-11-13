@@ -4,7 +4,8 @@
 # Never touches existing files. HOME, the template and the autologin config files can be overridden for tests.
 set -euo pipefail
 cfg=${XDG_CONFIG_HOME:-$HOME/.config}
-autologin_files=${MOUNTAIN_AUTOLOGIN_CONF:-/etc/plasmalogin.conf /etc/sddm.conf /etc/sddm.conf.d/*.conf}
+# every place the login managers read (the installer may write the .d folders; the image's own defaults live under /usr/lib)
+autologin_files=${MOUNTAIN_AUTOLOGIN_CONF:-/etc/plasmalogin.conf /etc/plasmalogin.conf.d/*.conf /usr/lib/plasmalogin.conf.d/*.conf /usr/lib/plasmalogin/*.conf /etc/sddm.conf /etc/sddm.conf.d/*.conf /usr/lib/sddm/sddm.conf.d/*.conf}
 # shellcheck disable=SC2086
 # one grep: with -q it succeeds on a match even if some of the listed files don't exist (a pipe + pipefail did not)
 if [[ ! -e $cfg/kwalletrc ]] && grep -qsx "User=$(id -un)" $autologin_files; then
@@ -17,6 +18,11 @@ First Use=false
     dbus-send --session --type=method_call --dest="${n%%:*}" "${n#*:}" org.kde.KWallet.reconfigure 2>/dev/null || true
   done
 fi
+# Task Manager: a page saved by an older version (with the GPU chart some PCs lack) overrides the shipped one and shows
+# "This page is missing some sensors": drop such copies so the shipped page is used again (every login, cheap)
+for p in "${XDG_DATA_HOME:-$HOME/.local/share}"/plasma-systemmonitor/mountain-*.page; do
+  [[ -f $p ]] && grep -q 'gpu/' "$p" && rm -f -- "$p"
+done
 out=${XDG_DATA_HOME:-$HOME/.local/share}/user-places.xbel
 tpl=${MOUNTAIN_PLACES_TEMPLATE:-/usr/share/mountain/user-places.xbel.in}
 [[ -e $out ]] && exit 0

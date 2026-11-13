@@ -32,8 +32,10 @@ fi
 install -d -m 0755 "$dir"; man=$dir/.manual; touch "$man"
 # game folders as nested subvolumes, created as the account itself (no root writes in a user-controlled path)
 games=(.local/share/Steam .var/app/com.valvesoftware.Steam .var/app/com.heroicgameslauncher.hgl Games)
+# once per account (new accounts get them at first sign-in from mountain-user-setup): a folder you deleted is not made again
 for h in "$src"/*/; do
   u=$(stat -c %U "$h"); n=$(id -u "$u" 2>/dev/null || echo 0); (( n >= 1000 && n < 60000 )) || continue
+  [[ -e $dir/.games-$n ]] && continue; touch "$dir/.games-$n"
   runuser -u "$u" -- /bin/sh -c 'cd "$1" && shift && for p; do
     [ -L "$p" ] && continue
     if [ -d "$p" ]; then [ "$(stat -c %i "$p")" = 256 ] || [ -n "$(ls -A "$p")" ] || { rmdir "$p" && btrfs subvolume create "$p"; }

@@ -111,6 +111,7 @@ echo "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation [10de:2484]"
   assert_grep '--notify' /etc/xdg/autostart/mountain-gpu-notify.desktop
   assert_grep '-A switch=Switch' "$s"
   ! grep -q network-online /usr/lib/systemd/system/mountain-gpu-check.service || fail "gpu-check waits for the network"
+  ! grep -q '^After=network-online' /usr/lib/systemd/system/mountain-virus-definitions.service || fail "Scan now waits for the network when offline"
   unset MOUNTAIN_STATE_DIR
   rm -rf "$d"
 }
@@ -144,7 +145,7 @@ check_phase11() {
     [[ -x $f ]] || fail "not executable: $f"
     grep -qE '^(Exec|URL)=' "$f" || fail "no Exec/URL: $f"
     n=$((n+1))
-  done < <(find /etc/skel/Desktop -name '*.desktop')
+  done < <(find /etc/skel/Desktop -type f ! -name .directory)
   (( n >= 9 )) || fail "only $n desktop icons in /etc/skel/Desktop"
 }
 
@@ -184,20 +185,29 @@ check_phase14() {
       *) d=$(find /usr/share/icons /var/lib/flatpak/exports/share/icons \( -name "$i.svg" -o -name "$i.png" \) -xtype f -print -quit 2>/dev/null || true)
          [[ -n "$d" ]] || fail "$f: icon not found: $i" ;;
     esac
-  done < <(find /usr/share/applications -name "mountain-*.desktop" -o -name "*code*.desktop"; find /etc/skel/Desktop -name '*.desktop')
+  done < <(find /usr/share/applications -name "mountain-*.desktop" -o -name "*code*.desktop"; find /etc/skel/Desktop -type f ! -name .directory)
 }
 
 check_phase15() {
-  local f d n
+  local f d n b t
   for f in /etc/xdg/menus/applications-merged/mountain.menu /etc/xdg/menus/plasma-applications-merged/mountain.menu; do
     xmllint --noout "$f" || fail "invalid $f"
   done
   for n in cloudgaming games launchers browsers coding ai office chat; do assert_file /usr/share/desktop-directories/mountain-$n.directory; done
   for d in "Cloud Gaming" Games "Game Launchers" Browsers Coding AI Office Chat; do
-    [[ -n "$(find "/etc/skel/Desktop/$d" -name '*.desktop' 2>/dev/null)" ]] || fail "desktop folder empty/missing: $d"
+    [[ -n "$(find "/etc/skel/Desktop/$d" -type f ! -name .directory 2>/dev/null)" ]] || fail "desktop folder empty/missing: $d"
     assert_file "/etc/skel/Desktop/$d/.directory"
   done
-  while IFS= read -r f; do [[ -x "$f" ]] || fail "not executable: $f"; done < <(find /etc/skel/Desktop -name '*.desktop')
+  while IFS= read -r f; do [[ -x "$f" ]] || fail "not executable: $f"; done < <(find /etc/skel/Desktop -type f ! -name .directory)
+  # File Explorer shows a folder launcher by its file name: named like the app (Name=), no ".desktop" (Windows hides ".lnk"),
+  # and still typed as a launcher by content (a name ending in ".js" would make it JavaScript)
+  while IFS= read -r f; do
+    b=${f##*/}; [[ $b == *.desktop ]] && fail "folder launcher shows its .desktop extension: $f"
+    [[ $(head -1 "$f") == "[Desktop Entry]" ]] || fail "folder launcher is not a desktop entry: $f"
+    [[ $(sed -n 's/^Name=//p' "$f" | head -1) == "$b" ]] || fail "folder launcher file name is not its Name=: $f"
+    t=$(gio info -a standard::content-type "$f" 2>/dev/null | sed -n 's/^ *standard::content-type: //p') # shared-mime-info, as KIO
+    [[ $t == application/x-desktop ]] || fail "folder launcher is not seen as a launcher: $f (${t:-no type})"
+  done < <(find /etc/skel/Desktop -mindepth 2 -type f ! -name .directory)
 }
 
 check_phase16() {
@@ -221,7 +231,9 @@ check_phase17() {
   done
   # optional applets are guarded by knownWidgetTypes in the layout: report, do not fail
   for id in $(grep -o 'opt([A-Za-z_]*, *"[^"]*"' "$L" | grep -o '"[^"]*"' | tr -d '"' | sort -u); do
-    applet_exists "$id" || echo "NOTE: optional applet not installed: $id"
+    applet_exists "$id" && continue
+    [[ $id == org.mountain.* || $id == menu.11.enhanced ]] && fail "Mountain's own applet missing: $id" # ours always ship
+    echo "NOTE: optional applet not installed: $id"
   done
   assert_grep 'mountain-logo' "$L"
   assert_grep 'ButtonsOnRight=IAX' /etc/xdg/kwinrc
@@ -251,7 +263,7 @@ check_phase19() { # Mountain logo everywhere
   cmp -s /usr/share/mountain/watermark.png /usr/share/plymouth/themes/spinner/watermark.png || fail "plymouth watermark not ours"
   if command -v lsinitrd >/dev/null 2>&1; then
     [[ $(lsinitrd -f usr/share/plymouth/themes/spinner/watermark.png /usr/lib/modules/*/initramfs.img | md5sum) == "$(md5sum < /usr/share/mountain/watermark.png)" ]] || fail "initramfs has the old boot watermark"
-  else echo "NOTE: lsinitrd missing, initramfs watermark not checked"; fi
+  else fail "lsinitrd missing: the initramfs boot watermark can't be checked"; fi
 }
 
 check_phase20() { # line-art wallpaper, login and lock screen
@@ -645,11 +657,13 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   python3 -c 'import sys,xml.etree.ElementTree as E; r=E.parse(sys.argv[1]).getroot(); a=r.find("action"); assert a.find("defaults/allow_active").text=="yes" and a.find("annotate").text=="/usr/libexec/mountain-windows-boot"' /usr/share/polkit-1/actions/org.mountain.windows-boot.policy || fail "Restart into Windows policy"
   assert_grep 'mountain-windows-boot check' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml
   assert_grep 'Restart into Windows' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml
-  for n in quick full scan-new scan-notify quarantine-restore allow profile usb; do assert_grep "$n" $x/mountain-security; done
+  for n in quick full scan-notify quarantine-restore allow profile usb; do assert_grep "$n" $x/mountain-security; done
+  ! grep -qE -- "--exclude=[^ ]*tmp" $x/mountain-security || fail "finished .tmp files are never scanned"
   assert_grep 'Exec=/usr/libexec/mountain-security scan-notify %F' /usr/share/kio/servicemenus/mountain-scan.desktop
-  assert_grep 'PathChanged=%h/Downloads' /usr/lib/systemd/user/mountain-scan-downloads.path
+  # one Downloads scanner: Active Protection (the English-only %h/Downloads path unit is gone)
+  [[ ! -e /usr/lib/systemd/user/mountain-scan-downloads.path ]] || fail "the English-only Downloads path unit is back"
+  assert_grep 'is-active mountain-protect.service' $x/mountain-security
   [[ $(systemctl --global is-enabled mountain-protect.service 2>/dev/null) == enabled ]] || fail "Active Protection off"
-  [[ $(systemctl --global is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] && fail "two Downloads scanners"
   assert_cmd inotifywait
   assert_grep '^MemoryHigh=150M$' /usr/lib/systemd/user/mountain-protect.service
   [[ -x /usr/libexec/mountain-protect ]] && bash -n /usr/libexec/mountain-protect || fail "mountain-protect"
@@ -671,6 +685,8 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   done
   assert_file /usr/libexec/mountain-shortcuts; [[ -x /usr/libexec/mountain-shortcuts ]] || fail "mountain-shortcuts not executable"
   assert_grep 'Meta+N' /usr/libexec/mountain-shortcuts
+  assert_grep '/etc/sddm.conf.d/\*.conf /usr/lib/sddm/sddm.conf.d/\*.conf' /usr/libexec/mountain-user-setup # autologin found in every login-manager folder
+  assert_grep '/etc/plasmalogin.conf.d/\*.conf' /usr/libexec/mountain-user-setup
   grep -q 'out == \*set=\[2-9\]\*' /usr/libexec/mountain-shortcuts || fail "mountain-shortcuts marks itself done before both applets are set"
   assert_grep '^Exec=/usr/libexec/mountain-shortcuts$' /etc/xdg/autostart/mountain-shortcuts.desktop
   assert_grep 'FirewallD1.info' /usr/share/polkit-1/rules.d/60-mountain.rules
@@ -775,6 +791,32 @@ PY
   grep -q 'sed -i' /usr/libexec/mountain-protect && fail "mountain-protect: file names must never become a sed program"
   for s in PrivateNetwork=yes NoNewPrivileges=yes ProtectSystem=strict ProtectHome=read-only MemoryMax= ReadWritePaths= allow-hash xdg-user-dir 'status --av'; do assert_grep "$s" /usr/libexec/mountain-protect; done
   grep -qE 'inotifywait -mrq[^#]*/tmp' /usr/libexec/mountain-protect && fail "Active Protection watches /tmp recursively"
+  assert_grep 'SystemCallFilter=@system-service' /usr/libexec/mountain-protect
+  assert_grep 'pkill -u "$(id -u)" -x kdeconnectd' /usr/libexec/mountain-phonelink
+  assert_grep '.games-$n' /usr/libexec/mountain-snapshot # game folders made once per account, not every hour
+  # File Explorer: Details pane follows the selection with short dates; Previous versions only for local files; no folder icons on launchers
+  assert_grep '^\[InformationPanel\]$' /etc/xdg/dolphinrc
+  assert_grep '^dateFormat=ShortFormat$' /etc/xdg/dolphinrc
+  assert_grep '^showHovered=false$' /etc/xdg/dolphinrc
+  assert_grep '^X-KDE-Protocols=file$' /usr/share/kio/servicemenus/mountain-previous-versions.desktop
+  ! grep -rlx 'Icon=mountain-folder-.*' /etc/skel/Desktop --include='*' --exclude=.directory /usr/share/applications 2>/dev/null | grep -q . || fail "a launcher uses a folder icon"
+  for k in kfileitem#type kfileitem#size kfileitem#modified kfileitem#created; do grep -qx "$k=false" /etc/xdg/baloofileinformationrc && fail "Details pane hides $k"; done
+  # Task Manager Startup apps: Windows columns, Mountain/desktop internals hidden; the services list updates in place
+  assert_file /usr/libexec/mountain-taskmanager-startup
+  f=$(bash /usr/libexec/mountain-taskmanager-startup || true)
+  [[ $f == $'id\tName\tPublisher\tStatus\tStartup impact'* ]] || fail "Task Manager startup list lacks Windows columns"
+  grep -qE '^(mountain-|baloo)' <<<"$f" && fail "Startup apps shows Mountain internals"
+  grep -q $'\t/usr/libexec/' <<<"$f" && fail "Startup apps shows libexec paths"
+  f=/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
+  assert_grep 'mountain-taskmanager-startup' $f
+  assert_grep 'model: rowModel' $f
+  assert_grep '!root.busy && !listHover.hovered' $f
+  bad=$({ grep -ho 'SensorIds=.*\|totalSensors=.*' /usr/share/plasma-systemmonitor/mountain-*.page || true; } | { grep -o '"[^"]*"' || true; } | tr -d '"' | sort -u | { grep -vxE 'cpu/all/usage|memory/physical/(used|total)|disk/all/(read|write)|network/all/(download|upload)' || true; })
+  [[ -z $bad ]] || fail "Task Manager pages use sensors a PC may lack: $bad"
+  assert_grep 'plasma-systemmonitor/mountain-' /usr/libexec/mountain-user-setup # old saved pages (GPU chart) cleared
+  assert_grep 'Environment=MOUNTAIN_SCAN_REPORT_ONLY=1' /usr/libexec/mountain-protect
+  assert_grep '/.local/share/kwin/scripts' /usr/libexec/mountain-protect
+  assert_grep "split(\"'\").join" /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml # wallpaper path shell-quoted
   assert_cmd xdg-user-dir
   assert_grep 'allow-hash "$quarantine/' /usr/libexec/mountain-security
   # snapshots: low-disk keep rule, game libraries as subvolumes; definitions download can't be looped
