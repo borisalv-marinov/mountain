@@ -486,9 +486,9 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
   local q=/usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui f n
   assert_grep 'Not available on this display' $q/BrightnessRow.qml
   grep -q 'item.visible' $q/main.qml && fail "brightness row can still disappear"
-  # File Explorer: tab bar only with 2+ tabs, full-width status bar, sidebar wide enough for "Documents"/"Recycle Bin"/"Previous versions"
+  # File Explorer: tab bar only with 2+ tabs, item-count-only status bar (v6, see phase 33), sidebar wide enough for "Documents"/"Recycle Bin"/"Previous versions"
   assert_grep '^AlwaysShowTabBar=false$' /etc/xdg/dolphinrc
-  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc
+  assert_grep '^ShowStatusBar=Small$' /etc/xdg/dolphinrc
   python3 -c 'import base64,sys; b=base64.b64decode(open(sys.argv[1]).read().split("State=")[1]); w=int.from_bytes(b[17:21],"big"); assert w>=150, w' /etc/skel/.local/state/dolphinstaterc || fail "File Explorer sidebar too narrow"
   # contrast: solid app windows, glass menus; Windows-like minimize; crisp fonts
   f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
