@@ -1,5 +1,6 @@
 // Win+V: Windows 11 clipboard history, backed by Klipper's D-Bus (no extra process). The window exists only while shown.
 import QtQuick
+import QtQuick.Window as QQW // org.kde.kwin has its own (uncreatable) Window type
 import org.kde.kwin
 
 Item {
@@ -65,7 +66,7 @@ Item {
     Loader {
         id: flyout
         active: false
-        sourceComponent: Window {
+        sourceComponent: QQW.Window {
             flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
             color: "transparent"
             width: 360

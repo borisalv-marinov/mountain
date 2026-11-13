@@ -1,5 +1,6 @@
 // Win+Z: Windows 11 snap layouts. Runs inside KWin (no extra process); the window is created only while shown.
 import QtQuick
+import QtQuick.Window as QQW // org.kde.kwin has its own (uncreatable) Window type
 import org.kde.kwin
 
 Item {
@@ -43,7 +44,7 @@ Item {
     Loader {
         id: flyout
         active: false
-        sourceComponent: Window {
+        sourceComponent: QQW.Window {
             id: win
             flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
             color: "transparent"

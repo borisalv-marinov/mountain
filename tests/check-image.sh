@@ -580,6 +580,9 @@ PY
   assert_grep $'^_launch=Alt+Space\tAlt+F2\tSearch$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^\[services\]\[org.mountain.run.desktop\]$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
+  for f in $a/org.kde.spectacle.desktop /usr/share/kglobalaccel/org.kde.spectacle.desktop; do # PrtSc: full screenshot
+    [[ ! -e $f ]] || { assert_grep '^X-KDE-Shortcuts=Print$' "$f"; assert_grep '^X-KDE-Shortcuts=$' "$f"; }
+  done
   assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^next activity=none,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep $'^_launch=Ctrl+Shift+Esc\tCtrl+Esc$' /etc/skel/.config/kglobalshortcutsrc
@@ -703,6 +706,10 @@ check_phase33() { # v6 fix wave: Windows names, flyouts, File Explorer, Settings
     assert_grep '"X-Plasma-API": "declarativescript"' /usr/share/kwin/scripts/org.mountain.$s/metadata.json
     assert_file /usr/share/kwin/scripts/org.mountain.$s/contents/ui/main.qml
     assert_grep "^org.mountain.${s}Enabled=true$" /etc/xdg/kwinrc
+  done
+  # org.kde.kwin has an uncreatable Window type of its own: a KWin script's own window must be QtQuick's, by qualified name
+  for f in $(grep -rl '^import org.kde.kwin' /usr/share/kwin/scripts/org.mountain.* 2>/dev/null || true); do
+    ! grep -qE '(^|[^.A-Za-z])Window \{' "$f" || fail "bare Window {} in a KWin script resolves to KWin's own type: $f"
   done
   assert_grep '^MountainSnapLayouts=Meta+Z,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^MountainClipboard=Meta+V,' /etc/skel/.config/kglobalshortcutsrc

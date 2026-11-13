@@ -14,6 +14,14 @@ sc org.kde.plasma-systemmonitor.desktop "Ctrl+Shift+Esc,Ctrl+Esc"
 sc org.mountain.settings.desktop Meta+I
 sc org.kde.krunner.desktop "Alt+Space,Alt+F2,Search" # Win+R is the Run dialog (org.mountain.run.desktop)
 sc org.kde.dolphin.desktop Meta+E
+# PrtSc: a full screenshot, saved to Pictures/Screenshots (Spectacle's own launch would reopen its last-used mode, e.g. a region)
+n=0
+for f in /usr/share/applications/org.kde.spectacle.desktop /usr/share/kglobalaccel/org.kde.spectacle.desktop; do
+  [[ -e $f ]] || continue
+  awk '/^\[/ { s = $0 } /^X-KDE-Shortcuts=/ { if (s == "[Desktop Entry]") $0 = "X-KDE-Shortcuts="; else if (s == "[Desktop Action FullScreenScreenShot]") $0 = "X-KDE-Shortcuts=Print" } { print }' "$f" > "$f.new"
+  mv "$f.new" "$f"; grep -q '^X-KDE-Shortcuts=Print$' "$f"; n=$((n + 1))
+done
+[[ $n -gt 0 ]]
 # Win+G: MangoHud performance overlay in games (hidden until toggled)
 install -d /etc/xdg/MangoHud
 printf '# Win+G shows or hides the overlay (like the Xbox Game Bar)\nno_display\ntoggle_hud=Super_L+g\nfps\nframe_timing\ncpu_stats\ngpu_stats\nram\nvram\n' > /etc/xdg/MangoHud/MangoHud.conf

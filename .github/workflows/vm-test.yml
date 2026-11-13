@@ -176,9 +176,9 @@ jobs:
           chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
           chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
           chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
-          chk "uupd.timer off (no background updates)" 0 "systemctl is-enabled uupd.timer 2>&1" 'disabled|masked|not-found|No such file'
+          chk "uupd.timer off (no background updates)" 0 "systemctl is-enabled uupd.timer 2>&1; true" 'disabled|masked|not-found|No such file'
           chk "no fetching timers" 0 "systemctl list-timers --no-legend | grep -Ec 'uupd|dnf-makecache|countme|freshclam|flatpak-(system|user)-update|ublue|bazzite' || true" '^0$'
-          chk "gpu-check no bootc at boot" 0 "pgrep -f 'bootc switch' || echo none" '^none$'
+          chk "gpu-check no bootc at boot" 0 "pgrep -f '[b]ootc switch' || echo none" '^none$'
           chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
           chk "Kvantum BlackGlass" 0 "$(TU 'grep -rh BlackGlass /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=BlackGlass'
@@ -485,7 +485,7 @@ jobs:
           L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
           chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
           # Win+R: Run dialog (plasmawindowed org.mountain.run), Esc closes, typing a folder opens File Explorer
-          QM key meta_l r; PGF=-f wchk "shortcut Win+R (Run dialog)" 0 'plasmawindowed org.mountain.run' 15; sleep 2; shot dialog-run
+          K -x spectacle; QM key meta_l r; PGF=-f wchk "shortcut Win+R (Run dialog)" 0 'plasmawindowed org.mountain.run' 15; sleep 2; shot dialog-run
           chk "Win+R is not KRunner (krunner may idle as a daemon)" 2 "pgrep -u looktest -x krunner >/dev/null && echo krunner || echo ok" '^ok$'
           QM key esc; sleep 2
           chk "Run dialog: Esc closes" 0 "pgrep -u looktest -f 'plasmawindowed org.mountain.run' >/dev/null && echo open || echo closed" '^closed$'
@@ -565,7 +565,7 @@ jobs:
           R "$(TL 'kwriteconfig6 --file kwinrulesrc --group mountain-explorer-size --key sizerule 1; dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure')"
           K -x systemsettings; L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
           # drag notes.txt (right pane) onto the Browsers folder (left pane): same drive, so it moves with no menu (Windows)
-          QM drag $((715*W/1280)) $((262*H/800)) $((575*W/1280)) $((268*H/800)); sleep 2; shot drag-menu; sleep 1; shot drag-after
+          QM drag $((853*W/1280)) $((185*H/800)) $((527*W/1280)) $((192*H/800)); sleep 2; shot drag-menu; sleep 1; shot drag-after
           chk "drag file into a folder (no menu)" 0 "test -e /home/looktest/Desktop/Browsers/notes.txt && test ! -e /home/looktest/Documents/notes.txt && echo moved" '^moved$'
           chk "drop behavior is move on the same drive" 0 "grep -h '^DndBehavior=' /etc/xdg/kdeglobals" 'MoveIfSameDevice'
           R "$(TL 'kwriteconfig6 --file kwinrulesrc --group mountain-explorer-size --key sizerule --delete; dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure')"
@@ -783,6 +783,7 @@ jobs:
           chk "right-click Scan with Mountain Security" 0 "timeout 600 $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security scan-notify /home/looktest/Documents/right-click.com" 'av_result=found'
           chk "quarantine restore" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore eicar.com && test -e ~looktest/Downloads/eicar.com && echo restored" '^restored$'
           R "rm -f ~looktest/Downloads/eicar.com"
+          R "rm -f ~looktest/.local/share/mountain/protect/allowed" # the restore allowed the test file's content; the next checks reuse it
           chk "scan history" 2 "tail -3 ~looktest/.local/share/mountain/scan-history | paste -sd';'" 'scan'
           R "$LT systemctl --user start mountain-protect.service"; sleep 3
           # Active Protection: /tmp, a USB drive, an attachment-like path; unverified scripts and autostart entries; its cost
