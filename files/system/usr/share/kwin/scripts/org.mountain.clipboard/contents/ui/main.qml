@@ -5,6 +5,7 @@ import org.kde.kwin
 
 Item {
     id: root
+    Component.onCompleted: console.warn("mountain-flyout: clipboard ready") // one journal line per start, for diagnosis
     property var items: []
     property string status: ""
     property var previous: null
@@ -55,6 +56,7 @@ Item {
         text: "Clipboard history"
         sequence: "Meta+V"
         onActivated: {
+            console.warn("mountain-flyout: clipboard shortcut");
             if (flyout.active) { root.close(); return; }
             root.previous = Workspace.activeWindow;
             root.items = [];
@@ -66,6 +68,7 @@ Item {
     Loader {
         id: flyout
         active: false
+        onStatusChanged: console.warn("mountain-flyout: clipboard window status " + status + (status === Loader.Error ? " error" : ""))
         sourceComponent: QQW.Window {
             flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
             color: "transparent"

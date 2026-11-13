@@ -5,6 +5,7 @@ import org.kde.kwin
 
 Item {
     id: root
+    Component.onCompleted: console.warn("mountain-flyout: snaplayouts ready") // one journal line per start, for diagnosis
     property var target: null
     // [x, y, width, height] as fractions of the work area; one row per layout, like Windows' flyout
     readonly property var layouts: [
@@ -33,6 +34,7 @@ Item {
         text: "Snap layouts"
         sequence: "Meta+Z"
         onActivated: {
+            console.warn("mountain-flyout: snaplayouts shortcut");
             if (flyout.active) { flyout.active = false; return; }
             const w = Workspace.activeWindow;
             if (!w || !w.normalWindow || !w.resizeable || !w.moveable) return;
@@ -44,6 +46,7 @@ Item {
     Loader {
         id: flyout
         active: false
+        onStatusChanged: console.warn("mountain-flyout: snaplayouts window status " + status + (status === Loader.Error ? " error" : ""))
         sourceComponent: QQW.Window {
             id: win
             flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool

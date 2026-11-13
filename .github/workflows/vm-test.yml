@@ -441,6 +441,8 @@ jobs:
           QM key meta_l v; sleep 2; shot flyout-clipboard
           QM key down; QM key ret; sleep 1
           chk "Win+V Enter copies the chosen item" 0 "$KC.getClipboardContents" 'Mountain-clip-1'
+          R "$LT dbus-send --session --print-reply --dest=org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.invokeShortcut string:MountainClipboard" > flyouts-log.txt 2>&1; sleep 2; shot flyout-clipboard-dbus; QM key esc; sleep 1
+          R "$LT dbus-send --session --print-reply --dest=org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.shortcutNames; journalctl -b --no-pager | grep -E 'mountain-flyout|org.mountain.(clipboard|snaplayouts)'" >> flyouts-log.txt 2>&1
           QM key meta_l v; sleep 2; QM key esc; sleep 1; shot flyout-clipboard-closed
           scut "Win+Left (snap)" meta_l left
           scut "Win+D (show desktop)" meta_l d

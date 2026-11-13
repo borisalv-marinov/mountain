@@ -581,7 +581,8 @@ PY
   assert_grep '^\[services\]\[org.mountain.run.desktop\]$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
   for f in $a/org.kde.spectacle.desktop /usr/share/kglobalaccel/org.kde.spectacle.desktop; do # PrtSc: full screenshot
-    [[ ! -e $f ]] || { assert_grep '^X-KDE-Shortcuts=Print$' "$f"; assert_grep '^X-KDE-Shortcuts=$' "$f"; }
+    [[ ! -e $f ]] || { assert_grep '^X-KDE-Shortcuts=Print$' "$f"; assert_grep '^X-KDE-Shortcuts=$' "$f"
+      ! grep -qE '^X-KDE-Shortcuts=(.*,)?Meta\+(R|Shift\+S)(,|$)' "$f" || fail "Spectacle still holds Win+R or Win+Shift+S: $f"; }
   done
   assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^next activity=none,' /etc/skel/.config/kglobalshortcutsrc

@@ -20,6 +20,8 @@ userdirs() { # translated folder names (Изтегляния, Документи
   x=$(xdg-user-dir DOWNLOAD 2>/dev/null); [[ -n $x && ${x%/} != "$HOME" ]] && dl=${x%/} || dl=$HOME/Downloads
   x=$(xdg-user-dir DOCUMENTS 2>/dev/null); [[ -n $x && ${x%/} != "$HOME" ]] && docs=${x%/} || docs=$HOME/Documents
   x=$(xdg-user-dir DESKTOP 2>/dev/null); [[ -n $x && ${x%/} != "$HOME" ]] && desk=${x%/} || desk=$HOME/Desktop
+  # real paths (/home is a link to /var/home): the review list stores what the watchers report, and commands compare against it
+  home=$(realpath -m -- "$HOME"); dl=$(realpath -m -- "$dl"); docs=$(realpath -m -- "$docs"); desk=$(realpath -m -- "$desk")
 }
 esc() { local a='&amp;' l='&lt;' g='&gt;' s; s=${1//&/"$a"}; s=${s//</"$l"}; printf '%s' "${s//>/"$g"}"; } # notifications render markup
 rwq() { local s=${1//\\/\\\\}; printf '"-%s"' "${s//\"/\\\"}"; } # a path quoted for systemd's ReadWritePaths= parser
@@ -95,7 +97,7 @@ daemon() {
   local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch ev t0 pids=()
   command -v inotifywait >/dev/null || { echo "inotifywait is missing" >&2; exit 1; }
   userdirs
-  local rec=("$dl" "$desk" "$docs" "$HOME/.local/bin" "$HOME/.config/autostart" "$HOME/.config/systemd/user" "$HOME/.config/plasma-workspace/env")
+  local rec=("$dl" "$desk" "$docs" "$home/.local/bin" "$home/.config/autostart" "$home/.config/systemd/user" "$home/.config/plasma-workspace/env")
   mkdir -p "${rec[@]}"
   find "$pdir" -name 'checked-*' -mtime +30 -delete 2>/dev/null
   rm -f "$fifo"; mkfifo -m 600 "$fifo"; exec 3<>"$fifo"
@@ -103,7 +105,7 @@ daemon() {
   # watcher errors go to the journal; if one stops (watch limit, missing tool) the service fails and systemd restarts it
   inotifywait -mrq -e close_write,moved_to --format '%w%f' "${rec[@]}" >&3 & pids+=($!)
   # one level only: home (never game folders) and /tmp, /var/tmp (other accounts' trees cannot use up the watch limit)
-  inotifywait -mq -e close_write,moved_to --format '%w%f' "$HOME" /tmp /var/tmp >&3 & pids+=($!)
+  inotifywait -mq -e close_write,moved_to --format '%w%f' "$home" /tmp /var/tmp >&3 & pids+=($!)
   if [[ -d /var/lib/flatpak/app ]]; then inotifywait -mq -e create --format 'APP %f' /var/lib/flatpak/app >&3 & pids+=($!); fi
   stdbuf -oL findmnt --poll=mount -n -r -o TARGET | sed -u 's/^/MNT /' >&3 & pids+=($!) # unbuffered: one line per new mount
   for f in /run/media/*/*; do mountpoint -q -- "$f" && watch_drive "$f"; done # drives plugged in before sign-in
@@ -158,6 +160,7 @@ inlist() { P=$1 awk -F'\t' '$1 == ENVIRON["P"] { f = 1 } END { exit !f }' "$unv"
 drop() { local t; t=$(mktemp "$unv.XXXXXX") || return; P=$1 awk -F'\t' '$1 != ENVIRON["P"]' "$unv" > "$t" 2>/dev/null && mv -f -- "$t" "$unv" || rm -f -- "$t"; }
 listed() { inlist "$1" || { echo "not in the review list: $1" >&2; exit 2; }; }
 
+[[ ${1:-} =~ ^(allow|allow-hash|quarantine|delete)$ && -n ${2:-} ]] && set -- "$1" "$(realpath -m -- "$2")" # same real path as the list
 case ${1:-} in
   daemon) daemon ;;
   status) status ;;
@@ -167,6 +170,6 @@ case ${1:-} in
   allow-hash) [[ -f ${2:-} ]] || { echo "no such file: ${2:-}" >&2; exit 2; }; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed" ;; # quarantine restore
   quarantine) listed "${2:-}"; q=$state/quarantine; mkdir -p "$q"; chmod 700 "$q"; mv -n -- "$2" "$q/" && [[ ! -e $2 ]] && chmod 0400 "$q/$(basename "$2")" && drop "$2" ;;
   delete) listed "${2:-}"; rm -f -- "$2"; drop "$2" ;;
-  check) shift; userdirs; a=(); for f; do a+=("$(realpath -sm -- "$f")"); done; check "${a[@]}" ;;
+  check) shift; userdirs; a=(); for f; do a+=("$(realpath -m -- "$f")"); done; check "${a[@]}" ;;
   *) echo "usage: mountain-protect daemon|status|on|off|allow FILE|allow-hash FILE|quarantine FILE|delete FILE|check FILE..." >&2; exit 2 ;;
 esac

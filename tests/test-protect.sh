@@ -20,4 +20,9 @@ for n in 'a|b' "x|e touch $T/pwned #.sh" '$(id)' '.*' keep; do printf '%s	script
 ' "/d/$n" >> "$unv"; done
 for n in 'a|b' "x|e touch $T/pwned #.sh" '$(id)' '.*'; do drop "/d/$n"; done
 ok '[[ ! -e $T/pwned && $(cat "$unv") == "/d/keep	script" ]] && ! inlist /d/kee' "review list edits are exact and never run file names"
+# commands given a path through a link (/home -> /var/home) still find the entry the watcher stored under the real path
+mkdir -p "$T/real/d" "$T/data/mountain/protect"; ln -s "$T/real" "$T/link"; echo x > "$T/real/d/f.sh"
+printf '%s	script
+' "$T/real/d/f.sh" > "$T/data/mountain/protect/unverified"
+[[ -L $T/link ]] && ok 'HOME=$T/real XDG_DATA_HOME=$T/data bash "$S" delete "$T/link/d/f.sh" && [[ ! -e $T/real/d/f.sh && ! -s $T/data/mountain/protect/unverified ]]' "delete through a linked path finds the real entry"
 rm -rf "$T"; exit $rc

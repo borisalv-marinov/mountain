@@ -18,8 +18,10 @@ sc org.kde.dolphin.desktop Meta+E
 n=0
 for f in /usr/share/applications/org.kde.spectacle.desktop /usr/share/kglobalaccel/org.kde.spectacle.desktop; do
   [[ -e $f ]] || continue
-  awk '/^\[/ { s = $0 } /^X-KDE-Shortcuts=/ { if (s == "[Desktop Entry]") $0 = "X-KDE-Shortcuts="; else if (s == "[Desktop Action FullScreenScreenShot]") $0 = "X-KDE-Shortcuts=Print" } { print }' "$f" > "$f.new"
+  # and Spectacle's own Win+R (record a region) and Win+Shift+S would take the Run dialog's and the snip's keys
+  awk '/^\[/ { s = $0 } /^X-KDE-Shortcuts=/ { if (s == "[Desktop Entry]") $0 = "X-KDE-Shortcuts="; else if (s == "[Desktop Action FullScreenScreenShot]") $0 = "X-KDE-Shortcuts=Print"; else if (s == "[Desktop Action RecordRegion]") $0 = "X-KDE-Shortcuts=Meta+Shift+R" } { print }' "$f" > "$f.new"
   mv "$f.new" "$f"; grep -q '^X-KDE-Shortcuts=Print$' "$f"; n=$((n + 1))
+  if grep -qE '^X-KDE-Shortcuts=(.*,)?Meta\+(R|Shift\+S)(,|$)' "$f"; then echo "protection: Spectacle keeps Win+R or Win+Shift+S in $f"; exit 1; fi
 done
 [[ $n -gt 0 ]]
 # Win+G: MangoHud performance overlay in games (hidden until toggled)
