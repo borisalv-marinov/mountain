@@ -23,7 +23,7 @@ PlasmoidItem {
     readonly property color glassTop: "#303238"
     readonly property color glassBottom: "#28292E"
     readonly property color pageColor: "#0B0C0F"
-    readonly property color rim: Qt.rgba(1, 1, 1, 0.12)
+    readonly property color rim: Qt.rgba(1, 1, 1, 0.23) // card edge at 3:1 against the page (WCAG 1.4.11)
     readonly property color rimTop: Qt.rgba(1, 1, 1, 0.38)
     readonly property color innerShadow: Qt.rgba(0, 0, 0, 0.60)
     readonly property color textColor: "#F2F3F5"

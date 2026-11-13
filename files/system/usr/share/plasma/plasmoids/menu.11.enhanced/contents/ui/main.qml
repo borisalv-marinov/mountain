@@ -149,8 +149,7 @@ PlasmoidItem {
          favoritesModel: globalFavorites
 
          runners: {
-             const results = ["krunner_services",
-                              "krunner_systemsettings",
+             const results = ["krunner_services", // no krunner_systemsettings: KDE settings pages are not Mountain's Settings
                               "krunner_sessions",
                               "krunner_powerdevil",
                               "calculator",

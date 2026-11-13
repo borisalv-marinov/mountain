@@ -269,6 +269,11 @@ check_phase21() { # Windows-like start menu and names
   local a=/usr/share/applications L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js f
   assert_grep '^Name=Settings$' $a/org.mountain.settings.desktop # v5: Windows-style Settings; KDE's app is "All Settings"
   assert_grep '^Name=All Settings$' $a/systemsettings.desktop
+  # Start search shows no KDE settings pages, KDE System Settings, Cardwire or firewall-config, and no KDE-ish descriptions
+  assert_grep '^NoDisplay=true$' $a/systemsettings.desktop
+  ! grep -q krunner_systemsettings /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/main.qml || fail "Start search lists KDE settings pages"
+  for f in $(grep -lE '^(Name=Cardwire|Exec=firewall-config)' $a/*.desktop 2>/dev/null || true); do assert_grep '^NoDisplay=true$' "$f"; done
+  ! grep -qiE '^(GenericName|Comment)=.*(Windows Security style|setup your PC)' $a/org.mountain.security.desktop $a/io.github.ublue_os.yafti_gtk.desktop || fail "Start search descriptions"
   assert_grep '^Name=File Explorer$' $a/org.kde.dolphin.desktop
   assert_grep '^Name=Task Manager$' $a/org.kde.plasma-systemmonitor.desktop
   assert_grep '^Name=Terminal$' $a/org.kde.konsole.desktop
@@ -474,6 +479,20 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   grep -q 'stop-color="#121212" stop-opacity="1"' $t/translucent/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
   assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  # Terminal uses the same black glass; Settings cards keep a 3:1 edge against the page
+  assert_grep '^DefaultProfile=Mountain.profile$' /etc/xdg/konsolerc
+  assert_grep '^ColorScheme=MountainBlack$' /usr/share/konsole/Mountain.profile
+  assert_grep '^Color=18,18,18$' /usr/share/konsole/MountainBlack.colorscheme
+  python3 - /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/main.qml <<'PY' || fail "Settings card edge under 3:1 against the page"
+import re, sys
+s = open(sys.argv[1], encoding='utf-8').read(); hexc = lambda n: re.search(n + r': "#([0-9A-Fa-f]{6})"', s).group(1)
+a = float(re.search(r'rim: Qt\.rgba\(1, 1, 1, ([0-9.]+)\)', s).group(1))
+lin = lambda c: (c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+L = lambda rgb: 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2])
+top = [int(hexc('glassTop')[i:i + 2], 16) / 255 for i in (0, 2, 4)]; page = [int(hexc('pageColor')[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+rim = [c + a * (1 - c) for c in top]
+r = (L(rim) + 0.05) / (L(page) + 0.05); print('card edge contrast', round(r, 2)); assert r >= 3, r
+PY
   assert_grep '^disabled.text.color=#949494$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
   grep -q '#1B1D22\|#0E0F12\|#07080A' /usr/share/Kvantum/BlackGlass/BlackGlass.svg && fail "Kvantum SVG has old blue-blacks"
   grep -q '#1B1D22\|#24272D\|#101216' /usr/share/aurorae/themes/BlackGlass/decoration.svg && fail "title bar is not the window color"
@@ -701,6 +720,8 @@ check_phase33() { # v6 fix wave: Windows names, flyouts, File Explorer, Settings
     assert_grep "^Name=${t#*:}\$" "$a/${t%%:*}.desktop"
   done
   python3 -c 'import gettext,glob; v={x for f in glob.glob("/usr/share/locale/en@mountain/LC_MESSAGES/*.mo") for x in gettext.GNUTranslations(open(f,"rb"))._catalog.values()}; m={"Calculator","PDF Reader","Terminal","Paint","File Explorer"}-v; assert not m, m' || fail "title-bar name catalogs missing"
+  # File Explorer labels as in Windows (New, Sort; Quick access / This PC in the side pane), kept after explorer-title.sh merged in
+  python3 -c 'import gettext,sys; c=lambda n: {k.split("\x04")[-1]: v for k, v in gettext.GNUTranslations(open("/usr/share/locale/en@mountain/LC_MESSAGES/"+n+".mo","rb"))._catalog.items() if k}; d=c("dolphin"); k=c("kio6"); assert d.get("Create New")=="New" and d.get("Sort By")=="Sort" and d.get("Dolphin")=="File Explorer" and k.get("Places")=="Quick access", (d, k)' || fail "File Explorer labels (New, Sort, Quick access) missing"
   ! grep -rn 'notify-send [^>]' /usr/libexec/mountain-* | grep -v 'notify-send -a ' || fail "notify-send without -a (toast header says notify-send)"
   f=$(find /usr/share/icons/We10X* -name 'okular.*' -print -quit 2>/dev/null || true); [[ -z $f || $(readlink "$f") == */application-pdf.svg ]] || fail "PDF Reader still uses the We10X okular (Outlook-like) icon"
   ! grep -rqx 'Name=Konsole' /etc/skel/Desktop || fail "Konsole name on a desktop launcher"

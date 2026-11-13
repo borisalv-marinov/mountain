@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Windows-familiar app names, and developer/advanced entries hidden from the start menu (still runnable from Terminal).
 set -euo pipefail
-a=/usr/share/applications
+a=/usr/share/applications; hide=()
 ren() { # file new-name; translated Name[xx] lines are dropped so every language shows the familiar name
   [[ -f $a/$1 ]] || { echo "windows-names: missing $1"; return 1; }
   sed -i -E "0,/^Name=/s|^Name=.*|Name=$2|; /^Name\[/d" "$a/$1"
@@ -34,7 +34,12 @@ pl=$a/org.kde.kdeconnect.app.desktop
 for f in io.github.kolunmi.Bazaar io.github.ublue_os.yafti_gtk io.github.rfrench3.bazzite-updater; do # descriptions and actions too
   sed -i -E '/^(Comment|GenericName|Name|Keywords)(\[|=)/{s/Bazzite Portal/Welcome/g; s/Bazzite/your PC/g}' "$a/$f.desktop"
 done
-for f in kvantummanager org.kde.kwalletmanager kwalletmanager5-kwalletd org.kde.khelpcenter input-remapper-gtk \
+# Start search: no KDE System Settings ("All Settings" stays runnable from Settings > System > About), no Bazzite GPU and
+# firewalld tools; the Welcome app says what it is
+for f in $(grep -lE '^(Name=Cardwire|Exec=firewall-config)' "$a"/*.desktop 2>/dev/null); do f=${f##*/}; hide+=("${f%.desktop}"); done
+sed -i -E '/^(GenericName|Comment)(\[|=)/d; 0,/^Name=/{/^Name=/a GenericName=Get started with Mountain
+}' "$a/io.github.ublue_os.yafti_gtk.desktop"
+for f in systemsettings "${hide[@]}" kvantummanager org.kde.kwalletmanager kwalletmanager5-kwalletd org.kde.khelpcenter input-remapper-gtk \
          org.kde.kdebugsettings org.kde.kjournaldbrowser org.kde.kcolorschemeeditor org.kde.keditbookmarks \
          org.kde.knetattach yad-icon-browser bbrew bazzite-documentation discourse gkbd-keyboard-display org.freedesktop.IBus.Setup \
          com.gerbilsoft.rom-properties.rp-config org.kde.kdeconnect.sms org.kde.kdeconnect.nonplasma org.kde.plasma-interactiveconsole ibus-setup-anthy ibus-setup-chewing \
@@ -53,11 +58,16 @@ done
 # .desktop key changes. Same trick as explorer-title.sh: a tiny "en@mountain" catalog (read before en_US, see
 # /etc/xdg/plasma-workspace/env/mountain-names.sh) that renames only these exact strings, in whichever catalog has them.
 python3 - /usr/share/locale <<'PY'
-import gettext, glob, os, struct, sys
+import gettext, glob, os, re, struct, sys
 names = {'Dolphin': 'File Explorer', 'Konsole': 'Terminal', 'System Monitor': 'Task Manager', 'KWrite': 'Notepad',
          'KCalc': 'Calculator', 'Gwenview': 'Photos', 'Haruna': 'Media Player', 'Kamoso': 'Camera',
          'Spectacle': 'Snipping Tool', 'KolourPaint': 'Paint', 'KRecorder': 'Sound Recorder', 'Skanlite': 'Scanner',
          'KDE Connect': 'Phone Link', 'Okular': 'PDF Reader'}
+# Windows labels in File Explorer and Task Manager: exact context + text, only in these apps' catalogs
+ui = {'@title:menu Create new folder, file, link, etc.\x04Create New': 'New', '@action:inmenu View\x04Sort By': 'Sort',
+      '@item\x04Places': 'Quick access', '@item\x04Remote': 'Network', '@item\x04Devices': 'This PC',
+      '@action\x04End Process': 'End task', '@action\x04Quit Application': 'End task'}
+uicat = re.compile(r'(dolphin|kio6|.*systemmonitor.*)\.mo$')
 loc = sys.argv[1]; found = {}  # catalog -> {key: new}; contexts are read from real translations (de/fr), never guessed
 for mo in glob.glob(f'{loc}/de/LC_MESSAGES/*.mo') + glob.glob(f'{loc}/fr/LC_MESSAGES/*.mo'):
     try: cat = gettext.GNUTranslations(open(mo, 'rb'))._catalog
@@ -65,6 +75,8 @@ for mo in glob.glob(f'{loc}/de/LC_MESSAGES/*.mo') + glob.glob(f'{loc}/fr/LC_MESS
     for k in cat:
         if isinstance(k, str) and k.split('\x04')[-1] in names:
             found.setdefault(os.path.basename(mo), {})[k] = names[k.split('\x04')[-1]]
+        elif isinstance(k, str) and k in ui and uicat.match(os.path.basename(mo)):
+            found.setdefault(os.path.basename(mo), {})[k] = ui[k]
 def write(path, d):
     keys = sorted(d); ids = [k.encode() for k in keys]; strs = [d[k].encode() for k in keys]
     n = len(ids); o = 28 + 16 * n; tab, data = [], b''
@@ -76,5 +88,8 @@ for c, d in found.items(): write(f'{loc}/en@mountain/LC_MESSAGES/{c}', d)
 seen = {k.split('\x04')[-1] for d in found.values() for k in d}
 print('windows-names: titles renamed in', len(found), 'catalogs; not found:', sorted(set(names) - seen) or 'none')
 assert {'KCalc', 'Okular', 'Konsole', 'KolourPaint'} <= seen, 'app display names not found in any catalog'
+uiseen = {k for d in found.values() for k in d if k in ui}
+print('windows-names: labels not found:', sorted(k.split('\x04')[-1] for k in set(ui) - uiseen) or 'none')
+assert {'Create New', 'Sort By', 'Places'} <= {k.split('\x04')[-1] for k in uiseen}, 'File Explorer labels not found'
 PY
 exit 0

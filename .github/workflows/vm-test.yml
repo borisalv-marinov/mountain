@@ -256,6 +256,7 @@ jobs:
               x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
               for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
           elif a[0] == 'up': btn(False)
+          elif a[0] == 'move': move(int(a[1]), int(a[2]))  # X Y: hover (tooltips, previews)
           elif a[0] == 'rclick':  # X Y: right click (context menus)
               move(int(a[1]), int(a[2])); time.sleep(0.1); ev({'type': 'btn', 'data': {'down': True, 'button': 'right'}}); time.sleep(0.05); ev({'type': 'btn', 'data': {'down': False, 'button': 'right'}})
           elif a[0] == 'keyhold':  # SECS K..: press keys, keep them down SECS, release (Alt+Tab switcher stays open for a shot)
@@ -341,6 +342,9 @@ jobs:
           chk "lock screen greeter runs" 0 "pgrep -u looktest -f kscreenlocker_greet" '^[0-9]+'
           chk "greeter QML has no errors" 0 "journalctl -b --no-pager | grep -E 'kscreenlocker_greet|plasmalogin' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError' || true" '^0$'
           QM click $((W/2)) $((H/4)); sleep 3; shot lock-hello
+          QM type wrongpass; QM key ret; sleep 4; shot lock-wrong-password # one wrong try (5 lock the account)
+          chk "a wrong password keeps the screen locked" 1 "$SS" 'boolean true'
+          QM click $((W/2)) $((H/4)); sleep 2
           QM type $LPW; QM key ret; sleep 6; shot unlocked
           chk "password unlocks" 1 "$SS" 'boolean false'
           # the long steps below must not lock the screen when idle
@@ -349,6 +353,10 @@ jobs:
 
           # 2. start menu -> settings
           QM key meta_l; sleep 3; shot start-menu
+          QM type firewall; sleep 3; shot start-search-firewall; QM key esc; sleep 1 # Mountain's Security, no KDE or firewalld pages
+          QM move $((1180*W/1280)) $((780*H/800)); sleep 3; shot taskbar-hover-clock; QM move $((640*W/1280)) $((400*H/800))
+          QM rclick $((1000*W/1280)) $((780*H/800)); sleep 2; shot taskbar-context-menu; QM key esc; sleep 1
+          QM key meta_l; sleep 3 # the start menu open again for the steps below
           chk "menu.11.enhanced no QML errors" 0 "journalctl -b --no-pager -t plasmashell | grep -E 'menu\.11\.enhanced|org\.mountain' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError|Error loading' || true" '^0$'
           chk "start launcher applet in appletsrc" 0 "grep -c '^plugin=menu.11.enhanced$' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^1$'
           chk "start menu uses the glass background" 0 "grep -c 'StandardBackground' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml" '^1$'
@@ -527,6 +535,8 @@ jobs:
           chk "status bar without free space" 0 "grep -h '^ShowStatusBar=' /etc/xdg/dolphinrc ~looktest/.config/dolphinrc 2>/dev/null | tail -1" '^ShowStatusBar=Small$'
           shot explorer-home
           QM key ctrl f; sleep 2; QM type notes; sleep 3; shot explorer-search; QM key esc; sleep 1
+          QM rclick $((700*W/1280)) $((500*H/800)); sleep 2; shot explorer-context-menu; QM key esc; sleep 1 # "New", "Sort"
+          chk "File Explorer uses the Windows labels (en@mountain first)" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep '^LANGUAGE='" 'en@mountain' 
           K -x dolphin; L 'dolphin /'; sleep 7; shot explorer-thispc; K -x dolphin
           L 'dolphin remote:/'; sleep 7; shot explorer-network; K -x dolphin
           L dolphin; sleep 6
