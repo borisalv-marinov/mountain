@@ -350,6 +350,7 @@ check_phase25() { # v4: logo, avatar, Windows 11 start menu, VS Code for text/co
   assert_file /usr/share/plasma/avatars/Mountain.png
   python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="menu.11.enhanced"' "$m/metadata.json" || fail "start menu plasmoid metadata"
   assert_grep 'menu.11.enhanced' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  assert_grep 'bell.globalShortcut = "Meta+N"' /usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
   assert_grep '<default>mountain-logo</default>' "$m/contents/config/main.xml"
   assert_grep 'org.mountain.settings.desktop' "$m/contents/config/main.xml"
   assert_grep 'i18n("Recommended")' "$m/contents/ui/MenuRepresentation.qml"

@@ -41,8 +41,10 @@ check() { # FILE...: count, flag unverified, scan in a separate low-priority uni
   done
   [[ ${#files[@]} -gt 0 ]] || return 0
   # scanner temp files go to the runtime dir, not the watched /tmp (no feedback loop)
+  echo "checking ${#files[@]} file(s): ${files[0]}" # to the journal (journalctl --user -u mountain-protect)
   out=$(systemd-run --user --wait --pipe --quiet --collect -p Nice=19 -p IOSchedulingClass=idle -p CPUQuota=50% -p "Environment=TMPDIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
         /usr/libexec/mountain-security scan --no-update "${files[@]}" 2>/dev/null)
+  echo "result: $(grep -m1 '^av_result=' <<<"$out")"
   if grep -q 'av_result=found' <<<"$out"; then
     echo x >> "$pdir/threats"
     notify-send -u critical -i security-low "Active Protection" "Threat blocked: $(grep -m1 ' FOUND$' <<<"$out" | sed 's/: .*//; s|.*/||'). It was moved to quarantine." 2>/dev/null
@@ -79,6 +81,7 @@ event() { # a new drive or app (not a file): handle it and succeed
       m=$(printf '%b' "${1#MNT }") # findmnt -r escapes spaces as \x20
       inotifywait -mrq -e close_write,moved_to --format '%w%f' "$m" >&3 2>/dev/null &
       mapfile -t batch < <(find "$m" -maxdepth 2 -type f 2>/dev/null | head -200) # what is already on the drive
+      echo "drive: $m (${#batch[@]} file(s))"
       [[ ${#batch[@]} -gt 0 ]] && check "${batch[@]}" ;;
     "MNT "*) ;;
     *) return 1 ;;

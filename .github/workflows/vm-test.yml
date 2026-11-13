@@ -674,12 +674,12 @@ jobs:
           apwait() { for _ in $(seq 40); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /tmp/apa-tmp.com')"; apwait /tmp/apa-tmp.com
           chk "Active Protection: a threat in /tmp is caught" 0 "test ! -e /tmp/apa-tmp.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-tmp && echo caught" '^caught$'
-          R "truncate -s 64M /var/tmp/usb.img && mkfs.vfat -n USBTEST /var/tmp/usb.img >/dev/null && mkdir -p /run/media/looktest/USBTEST && mount -o loop,uid=\$(id -u looktest) /var/tmp/usb.img /run/media/looktest/USBTEST"
-          R "mount | grep -q USBTEST || mount -o loop,uid=\$(id -u looktest) /var/tmp/usb.img /run/media/looktest/USBTEST"; sleep 3
+          R "truncate -s 64M /root/usb.img && mkfs.vfat -n USBTEST /root/usb.img >/dev/null && mkdir -p /run/media/looktest/USBTEST && mount -o loop,uid=\$(id -u looktest) /root/usb.img /run/media/looktest/USBTEST"
+          R "mount | grep -q USBTEST || mount -o loop,uid=\$(id -u looktest) /root/usb.img /run/media/looktest/USBTEST"; sleep 3
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /run/media/looktest/USBTEST/game-crack.com')"; apwait /run/media/looktest/USBTEST/game-crack.com
           chk "Active Protection: a threat on a USB drive is caught" 0 "test ! -e /run/media/looktest/USBTEST/game-crack.com && ls ~looktest/.local/share/mountain/quarantine | grep -q game-crack && echo caught" '^caught$'
           R "$LT journalctl --user -u mountain-protect -n 40 --no-pager; findmnt /run/media/looktest/USBTEST; ls -la /run/media/looktest/USBTEST" > protect-usb-log.txt 2>&1
-          R "umount /run/media/looktest/USBTEST; rm -f /var/tmp/usb.img"
+          R "umount /run/media/looktest/USBTEST; rm -f /root/usb.img"
           R "$(TL 'mkdir -p ~/Downloads/attachments; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/attachments/invoice.pdf.com')"; apwait /home/looktest/Downloads/attachments/invoice.pdf.com
           chk "Active Protection: an email-attachment-like threat is caught" 0 "test ! -e ~looktest/Downloads/attachments/invoice.pdf.com && ls ~looktest/.local/share/mountain/quarantine | grep -q invoice && echo caught" '^caught$'
           R "$(TL 'printf "#!/bin/sh\necho installing\n" > ~/Downloads/install.sh; printf "[Desktop Entry]\nType=Application\nName=Updater\nExec=sh -c true\n" > ~/.config/autostart/updater.desktop')"; sleep 15
