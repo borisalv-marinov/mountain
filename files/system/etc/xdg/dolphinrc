@@ -2,5 +2,6 @@
 BrowseThroughArchives=true
 ShowFullPath=false
 AlwaysShowTabBar=false
-ShowStatusBar=FullWidth
+# Small: "N items" only; the free-space part read "0 B free" for local folders (the read-only system image), Windows shows none
+ShowStatusBar=Small
 RememberOpenedTabs=false

@@ -22,7 +22,7 @@ QQC2.AbstractButton {
     background: Rectangle {
         radius: 10
         color: row.pressed ? Qt.rgba(1, 1, 1, 0.05) : (row.hovered ? app.hover : "transparent")
-        border.width: row.activeFocus ? 1 : 0
+        border.width: row.visualFocus ? 1 : 0
         border.color: app.accent
         Rectangle {
             visible: row.divider

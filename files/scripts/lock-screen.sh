@@ -17,4 +17,6 @@ open(p, 'w', encoding='utf-8', newline='').write(s.replace(old, new))
 PY
 grep -q '"Hello, "' "$d/UserDelegate.qml"
 ! grep -q '^prefer ' "$d/qmldir"
+# the sign-in screen runs with the system locale: without one Qt shows 24 h and day-first dates (the installer's choice still wins)
+[[ -s /etc/locale.conf ]] || echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 echo "lock-screen: greeting patched in $d"

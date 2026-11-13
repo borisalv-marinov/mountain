@@ -19,6 +19,20 @@ ColumnLayout {
     function list(k) { return Array.isArray(s[k]) ? s[k] : []; }
     function q(x) { return "'" + String(x).split("'").join("'\\''") + "'"; }
     function refresh() { exec.connectSource(statusCmd); }
+    // update a list in place: delegates (and the buttons in them) stay put; only added or removed rows change
+    function sync(model, arr) {
+        for (let i = model.count - 1; i >= 0; i--) if (arr.indexOf(model.get(i).v) < 0) model.remove(i);
+        for (let i = 0; i < arr.length; i++) {
+            if (i < model.count && model.get(i).v === arr[i]) continue;
+            let j = -1;
+            for (let k = i + 1; k < model.count; k++) if (model.get(k).v === arr[i]) { j = k; break; }
+            if (j >= 0) model.move(j, i, 1); else model.insert(i, { v: arr[i] });
+        }
+        while (model.count > arr.length) model.remove(model.count - 1);
+    }
+    ListModel { id: unverifiedModel }
+    ListModel { id: quarantineModel }
+    ListModel { id: historyModel }
     function start(what, cmd) {
         running = what;
         note = "";
@@ -40,7 +54,10 @@ ColumnLayout {
                     const k = l.slice(0, i), val = l.slice(i + 1);
                     if (Array.isArray(m[k])) m[k].push(val); else m[k] = val;
                 }
-                ap.s = m;
+                if (JSON.stringify(m) !== JSON.stringify(ap.s)) ap.s = m; // most polls change nothing: no rebinding at all
+                ap.sync(unverifiedModel, m.ap_unverified);
+                ap.sync(quarantineModel, m.av_q);
+                ap.sync(historyModel, m.av_history.slice().reverse());
                 return;
             }
             if (ap.running === "scan") {
@@ -52,8 +69,16 @@ ColumnLayout {
             ap.refresh();
         }
     }
-    Timer { interval: 5000; repeat: true; running: true; onTriggered: ap.refresh() } // live: a threat shows up here within seconds
-    Component.onCompleted: refresh()
+    // live only while you look at it: this page is shown, the window is open and in front (minimized or behind = no polling)
+    Timer {
+        id: poll
+        interval: 8000
+        repeat: true
+        triggeredOnStart: true // fresh numbers the moment the window comes back
+        running: ap.visible && !!app.hostWindow && app.hostWindow.visible && app.hostWindow.active
+        onTriggered: ap.refresh()
+    }
+    Component.onCompleted: if (!poll.running) refresh()
 
     GText {
         Layout.topMargin: 6
@@ -66,7 +91,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         dim: true
-        text: "Watches new files in Downloads, Desktop, Documents, your home folder, /tmp and USB drives, on this PC only: nothing is uploaded. "
+        text: "Watches new files in Downloads, Desktop, Documents, your home folder, temporary files and USB drives, on this PC only: nothing is uploaded. "
               + "It uses almost no memory until a file appears, and never watches games."
     }
     GText {
@@ -102,11 +127,11 @@ ColumnLayout {
         font.weight: Font.DemiBold
     }
     Repeater {
-        model: ap.list("ap_unverified") // path|reason
+        model: unverifiedModel // v = path|reason
         delegate: GlassCard {
-            required property string modelData
-            readonly property string path: modelData.slice(0, modelData.lastIndexOf("|"))
-            readonly property string reason: modelData.slice(modelData.lastIndexOf("|") + 1)
+            required property string v
+            readonly property string path: v.slice(0, v.lastIndexOf("|"))
+            readonly property string reason: v.slice(v.lastIndexOf("|") + 1)
             Layout.fillWidth: true
             padding: 12
             RowLayout {
@@ -132,16 +157,16 @@ ColumnLayout {
         font.weight: Font.DemiBold
     }
     Repeater {
-        model: ap.list("av_q")
+        model: quarantineModel
         delegate: GlassCard {
-            required property string modelData
+            required property string v
             Layout.fillWidth: true
             padding: 12
             RowLayout {
                 Layout.fillWidth: true
-                GText { Layout.fillWidth: true; text: modelData }
-                GlassButton { text: "Restore"; Accessible.name: "Restore " + modelData; onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-restore " + ap.q(modelData)) }
-                GlassButton { text: "Delete"; Accessible.name: "Delete " + modelData; onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-delete " + ap.q(modelData)) }
+                GText { Layout.fillWidth: true; text: v }
+                GlassButton { text: "Restore"; Accessible.name: "Restore " + v; onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-restore " + ap.q(v)) }
+                GlassButton { text: "Delete"; Accessible.name: "Delete " + v; onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-delete " + ap.q(v)) }
             }
         }
     }
@@ -154,11 +179,11 @@ ColumnLayout {
         font.weight: Font.DemiBold
     }
     Repeater {
-        model: ap.list("av_history").slice().reverse()
+        model: historyModel
         delegate: GText {
-            required property string modelData
+            required property string v
             Layout.fillWidth: true
-            text: modelData
+            text: v
             dim: true
         }
     }

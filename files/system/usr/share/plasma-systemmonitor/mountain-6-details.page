@@ -8,7 +8,7 @@ Title=Details
 [Face-880000000015][org.kde.ksysguard.processtable][General]
 sortedColumns=name,pid,status,username,usage,memory,command
 columnWidths=0.18,0.07,0.09,0.11,0.09,0.11,0.35
-columnDisplay={"name":"text","pid":"text","status":"text","username":"text","usage":"text","memory":"text","command":"text"}
+columnDisplay={"name":"text","pid":"text","status":"text","username":"text","usage":"textScaled","memory":"text","command":"text"}
 showToolBar=false
 askWhenKilling=true
 viewMode=0

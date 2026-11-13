@@ -1,6 +1,6 @@
 /*
     Mountain Settings: Windows 11 structure, black glass look.
-    Run with `plasmawindowed org.mountain.settings`. Every page opens the real KDE module.
+    Run with `plasmawindowed org.mountain.settings`. Most rows open the matching system page.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -19,10 +19,11 @@ PlasmoidItem {
     property string wallpaper: "file:///usr/share/wallpapers/mountain-silk/contents/images/1920x1080.png"
 
     // Design tokens (docs/superpowers/plans/2026-11-12-mountain-v5-black-glass.md)
-    readonly property color glassTop: "#1B1D22"
-    readonly property color glassBottom: "#07080A"
-    readonly property color pageColor: "#050607"
-    readonly property color rim: Qt.rgba(1, 1, 1, 0.14)
+    // cards >= 1.3:1 against the page (Windows 11 dark is ~1.15:1), dim text >= 5:1 on cards
+    readonly property color glassTop: "#303238"
+    readonly property color glassBottom: "#28292E"
+    readonly property color pageColor: "#0B0C0F"
+    readonly property color rim: Qt.rgba(1, 1, 1, 0.12)
     readonly property color rimTop: Qt.rgba(1, 1, 1, 0.38)
     readonly property color innerShadow: Qt.rgba(0, 0, 0, 0.60)
     readonly property color textColor: "#F2F3F5"
@@ -32,6 +33,8 @@ PlasmoidItem {
     readonly property color hover: Qt.rgba(1, 1, 1, 0.08)
 
     property string page: "home"
+    // pages without their own nav entry light up their category
+    readonly property string navPage: page === "background" ? "personalization" : page === "protection" ? "privacy" : page
     property string query: ""
     property string modelName: ""
     property string colorMode: "Dark"
@@ -72,15 +75,15 @@ PlasmoidItem {
             { t: "Proxy", d: "Proxy server for apps", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
         ] },
         { id: "personalization", name: "Personalization", icon: "preferences-desktop-theme", items: [
-            { t: "Background", d: "Pictures, slideshow, solid colour", i: "preferences-desktop-wallpaper", kcm: "kcm_wallpaper", k: "wallpaper background picture" },
-            { t: "Colors", d: "Dark and light mode, accent colour", i: "preferences-desktop-color", kcm: "kcm_colors", k: "dark light accent color colour" },
-            { t: "Themes", d: "Global theme for the whole desktop", i: "preferences-desktop-theme-global", kcm: "kcm_lookandfeel", k: "theme look" },
+            { t: "Background", d: "Picture, solid color, slideshow", i: "preferences-desktop-wallpaper", page: "background", k: "wallpaper background picture" },
+            { t: "Colors", d: "Dark and light mode, accent color", i: "preferences-desktop-color", kcm: "kcm_colors", k: "dark light accent color colour" },
+            { t: "Themes", d: "Colors, icons and pointers in one set", i: "preferences-desktop-theme-global", kcm: "kcm_lookandfeel", k: "theme look" },
             { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock wallpaper" },
             { t: "Fonts", d: "Font family and size", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text font" },
             { t: "Icons", d: "Icon theme", i: "preferences-desktop-icons", kcm: "kcm_icons", k: "icons" },
             { t: "Cursors", d: "Mouse pointer style and size", i: "preferences-desktop-cursors", kcm: "kcm_cursortheme", k: "pointer cursor" },
             { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "preferences-desktop-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
-            { t: "Taskbar alignment", d: "Click to switch between centre and left", i: "preferences-desktop", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
+            { t: "Taskbar alignment", d: "Click to switch between center and left", i: "preferences-desktop", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
             { t: "Start menu: more pins", d: "Four rows of pinned apps, fewer recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
             { t: "Start menu: default", d: "Three rows of pins and recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu default", k: "start menu layout default" },
             { t: "Start menu: more recommendations", d: "Two rows of pins, more recent files", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu recommended", k: "start menu layout recommended recent" },
@@ -105,21 +108,21 @@ PlasmoidItem {
         { id: "gaming", name: "Gaming", icon: "applications-games", items: [
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad controller joystick" },
             { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
-            { t: "GTA Online and FiveM", d: "They block Linux on purpose. Use Restart into Windows (power menu) or cloud gaming", i: "dialog-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
-            { t: "Check game support", d: "See if a game runs on Mountain (opens ProtonDB and Are We Anti-Cheat Yet)", i: "help-browser", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
-            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance (MangoHud)", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
+            { t: "GTA Online and FiveM", d: "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming", i: "dialog-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
+            { t: "Check game support", d: "See if a game runs on Mountain (opens two game-support websites)", i: "help-browser", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
+            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
             { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", kcm: "kcm_kscreen", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: "Accessibility", icon: "preferences-desktop-accessibility", items: [
-            { t: "Accessibility", d: "Bell, modifier keys, screen reader", i: "preferences-desktop-accessibility", kcm: "kcm_access", k: "screen reader sticky keys" },
+            { t: "Keyboard, mouse and hearing", d: "Sticky keys, sound alerts, screen reader", i: "preferences-desktop-accessibility", kcm: "kcm_access", k: "screen reader sticky keys" },
             { t: "Text size", d: "Make text bigger", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text size font bigger" },
             { t: "Visual effects", d: "Desktop effects and animations", i: "preferences-desktop-effects", kcm: "kcm_kwin_effects", k: "effects animations transparency" },
-            { t: "Night light", d: "Warmer colours at night", i: "preferences-desktop-display-color", kcm: "kcm_nightlight", k: "night light blue light" }
+            { t: "Night light", d: "Warmer colors at night", i: "preferences-desktop-display-color", kcm: "kcm_nightlight", k: "night light blue light" }
         ] },
         { id: "privacy", name: "Privacy & security", icon: "preferences-security", items: [
             { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock password security" },
             { t: "Recent files", d: "Remember recently used files", i: "document-open-recent", kcm: "kcm_recentFiles", k: "history recent activity" },
-            { t: "App permissions", d: "What Flatpak apps may access", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" },
+            { t: "App permissions", d: "What apps may access: camera, microphone, files", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" },
             { t: "Virus & threat protection", d: "Scan now, quarantine, Previous versions", i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
         ] },
         { id: "updates", name: "Updates", icon: "system-software-update", items: [
@@ -127,7 +130,7 @@ PlasmoidItem {
             { t: "Go back to the previous version", d: "Undo the last update: Mountain restarts into the version you had before", i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
             { t: "Reset this PC (keep my files)", d: "Removes system changes made on this PC and restarts into plain Mountain; files and apps stay", i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
             { t: "Update virus definitions", d: "Download the newest definitions now (they never download in the background)", i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" },
-            { t: "All settings (advanced)", d: "Every KDE setting in System Settings", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
+            { t: "All settings (advanced)", d: "Every setting, for advanced users", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
         ] }
     ]
 
@@ -171,9 +174,10 @@ PlasmoidItem {
         }
     }
 
-    function setWallpaper(url) {
+    function setWallpaper(url) { // a Mountain picture: apply its package so the right size and dark variant are used
         wallpaper = url;
-        run("plasma-apply-wallpaperimage '" + url.replace("file://", "") + "'");
+        const f = url.replace("file://", ""), i = f.indexOf("/contents/");
+        run("/usr/libexec/mountain-background picture '" + (i > 0 ? f.slice(0, i + 1) : f) + "'");
     }
 
     function setColorMode(mode) {
@@ -196,7 +200,7 @@ PlasmoidItem {
             if (sourceName === app.modelCmd) {
                 app.modelName = out;
             } else if (sourceName === app.pageCmd) {
-                if (out === "protection" || app.categories.some(c => c.id === out)) {
+                if (out === "protection" || out === "background" || app.categories.some(c => c.id === out)) {
                     app.page = out;
                 }
             } else if (sourceName === app.colorCmd) {
@@ -357,7 +361,7 @@ PlasmoidItem {
                 delegate: QQC2.AbstractButton {
                     id: navButton
                     required property var modelData
-                    readonly property bool current: app.page === modelData.id && app.query === ""
+                    readonly property bool current: app.navPage === modelData.id && app.query === ""
                     Layout.fillWidth: true
                     implicitHeight: 34
                     hoverEnabled: true
@@ -372,8 +376,8 @@ PlasmoidItem {
 
                     background: Rectangle {
                         radius: 6
-                        color: navButton.current ? Qt.rgba(1, 1, 1, 0.08) : (navButton.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
-                        border.width: navButton.activeFocus ? 1 : 0
+                        color: navButton.current ? Qt.rgba(1, 1, 1, 0.09) : (navButton.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
+                        border.width: navButton.visualFocus ? 1 : 0 // the ring only for keyboard focus; selection is the fill + pill
                         border.color: app.accent
                         Rectangle {
                             visible: navButton.current
@@ -417,7 +421,7 @@ PlasmoidItem {
                 id: pageLoader
                 width: Math.min(flick.width - 32, 1000)
                 height: item ? item.implicitHeight : 0
-                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : "ListPage.qml"
+                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : app.page === "background" ? "BackgroundPage.qml" : "ListPage.qml"
                 onSourceChanged: flick.contentY = 0
             }
         }

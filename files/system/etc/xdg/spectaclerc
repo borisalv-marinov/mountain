@@ -1,3 +1,5 @@
 [General]
 clipboardGroup=PostScreenshotCopyImage
 autoSaveImage=true
+useReleaseToCapture=true
+showCaptureInstructions=false

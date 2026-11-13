@@ -33,7 +33,7 @@ import org.kde.plasma.plasma5support as Plasma5Support
 
 PlasmaCore.Dialog {
     id: root
-    backgroundHints: PlasmaCore.Types.SolidBackground | PlasmaCore.Types.ConfigurableBackground
+    backgroundHints: PlasmaCore.Types.StandardBackground | PlasmaCore.Types.ConfigurableBackground
     objectName: "popupWindow"
     flags: Qt.WindowStaysOnTopHint
     location: {

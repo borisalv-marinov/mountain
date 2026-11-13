@@ -41,6 +41,8 @@ jobs:
         run: bash tests/test-protect.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
+      - name: Run dialog (Win+R) test
+        run: bash tests/test-run-dialog.sh
       - name: Check Flathub IDs
         run: bash tests/check-flathub-ids.sh
 
@@ -60,10 +62,16 @@ jobs:
           - recipe.yml
           - recipe-nvidia.yml
     steps:
-      # the build is fully handled by the reusable github action
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Publish gate: check-image.sh is the last recipe module, so a failing check fails the build before the push.
+      # The generated copy is not committed (.gitignore: files/scripts/check-image.sh).
+      - name: Add the image checker as the last recipe step
+        run: cp tests/check-image.sh files/scripts/check-image.sh
       - name: Build Custom Image
         uses: blue-build/github-action@v1.13
         with:
+          skip_checkout: true
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
@@ -79,8 +87,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
-    env:
-      MOUNTAIN_PHASE: 31
     strategy:
       fail-fast: false
       matrix:
@@ -114,4 +120,4 @@ jobs:
       - name: Run image tests
         env:
           TAG: ${{ steps.tag.outputs.tag }}
-        run: podman run --rm --no-hostname -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh "$MOUNTAIN_PHASE"
+        run: podman run --rm --no-hostname -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh

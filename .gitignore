@@ -4,3 +4,5 @@ cosign.private
 *.iso
 *.iso-CHECKSUM
 *.vdi
+# copied from tests/ by build.yml so the recipe can run it
+files/scripts/check-image.sh

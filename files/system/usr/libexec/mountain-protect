@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
 # Active Protection: real-time, local-only threat checks that cost almost nothing while idle.
 # A tiny inotify watcher (no signatures in memory) notices new or changed files in Downloads, Desktop, Documents,
-# your home folder's top level, ~/.local/bin, autostart, /tmp, /var/tmp, USB drives and new Flatpak apps; only then
-# does it start a low-priority ClamAV scan in its own unit, which exits when done. Games are never watched.
+# ~/.local/bin, autostart and other sign-in folders, the top level of your home folder, /tmp and /var/tmp (your own files),
+# USB drives (top two levels) and new Flatpak apps. Only files that can carry a threat (everything in Downloads and on drives;
+# programs, scripts, archives and documents elsewhere) start a low-priority ClamAV scan in its own sandboxed unit, which exits
+# when done. Unchanged files are not scanned twice. Games are never watched.
 # New executables and scripts are listed as "unverified" until you Allow, Quarantine or Delete them.
-#   mountain-protect daemon | status | on | off | allow FILE | quarantine FILE | delete FILE
+#   mountain-protect daemon | status | on | off | allow FILE | allow-hash FILE | quarantine FILE | delete FILE | check FILE...
 set -uo pipefail
 state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
 pdir=$state/protect
 mkdir -p "$pdir"
 unv=$pdir/unverified   # path<TAB>reason
-allowed=$pdir/allowed  # sha256 of files you allowed
-today=$pdir/checked-$(date +%F)
+allowed=$pdir/allowed  # sha256 of files you allowed (or restored from quarantine)
+declare -A seen=()     # path -> "size mtime" when last checked: unchanged files are skipped
+
+userdirs() { # translated folder names (Изтегляния, Документи...) with the English names as fallback
+  local x
+  x=$(xdg-user-dir DOWNLOAD 2>/dev/null); [[ -n $x && ${x%/} != "$HOME" ]] && dl=${x%/} || dl=$HOME/Downloads
+  x=$(xdg-user-dir DOCUMENTS 2>/dev/null); [[ -n $x && ${x%/} != "$HOME" ]] && docs=${x%/} || docs=$HOME/Documents
+  x=$(xdg-user-dir DESKTOP 2>/dev/null); [[ -n $x && ${x%/} != "$HOME" ]] && desk=${x%/} || desk=$HOME/Desktop
+}
+esc() { local a='&amp;' l='&lt;' g='&gt;' s; s=${1//&/"$a"}; s=${s//</"$l"}; printf '%s' "${s//>/"$g"}"; } # notifications render markup
+rwq() { local s=${1//\\/\\\\}; printf '"-%s"' "${s//\"/\\\"}"; } # a path quoted for systemd's ReadWritePaths= parser
 
 is_unverified() { # FILE -> reason, or nothing
   local f=$1 head
   [[ -f $f ]] || return 1
-  grep -qs "^$(sha256sum "$f" 2>/dev/null | cut -d' ' -f1)\$" "$allowed" && return 1
+  grep -qsxF -- "$(sha256sum -- "$f" 2>/dev/null | cut -d' ' -f1)" "$allowed" && return 1
   case $f in
-    */.config/autostart/*) echo "starts at sign-in"; return 0 ;;
+    */.config/autostart/*|*/.config/systemd/user/*|*/.config/plasma-workspace/env/*) echo "starts at sign-in"; return 0 ;;
     *.sh|*.py|*.pl|*.rb|*.desktop|*.AppImage|*.appimage|*.run|*.bin|*.exe|*.msi|*.bat|*.cmd|*.ps1|*.jar|*.deb|*.rpm|*.flatpakref) echo "program or script"; return 0 ;;
   esac
   head=$(head -c 4 "$f" 2>/dev/null | od -An -c | tr -d ' ')
@@ -28,49 +39,92 @@ is_unverified() { # FILE -> reason, or nothing
   return 1
 }
 
-check() { # FILE...: count, flag unverified, scan in a separate low-priority unit
-  local f r out files=()
+risky() { # FILE REASON: worth a ClamAV scan? Downloads and drives: everything; elsewhere programs, scripts, archives, documents
+  case $1 in "$dl"/*|/run/media/*) return 0 ;; esac
+  case ${1,,} in *.zip|*.7z|*.rar|*.tar|*.gz|*.tgz|*.xz|*.bz2|*.zst|*.iso|*.img|*.dmg|*.cab|*.apk|*.com|*.scr|*.vbs|*.js|*.lnk|*.pdf|*.rtf|*.doc|*.docm|*.xls|*.xlsm|*.ppt|*.pptm) return 0 ;; esac
+  [[ -n $2 ]]
+}
+
+check() { # FILE...: count, flag unverified, scan the risky ones in a separate sandboxed low-priority unit
+  local f r sig out d one= files=() new=() props=() tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
+  local -A dirs=()
   for f in "$@"; do
-    [[ -f $f ]] || continue
-    case $f in *.part|*.crdownload|*.tmp|*/.local/share/mountain/*|/tmp/clamav-*) continue ;; esac
-    files+=("$f"); echo x >> "$today"
+    [[ $f == /* && $f != *[$'\n\t']* && -f $f && ! -L $f ]] || continue # a newline or tab in a name splits it: skipped
+    case $f in *.part|*.crdownload|*.tmp|*/.local/share/mountain/*|*/node_modules/*|*/.git/*|*/__pycache__/*|*/steamapps/*) continue ;; esac
+    case $f in /tmp/*|/var/tmp/*) [[ -O $f ]] || continue ;; esac # other accounts' temp files are theirs
+    sig=$(stat -c '%s %Y' -- "$f" 2>/dev/null) || continue
+    [[ ${seen[$f]:-} == "$sig" ]] && continue # same path, unchanged: already checked
+    seen[$f]=$sig
+    [[ -s $allowed ]] && grep -qsxF -- "$(sha256sum -- "$f" | cut -d' ' -f1)" "$allowed" && continue # you allowed or restored it
+    echo x >> "$pdir/checked-$(date +%F)"
     if r=$(is_unverified "$f"); then
-      grep -qsF "$f	" "$unv" || printf '%s\t%s\n' "$f" "$r" >> "$unv"
-      notify-send -i security-medium "Active Protection" "Unverified ${r}: $(basename "$f"). Review it in Active Protection." 2>/dev/null
+      inlist "$f" || printf '%s\t%s\n' "$f" "$r" >> "$unv"
+      new+=("$f"); one=$r
     fi
+    risky "$f" "$r" || continue
+    iconv -f UTF-8 -t UTF-8 <<<"$f" >/dev/null 2>&1 || { echo "skipped, name is not UTF-8: ${f%/*}/..."; continue; } # D-Bus refuses it
+    files+=("$f"); dirs[${f%/*}]=1
   done
+  ((${#seen[@]} > 20000)) && seen=()
+  if ((${#new[@]})); then
+    f=$(esc "$(basename "${new[0]}")")
+    ((${#new[@]} == 1)) && r="Unverified ${one}: $f." || r="${#new[@]} unverified files, including $f."
+    notify-send -a "Active Protection" -i security-medium -h string:desktop-entry:org.mountain.protection "Active Protection" "$r Review it in Active Protection." 2>/dev/null
+  fi
   [[ ${#files[@]} -gt 0 ]] || return 0
-  # scanner temp files go to the runtime dir, not the watched /tmp (no feedback loop)
+  # sandbox: no network, read-only system and home; writable only the mountain folder (quarantine, scan results), the scanner's
+  # temp folder (in the runtime dir, not the watched /tmp) and the folders of the scanned files (clamscan --move unlinks them there)
+  mkdir -p -m 700 "$tmp"
+  props=(-p PrivateNetwork=yes -p NoNewPrivileges=yes -p RestrictAddressFamilies=AF_UNIX -p ProtectSystem=strict -p ProtectHome=read-only
+         -p MemoryMax=1800M -p "ReadOnlyPaths=$(rwq "$pdir")") # the full ClamAV database peaks at about 1.2 GB
+  for d in "$state" "$tmp" "${!dirs[@]}"; do props+=(-p "ReadWritePaths=$(rwq "$d")"); done
   echo "checking ${#files[@]} file(s): ${files[0]}" # to the journal (journalctl --user -u mountain-protect)
-  out=$(systemd-run --user --wait --pipe --quiet --collect -p Nice=19 -p IOSchedulingClass=idle -p CPUQuota=50% -p "Environment=TMPDIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
-        /usr/libexec/mountain-security scan --no-update "${files[@]}" 2>/dev/null)
-  echo "result: $(grep -m1 '^av_result=' <<<"$out")"
+  out=$(systemd-run --user --wait --pipe --quiet --collect -p Nice=19 -p IOSchedulingClass=idle -p CPUQuota=50% -p "Environment=TMPDIR=$tmp" \
+        "${props[@]}" /usr/libexec/mountain-security scan --no-update "${files[@]}")
+  echo "result: $(grep -m1 '^av_result=' <<<"$out" || echo 'none, the scan unit failed')"
+  grep '^note=' <<<"$out" | head -3 # e.g. a threat that could not be moved to quarantine
   if grep -q 'av_result=found' <<<"$out"; then
     echo x >> "$pdir/threats"
-    notify-send -u critical -i security-low "Active Protection" "Threat blocked: $(grep -m1 ' FOUND$' <<<"$out" | sed 's/: .*//; s|.*/||'). It was moved to quarantine." 2>/dev/null
-    for f in "${files[@]}"; do [[ -e $f ]] || sed -i "\\|^$f	|d" "$unv" 2>/dev/null; done # quarantined: nothing left to review
+    notify-send -a "Active Protection" -u critical -i security-low -h string:desktop-entry:org.mountain.protection "Active Protection" "Threat blocked: $(esc "$(grep -m1 ' FOUND$' <<<"$out" | sed 's/: .*//; s|.*/||')"). It was moved to quarantine." 2>/dev/null
+    for f in "${files[@]}"; do [[ -e $f ]] || drop "$f"; done # quarantined: nothing left to review
   fi
 }
 
 daemon() {
   # every watcher writes paths into one FIFO; a new USB drive (mount under /run/media) gets its own watcher
-  local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch ev
-  local rec=("$HOME/Downloads" "$HOME/Desktop" "$HOME/Documents" "$HOME/.local/bin" "$HOME/.config/autostart" /tmp /var/tmp)
-  mkdir -p "$HOME/Downloads" "$HOME/.local/bin" "$HOME/.config/autostart"
+  local fifo=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-protect.fifo d f batch ev t0 pids=()
+  command -v inotifywait >/dev/null || { echo "inotifywait is missing" >&2; exit 1; }
+  userdirs
+  local rec=("$dl" "$desk" "$docs" "$HOME/.local/bin" "$HOME/.config/autostart" "$HOME/.config/systemd/user" "$HOME/.config/plasma-workspace/env")
+  mkdir -p "${rec[@]}"
+  find "$pdir" -name 'checked-*' -mtime +30 -delete 2>/dev/null
   rm -f "$fifo"; mkfifo -m 600 "$fifo"; exec 3<>"$fifo"
   trap 'kill $(jobs -p) 2>/dev/null' EXIT
-  d=(); for f in "${rec[@]}" /run/media/*/*; do [[ -d $f ]] && d+=("$f"); done
-  inotifywait -mrq -e close_write,moved_to --format '%w%f' "${d[@]}" >&3 2>/dev/null &
-  inotifywait -mq -e close_write,moved_to --format '%w%f' "$HOME" >&3 2>/dev/null & # home top level only (never game folders)
-  inotifywait -mq -e create --format 'APP %f' /var/lib/flatpak/app >&3 2>/dev/null &
-  stdbuf -oL findmnt --poll=mount -n -r -o TARGET 2>/dev/null | sed -u 's/^/MNT /' >&3 & # unbuffered: one line per new mount
-  while read -r f <&3; do
+  # watcher errors go to the journal; if one stops (watch limit, missing tool) the service fails and systemd restarts it
+  inotifywait -mrq -e close_write,moved_to --format '%w%f' "${rec[@]}" >&3 & pids+=($!)
+  # one level only: home (never game folders) and /tmp, /var/tmp (other accounts' trees cannot use up the watch limit)
+  inotifywait -mq -e close_write,moved_to --format '%w%f' "$HOME" /tmp /var/tmp >&3 & pids+=($!)
+  if [[ -d /var/lib/flatpak/app ]]; then inotifywait -mq -e create --format 'APP %f' /var/lib/flatpak/app >&3 & pids+=($!); fi
+  stdbuf -oL findmnt --poll=mount -n -r -o TARGET | sed -u 's/^/MNT /' >&3 & pids+=($!) # unbuffered: one line per new mount
+  for f in /run/media/*/*; do mountpoint -q -- "$f" && watch_drive "$f"; done # drives plugged in before sign-in
+  sleep 1; alive || exit 1
+  while :; do
+    read -r -t 60 f <&3 || { alive || exit 1; continue; }
     event "$f" && continue
-    batch=("$f"); ev=()
-    while read -r -t 2 f <&3; do [[ $f == MNT\ * || $f == APP\ * ]] && ev+=("$f") || batch+=("$f"); done # gather a burst
+    batch=("$f"); ev=(); t0=$SECONDS
+    while ((SECONDS - t0 < 10)) && read -r -t 2 f <&3; do [[ $f == MNT\ * || $f == APP\ * ]] && ev+=("$f") || batch+=("$f"); done # gather a burst
     check "${batch[@]}"
     for f in "${ev[@]}"; do event "$f"; done
+    alive || exit 1
   done
+}
+
+alive() { local p; for p in "${pids[@]}"; do kill -0 "$p" 2>/dev/null || { echo "a watcher stopped, see above" >&2; return 1; }; done; }
+
+watch_drive() { # MOUNT: the drive's top two levels only (never the whole disk), at most 100 folders
+  local sub
+  mapfile -d '' -t sub < <(find "$1" -maxdepth 1 -type d -print0 2>/dev/null | head -z -n 100)
+  if ((${#sub[@]})); then inotifywait -mq -e close_write,moved_to --format '%w%f' "${sub[@]}" >&3 & fi
 }
 
 event() { # a new drive or app (not a file): handle it and succeed
@@ -79,8 +133,9 @@ event() { # a new drive or app (not a file): handle it and succeed
     "APP "*) echo "$(date '+%F %H:%M') New app installed: ${1#APP }" >> "$state/scan-history" ;;
     "MNT /run/media/"*)
       m=$(printf '%b' "${1#MNT }") # findmnt -r escapes spaces as \x20
-      inotifywait -mrq -e close_write,moved_to --format '%w%f' "$m" >&3 2>/dev/null &
-      mapfile -t batch < <(find "$m" -maxdepth 2 -type f 2>/dev/null | head -200) # what is already on the drive
+      mountpoint -q -- "$m" || return 0 # gone again
+      watch_drive "$m"
+      mapfile -d '' -t batch < <(find "$m" -maxdepth 2 -type f -print0 2>/dev/null | head -z -n 200) # what is already on the drive
       echo "drive: $m (${#batch[@]} file(s))"
       [[ ${#batch[@]} -gt 0 ]] && check "${batch[@]}" ;;
     "MNT "*) ;;
@@ -91,24 +146,27 @@ event() { # a new drive or app (not a file): handle it and succeed
 
 status() {
   [[ $(systemctl --user is-active mountain-protect.service 2>/dev/null) == active ]] && echo ap=on || echo ap=off
-  echo "ap_checked_today=$(cat "$today" 2>/dev/null | wc -l)"
+  echo "ap_checked_today=$(cat "$pdir/checked-$(date +%F)" 2>/dev/null | wc -l)"
   echo "ap_threats=$(cat "$pdir/threats" 2>/dev/null | wc -l)"
   local p r
   while IFS=$'\t' read -r p r; do [[ -e $p ]] && echo "ap_unverified=$p|$r"; done < <(cat "$unv" 2>/dev/null)
-  /usr/libexec/mountain-security status | grep -E '^(av_|dl_watch)'
+  /usr/libexec/mountain-security status --av | grep -E '^(av_|dl_watch)'
 }
 
-drop() { sed -i "\\|^$1	|d" "$unv" 2>/dev/null; }
-listed() { grep -qsF "$1	" "$unv" || { echo "not in the review list: $1" >&2; exit 2; }; }
+# the review list is edited by exact comparison of the path column only: a file name is never part of a program
+inlist() { P=$1 awk -F'\t' '$1 == ENVIRON["P"] { f = 1 } END { exit !f }' "$unv" 2>/dev/null; }
+drop() { local t; t=$(mktemp "$unv.XXXXXX") || return; P=$1 awk -F'\t' '$1 != ENVIRON["P"]' "$unv" > "$t" 2>/dev/null && mv -f -- "$t" "$unv" || rm -f -- "$t"; }
+listed() { inlist "$1" || { echo "not in the review list: $1" >&2; exit 2; }; }
 
 case ${1:-} in
   daemon) daemon ;;
   status) status ;;
   on) systemctl --user enable --now mountain-protect.service ;;
   off) systemctl --user disable --now mountain-protect.service ;;
-  allow) listed "${2:-}"; sha256sum "$2" | cut -d' ' -f1 >> "$allowed"; drop "$2" ;;
-  quarantine) listed "${2:-}"; q=$state/quarantine; mkdir -p "$q"; chmod 700 "$q"; mv -n "$2" "$q/" && chmod 0400 "$q/$(basename "$2")"; drop "$2" ;;
+  allow) listed "${2:-}"; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed"; drop "$2" ;;
+  allow-hash) [[ -f ${2:-} ]] || { echo "no such file: ${2:-}" >&2; exit 2; }; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed" ;; # quarantine restore
+  quarantine) listed "${2:-}"; q=$state/quarantine; mkdir -p "$q"; chmod 700 "$q"; mv -n -- "$2" "$q/" && [[ ! -e $2 ]] && chmod 0400 "$q/$(basename "$2")" && drop "$2" ;;
   delete) listed "${2:-}"; rm -f -- "$2"; drop "$2" ;;
-  check) shift; check "$@" ;;
-  *) echo "usage: mountain-protect daemon|status|on|off|allow FILE|quarantine FILE|delete FILE" >&2; exit 2 ;;
+  check) shift; userdirs; a=(); for f; do a+=("$(realpath -sm -- "$f")"); done; check "${a[@]}" ;;
+  *) echo "usage: mountain-protect daemon|status|on|off|allow FILE|allow-hash FILE|quarantine FILE|delete FILE|check FILE..." >&2; exit 2 ;;
 esac

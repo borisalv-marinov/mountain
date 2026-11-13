@@ -9,7 +9,7 @@ Title=Services
 mode=services
 
 [page]
-actionsFace=
+actionsFace=Face-880000000016
 icon=preferences-system-services
 loadType=
 margin=2

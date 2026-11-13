@@ -5,7 +5,7 @@
 #   mountain-security scan-new        scan new files in Downloads with the definitions you have (the Downloads watcher)
 #   mountain-security scan-notify F.. right-click "Scan with Mountain Security": scan, then a notification
 #   mountain-security quarantine-list | quarantine-restore NAME | quarantine-delete NAME
-#   mountain-security allow SERVICE on|off   firewall "Allow an app" (asks for the admin password)
+#   mountain-security allow SERVICE on|off [public]   firewall "Allow an app" in the Home zone (also Public with "public"; off removes from both)
 #   mountain-security profile home|public    network profile of the active connection (zone mountain-home / mountain)
 #   mountain-security usb on|off             USB protection (USBGuard, opt-in; keeps the devices plugged in now)
 #   mountain-security rollback        go back to the previous Mountain version at the next restart
@@ -21,24 +21,39 @@ apps="steam-streaming:Steam Remote Play|steam-lan-transfer:Steam game transfers 
 
 newest_def() { local f; f=$(ls -t "$db"/*.c[lv]d "$db"/*.[hn]db 2>/dev/null | head -1); [[ -n $f ]] && date -r "$f" '+%Y-%m-%d %H:%M'; }
 
-status() {
+zone_open() { # services and ports open in zone $1
+  local zf=/etc/firewalld/zones/$1.xml
+  if [[ -r /etc/firewalld/zones && -x /etc/firewalld/zones ]]; then # root: read the zone file
+    [[ -e $zf ]] || zf=/usr/lib/firewalld/zones/$1.xml
+    grep -oE '<(service name|port port)="[^"]*"' "$zf" | sed -E 's/.*="//; s/"$//' | paste -sd' '
+  else # the zones folder is root-only: ask firewalld (read-only, allowed by 60-mountain.rules)
+    { timeout 10 firewall-cmd --zone="$1" --list-services; timeout 10 firewall-cmd --zone="$1" --list-ports; } 2>/dev/null | paste -sd' '
+  fi
+}
+
+xdg() { local d; d=$(xdg-user-dir "$1" 2>/dev/null); [[ -n $d && $d != "$HOME" ]] && echo "$d" || echo "$HOME/$2"; } # localized folder, English fallback
+re_esc() { printf '%s' "$1" | sed 's#[][\.*^$+?(){}|/]#\\&#g'; }
+
+status_av() { # only the antivirus lines (cheap: no firewall, rpm-ostree, nmcli): "status --av"
   local v
   [[ -r $state/last-scan ]] && cat "$state/last-scan" || echo "av_last=never"
   v=$(newest_def); echo "av_defs=${v:-none}"
   echo "av_quarantine=$(find "$quarantine" -type f 2>/dev/null | wc -l)"
+  [[ $(systemctl --user is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] && echo dl_watch=on || echo dl_watch=off
+}
+
+status() {
+  local v
+  [[ ${1:-} == --av ]] && { status_av; return; }
+  status_av | grep -v '^dl_watch='
   # read without admin rights (firewall-cmd queries need polkit): the unit, the default zone and the zone files
   if [[ $(systemctl is-active firewalld 2>/dev/null) == active ]]; then
     v=$(sed -n 's/^DefaultZone=//p' /etc/firewalld/firewalld.conf 2>/dev/null); echo "fw=on"; echo "fw_zone=${v:-mountain}"
     local c z zf s on open; c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
     z=$(nmcli -g connection.zone connection show "$c" 2>/dev/null); z=${z:-${v:-mountain}}
     [[ $z == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$z"
-    if [[ -r /etc/firewalld/zones && -x /etc/firewalld/zones ]]; then # root: read the zone file
-      zf=/etc/firewalld/zones/$z.xml; [[ -e $zf ]] || zf=/usr/lib/firewalld/zones/$z.xml
-      open=$(grep -oE '<(service name|port port)="[^"]*"' "$zf" | sed -E 's/.*="//; s/"$//' | paste -sd' ')
-    else # the zones folder is root-only: ask firewalld (read-only, allowed by 60-mountain.rules)
-      open=$({ timeout 10 firewall-cmd --zone="$z" --list-services; timeout 10 firewall-cmd --zone="$z" --list-ports; } 2>/dev/null | paste -sd' ')
-    fi
-    echo "fw_open=$open"
+    open=$(zone_open "$z"); echo "fw_open=$open"
+    open=$(zone_open mountain-home) # the "Allow an app" rows always show the Home zone, which "allow" edits by default
     IFS='|' read -ra list <<<"$apps"
     for s in "${list[@]}"; do
       on=no; [[ " $open " == *" ${s%%:*} "* ]] && on=yes
@@ -48,7 +63,7 @@ status() {
   [[ $(systemctl is-active usbguard 2>/dev/null) == active ]] && echo usb=on || echo usb=off
   /usr/libexec/mountain-windows-boot check >/dev/null 2>&1 && echo windows=yes || echo windows=no
   echo "autolock_min=$(kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout --default 5 2>/dev/null)"
-  [[ $(systemctl --user is-enabled mountain-scan-downloads.path 2>/dev/null) == enabled ]] && echo dl_watch=on || echo dl_watch=off
+  status_av | grep '^dl_watch='
   tail -5 "$state/scan-history" 2>/dev/null | sed 's/^/av_history=/'
   find "$quarantine" -maxdepth 1 -type f -printf 'av_q=%f\n' 2>/dev/null | head -20
   v=0; for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
@@ -58,7 +73,7 @@ status() {
   [[ -e /sys/class/tpm/tpm0 ]] && echo tpm=yes || echo tpm=no
   echo "selinux=$(getenforce 2>/dev/null || echo unknown)"
   v=$(grep -o '\[[a-z]*\]' /sys/kernel/security/lockdown 2>/dev/null | tr -d '[]'); echo "lockdown=${v:-unknown}"
-  lsblk -n -o TYPE 2>/dev/null | grep -qx crypt && echo encrypted=yes || echo encrypted=no
+  v=$(lsblk -n -o TYPE 2>/dev/null); grep -qx crypt <<<"$v" && echo encrypted=yes || echo encrypted=no
   rpm-ostree status --json 2>/dev/null | python3 -c '
 import json, sys, datetime
 try: d = json.load(sys.stdin)["deployments"]
@@ -80,30 +95,44 @@ print("rollback=" + ("yes" if any(not x.get("booted") and not x.get("staged") fo
 }
 
 scan() { # [--no-update] quick|full|DIR...
-  local rc out found now kind update=1
+  local rc out found now kind update=1 sb=()
   [[ ${1:-} == --no-update ]] && { update=0; shift; }
   case ${1:-full} in
-    quick) kind=Quick; local d q=(); for d in Downloads Desktop Documents; do [[ -d $HOME/$d ]] && q+=("$HOME/$d"); done; set -- "${q[@]:-$HOME}" ;;
+    quick) kind=Quick; local d q=(); for d in "$(xdg DOWNLOAD Downloads)" "$(xdg DESKTOP Desktop)" "$(xdg DOCUMENTS Documents)"; do [[ -d $d ]] && q+=("$d"); done; set -- "${q[@]:-$HOME}" ;;
     full) kind=Full; set -- "$HOME" ;;
     *) kind=Custom ;;
   esac
   mkdir -p "$quarantine" "$state" && chmod 700 "$quarantine"
   now=$(date '+%Y-%m-%d %H:%M')
   # allowed without a password for signed-in users (polkit rule 60-mountain.rules); a failed download keeps the old definitions
+  # offline: skip the update at once instead of waiting for network-online (a 1-minute spinner)
+  [[ $update == 1 ]] && ! nm-online -q -t 2 2>/dev/null && { update=0; echo "note=no network, scanning with the definitions you have"; }
   [[ $update == 1 ]] && { systemctl start mountain-virus-definitions.service 2>/dev/null || echo "note=definitions update failed, scanning with the ones you have"; }
   if [[ -z $(newest_def) ]]; then
     printf 'av_last=%s\nav_result=no-definitions\n' "$now" > "$state/last-scan"; echo "av_result=no-definitions"; return 1
   fi
   # games are never scanned: Steam, Proton prefixes, Heroic and Lutris folders (big, slow, and not where downloads land)
-  out=$(nice -n 19 ionice -c3 clamscan -r -i --database="$db" --move="$quarantine" \
-        --exclude-dir='/\.local/share/Steam' --exclude-dir='/\.steam' --exclude-dir='/Games' \
-        --exclude-dir='/\.var/app/com\.valvesoftware\.Steam' --exclude-dir='/\.var/app/com\.heroicgameslauncher\.hgl' \
-        --exclude-dir='/\.local/share/lutris' --exclude-dir='/\.local/share/mountain/quarantine' \
+  # no network and no new privileges for the parser; used only when the user manager can set that up (probe), else plain
+  systemd-run --user --wait --pipe --quiet --collect -p PrivateNetwork=yes -p NoNewPrivileges=yes true >/dev/null 2>&1 &&
+    sb=(systemd-run --user --wait --pipe --quiet --collect -p PrivateNetwork=yes -p NoNewPrivileges=yes --)
+  local h x ex=() # anchored to this home: ~/Downloads/Games-crack is still scanned
+  h=$(re_esc "$HOME")
+  for x in .local/share/Steam .steam Games .var/app/com.valvesoftware.Steam .var/app/com.heroicgameslauncher.hgl .local/share/lutris; do
+    ex+=("--exclude-dir=^$h/$(re_esc "$x")(/|\$)")
+  done
+  ex+=("--exclude-dir=^$(re_esc "$quarantine")(/|\$)")
+  out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i --database="$db" --move="$quarantine" \
+        "${ex[@]}" \
         --exclude='\.(part|crdownload|tmp)$' "$@" 2>&1)
   rc=$?
   local f # clamscan's own move fails on FAT/exFAT USB drives: move what it found and left behind
   while IFS= read -r f; do
-    [[ -f $f ]] && mv -n -- "$f" "$quarantine/"; rmdir "${f%/*}"/.clamav-unlink-* 2>/dev/null
+    if [[ -f $f ]]; then local b=${f##*/}
+      if [[ -e $quarantine/$b ]] && cmp -s -- "$f" "$quarantine/$b"; then rm -f -- "$f" # clamscan copied it but couldn't unlink
+      else mv -n -- "$f" "$quarantine/"; [[ -e $f ]] && mv -n -- "$f" "$quarantine/$b.$(date +%s)"; fi
+      [[ -e $f ]] && echo "note=could not quarantine $f" # shows in the scan output and the Active Protection log
+    fi
+    rmdir "${f%/*}"/.clamav-unlink-* 2>/dev/null
   done < <(sed -n 's/: [^:]* FOUND$//p' <<<"$out")
   find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
   found=$(awk -F': *' '/^Infected files:/ {print $2}' <<<"$out")
@@ -120,30 +149,41 @@ scan_new() { # the Downloads watcher: only files changed since the last run, nev
   local stamp=$state/downloads-scanned files
   [[ -z $(newest_def) ]] && exit 0 # no definitions yet: nothing to scan with (Scan now fetches them)
   mkdir -p "$state"; [[ -e $stamp ]] || touch -d '1 hour ago' "$stamp"
-  mapfile -t files < <(find "$HOME/Downloads" -maxdepth 2 -type f -newer "$stamp" ! -name '*.part' ! -name '*.crdownload' 2>/dev/null)
+  mapfile -t files < <(find "$(xdg DOWNLOAD Downloads)" -maxdepth 2 -type f -newer "$stamp" ! -name '*.part' ! -name '*.crdownload' 2>/dev/null)
   touch "$stamp"; [[ ${#files[@]} -gt 0 ]] || exit 0
   out=$(scan --no-update "${files[@]}")
-  grep -q 'av_result=found' <<<"$out" && notify-send -u critical -i security-low "Mountain Security" "A threat was found in Downloads and moved to quarantine." 2>/dev/null
+  grep -q 'av_result=found' <<<"$out" && notify-send -a "Security" -u critical -i security-low -h string:desktop-entry:org.mountain.security "Mountain Security" "A threat was found in Downloads and moved to quarantine." 2>/dev/null
   echo "$out"
 }
 
 scan_notify() { # right-click > Scan with Mountain Security
   local out; out=$(scan --no-update "$@")
   case $out in
-    *av_result=found*) notify-send -u critical -i security-low "Mountain Security" "Threat found and moved to quarantine." ;;
-    *av_result=clean*) notify-send -i security-high "Mountain Security" "No threats found." ;;
-    *) notify-send -i security-medium "Mountain Security" "No virus definitions yet: open Security and click Scan now." ;;
+    *av_result=found*) notify-send -a "Security" -u critical -i security-low -h string:desktop-entry:org.mountain.security "Mountain Security" "Threat found and moved to quarantine." ;;
+    *av_result=clean*) notify-send -a "Security" -i security-high -h string:desktop-entry:org.mountain.security "Mountain Security" "No threats found." ;;
+    *) notify-send -a "Security" -i security-medium -h string:desktop-entry:org.mountain.security "Mountain Security" "No virus definitions yet: open Security and click Scan now." ;;
   esac 2>/dev/null
   echo "$out"
 }
 
+restore() { # NAME: back to Downloads, and tell Active Protection so it is not quarantined again
+  local d; qname "$1"; d=$(xdg DOWNLOAD Downloads); mkdir -p "$d"
+  [[ -e $d/$1 ]] && { echo "already exists in $d: $1" >&2; exit 1; }
+  chmod 0600 "$quarantine/$1"
+  # hash recorded before the move, so Active Protection never sees the restored file as new
+  [[ -x /usr/libexec/mountain-protect ]] && /usr/libexec/mountain-protect allow-hash "$quarantine/$1" >/dev/null 2>&1
+  mv -n "$quarantine/$1" "$d/" || exit 1
+  echo "restored=$d/$1"
+}
+
 qname() { [[ $1 =~ ^[^/]+$ && -e $quarantine/$1 ]] || { echo "not in quarantine: $1" >&2; exit 2; }; }
 
-allow() { # SERVICE on|off: only the services in the "Allow an app" list
-  local svc=${1:-} want=${2:-} z
+allow() { # SERVICE on|off [public]: only the services in the "Allow an app" list; Home zone, Public only when asked
+  local svc=${1:-} want=${2:-} z zones=(mountain-home)
   [[ "|$apps" == *"|$svc:"* ]] || { echo "not in the list: $svc" >&2; return 2; }
   [[ $want == on || $want == off ]] || return 2
-  for z in mountain mountain-home; do
+  [[ ${3:-} == public || $want == off ]] && zones+=(mountain)
+  for z in "${zones[@]}"; do
     firewall-cmd --permanent --zone=$z "--$([[ $want == on ]] && echo add || echo remove)-service=$svc" >/dev/null || return 1
   done
   firewall-cmd --reload >/dev/null && echo "fw_app=$svc:$( [[ $want == on ]] && echo yes || echo no)"
@@ -165,13 +205,13 @@ repair_etc() { # PATH under /etc, e.g. xdg/kdeglobals: put back the image's defa
 
 reset_pc() { # Reset this PC, keep my files: drop added packages and overrides, back to the plain Mountain image
   rpm-ostree reset || return 1 # asks for the admin password; your files and apps from the App Store stay
-  command -v notify-send >/dev/null && notify-send -i system-reboot "Mountain" "Restart to finish resetting this PC. Your files are kept."
+  command -v notify-send >/dev/null && notify-send -a "Settings" -i system-reboot -h string:desktop-entry:org.mountain.settings "Mountain" "Restart to finish resetting this PC. Your files are kept."
   echo "reset=staged"
 }
 
 rollback() {
   rpm-ostree rollback || return 1 # asks for the admin password
-  command -v notify-send >/dev/null && notify-send -i system-software-update "Mountain" "Restart to go back to the previous version."
+  command -v notify-send >/dev/null && notify-send -a "Settings" -i system-software-update -h string:desktop-entry:org.mountain.settings "Mountain" "Restart to go back to the previous version."
   echo "rollback=staged"
 }
 
@@ -181,9 +221,9 @@ case ${1:-} in
   scan-new) scan_new ;;
   scan-notify) shift; scan_notify "$@" ;;
   quarantine-list) ls -1 "$quarantine" 2>/dev/null ;;
-  quarantine-restore) qname "${2:-}"; mkdir -p "$HOME/Downloads"; chmod 0600 "$quarantine/$2"; mv -n "$quarantine/$2" "$HOME/Downloads/" ;;
+  quarantine-restore) restore "${2:-}" ;;
   quarantine-delete) qname "${2:-}"; rm -f "$quarantine/$2" ;;
-  allow) allow "${2:-}" "${3:-}" ;;
+  allow) allow "${2:-}" "${3:-}" "${4:-}" ;;
   profile) profile "${2:-}" ;;
   usb) [[ ${2:-} =~ ^(on|off)$ ]] || exit 2; pkexec /usr/libexec/mountain-usbguard "$2" ;;
   rollback) rollback ;;

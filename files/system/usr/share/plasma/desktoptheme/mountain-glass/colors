@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Mountain Glass: glossy black glass. Tokens: docs/superpowers/plans/2026-11-12-mountain-v5-black-glass.md
+# Mountain Glass: one black-glass palette (base #121212, raised #1E1E1E, hover #2A2A2A, text #FFFFFF / #C5C5C5,
+# disabled about #949494, accent #0078D4). Same values in Kvantum BlackGlass, Aurorae BlackGlass and the Plasma theme SVGs.
 [ColorEffects:Disabled]
 Color=56,56,56
 ColorAmount=0
 ColorEffect=0
-ContrastAmount=0.65
+ContrastAmount=0.45
 ContrastEffect=1
-IntensityAmount=0.1
-IntensityEffect=2
+IntensityAmount=0
+IntensityEffect=0
 
 [ColorEffects:Inactive]
 ChangeSelectionColor=true
@@ -21,8 +22,8 @@ IntensityAmount=0
 IntensityEffect=0
 
 [Colors:Button]
-BackgroundAlternate=36,39,45
-BackgroundNormal=27,29,34
+BackgroundAlternate=42,42,42
+BackgroundNormal=30,30,30
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -30,13 +31,13 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
 [Colors:Complementary]
-BackgroundAlternate=16,18,22
-BackgroundNormal=7,8,10
+BackgroundAlternate=30,30,30
+BackgroundNormal=18,18,18
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -44,13 +45,13 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
 [Colors:Header]
-BackgroundAlternate=16,18,22
-BackgroundNormal=11,12,15
+BackgroundAlternate=30,30,30
+BackgroundNormal=18,18,18
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -58,13 +59,13 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
 [Colors:Header][Inactive]
-BackgroundAlternate=16,18,22
-BackgroundNormal=16,18,22
+BackgroundAlternate=30,30,30
+BackgroundNormal=18,18,18
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -72,7 +73,7 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
@@ -91,8 +92,8 @@ ForegroundPositive=255,255,255
 ForegroundVisited=255,255,255
 
 [Colors:Tooltip]
-BackgroundAlternate=16,18,22
-BackgroundNormal=11,12,15
+BackgroundAlternate=30,30,30
+BackgroundNormal=18,18,18
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -100,13 +101,13 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
 [Colors:View]
-BackgroundAlternate=16,18,22
-BackgroundNormal=11,12,15
+BackgroundAlternate=30,30,30
+BackgroundNormal=18,18,18
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -114,13 +115,13 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
 [Colors:Window]
-BackgroundAlternate=27,29,34
-BackgroundNormal=16,18,22
+BackgroundAlternate=30,30,30
+BackgroundNormal=18,18,18
 DecorationFocus=90,176,255
 DecorationHover=90,176,255
 ForegroundActive=90,176,255
@@ -128,7 +129,7 @@ ForegroundInactive=197,197,197
 ForegroundLink=90,176,255
 ForegroundNegative=255,120,108
 ForegroundNeutral=245,183,72
-ForegroundNormal=242,243,245
+ForegroundNormal=255,255,255
 ForegroundPositive=88,214,141
 ForegroundVisited=190,160,255
 
@@ -141,9 +142,9 @@ shadeSortColumn=true
 contrast=4
 
 [WM]
-activeBackground=27,29,34
-activeBlend=242,243,245
-activeForeground=242,243,245
-inactiveBackground=16,18,22
-inactiveBlend=164,169,178
-inactiveForeground=164,169,178
+activeBackground=18,18,18
+activeBlend=255,255,255
+activeForeground=255,255,255
+inactiveBackground=18,18,18
+inactiveBlend=197,197,197
+inactiveForeground=197,197,197

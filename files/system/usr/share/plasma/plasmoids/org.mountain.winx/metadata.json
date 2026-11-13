@@ -1,0 +1,19 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "System Information",
+    "Description": "The Win+X menu: quick links to system tools, above Start",
+    "Icon": "view-list-symbolic",
+    "Id": "org.mountain.winx",
+    "License": "GPL-2.0+",
+    "Name": "Quick Link menu",
+    "Version": "1.0"
+  },
+  "NoDisplay": true,
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

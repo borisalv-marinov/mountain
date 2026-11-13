@@ -12,7 +12,7 @@ Tile {
     available: availableDevices.wirelessDeviceAvailable && enabledConnections.wirelessHwEnabled
                && !PlasmaNM.Configuration.airplaneModeEnabled
     checked: available && enabledConnections.wirelessEnabled
-    text: availableDevices.wirelessDeviceAvailable ? i18n("Wi-Fi") : i18n("Wi-Fi unavailable")
+    text: i18n("Wi-Fi")
     iconName: checked ? "network-wireless-symbolic" : "network-wireless-disconnected-symbolic"
     onToggled: handler.enableWireless(!checked)
     onArrowClicked: KCMUtils.KCMLauncher.openSystemSettings("kcm_networkmanagement")

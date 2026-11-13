@@ -26,7 +26,8 @@ RowLayout {
     }
     readonly property int maximum: Number(display.properties?.MaxBrightness ?? 0)
 
-    readonly property bool available: displayName !== "" && maximum > 0
+    // also needs a real reading: a display that reports no Brightness would sit at a misleading 0
+    readonly property bool available: displayName !== "" && maximum > 0 && display.properties?.Brightness !== undefined
     spacing: Kirigami.Units.smallSpacing
 
     Kirigami.Icon {
@@ -35,14 +36,14 @@ RowLayout {
         Layout.margins: 8
         source: "brightness-high-symbolic"
         isMask: true
-        color: "#F2F3F5"
+        color: row.available ? "#FFFFFF" : "#8A8A8A"
         Accessible.ignored: true
     }
     PC3.Slider {
         id: slider
         Layout.fillWidth: true
+        visible: row.available // no slider stuck at 0: the caption below says why
         enabled: row.available
-        opacity: enabled ? 1 : 0.35
         from: 0
         to: row.maximum
         stepSize: Math.max(1, Math.round(row.maximum / 100))
@@ -60,10 +61,11 @@ RowLayout {
     }
     PC3.Label {
         id: unavailable
+        Layout.fillWidth: true
         visible: !row.available
-        text: i18n("Not available on this display")
-        color: "#C4C8CF" // 9.8:1 on the slider card
-        font: Kirigami.Theme.smallFont
+        text: i18n("Not available on this display") // beside the brightness glyph, as the spec words it
+        elide: Text.ElideRight
+        color: "#C5C5C5" // 9.7:1 on the card
     }
     // keeps the slider aligned with the volume slider, which has two buttons on the right
     Item { visible: row.available; Layout.preferredWidth: 2 * 32 + parent.spacing }

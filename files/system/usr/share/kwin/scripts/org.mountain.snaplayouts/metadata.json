@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Authors": [{ "Name": "Mountain" }],
+        "Description": "Win+Z shows snap layouts near the window's maximize button, like Windows 11",
+        "EnabledByDefault": true,
+        "Id": "org.mountain.snaplayouts",
+        "License": "GPL-3.0-or-later",
+        "Name": "Snap layouts"
+    },
+    "X-Plasma-API": "declarativescript",
+    "X-Plasma-MainScript": "ui/main.qml"
+}

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Run
+Comment=Open a program, folder, document or internet address by typing its name
+Exec=plasmawindowed org.mountain.run
+Icon=system-run
+Categories=System;Utility;
+Keywords=run;command;open;launch;
+X-KDE-Shortcuts=Meta+R

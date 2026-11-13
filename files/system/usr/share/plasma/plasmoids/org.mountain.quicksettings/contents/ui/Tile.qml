@@ -17,7 +17,6 @@ ColumnLayout {
     signal arrowClicked()
 
     spacing: 6
-    opacity: available ? 1 : 0.4
 
     RowLayout {
         Layout.fillWidth: true
@@ -31,6 +30,7 @@ ColumnLayout {
             on: tile.checked && tile.available
             iconSource: tile.iconName
             Accessible.name: tile.text
+            Accessible.description: tile.available ? "" : i18n("Not available")
             Accessible.checkable: tile.checkable
             Accessible.checked: tile.checked
             onClicked: tile.toggled()
@@ -47,13 +47,19 @@ ColumnLayout {
         }
     }
 
+    // Two lines, always reserved so every row lines up: the name, then "Not available" when the hardware is missing.
     PC3.Label {
+        id: label
         Layout.fillWidth: true
-        text: tile.text
+        Layout.preferredHeight: Math.ceil(2 * metrics.height)
+        text: tile.available ? tile.text : tile.text + "\n" + i18n("Not available")
         horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignTop
+        wrapMode: Text.Wrap
         elide: Text.ElideRight
-        maximumLineCount: 1
-        color: "#F2F3F5"
+        maximumLineCount: 2
+        color: tile.available ? "#FFFFFF" : "#949494" // 5.9:1 on the flyout
         Accessible.ignored: true
+        FontMetrics { id: metrics; font: label.font }
     }
 }

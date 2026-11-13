@@ -10,10 +10,12 @@ js='var n = 0, seen = [], keys = { "org.mountain.quicksettings": "Meta+A", "org.
   c.widgets().forEach(function (w) { if (keys[w.type]) { if (!w.globalShortcut) w.globalShortcut = keys[w.type]; n++; } });
 }); });
 print("set=" + n + " in " + seen.join(" "));'
-for _ in $(seq 60); do # the tray loads its applets a little after the panel
-  out=$(dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell \
-        org.kde.PlasmaShell.evaluateScript "string:$js" 2>/dev/null) && [[ $out == *set=2\ * ]] && { mkdir -p "${mark%/*}"; touch "$mark"; echo "$out" > "$mark.log"; exit 0; }
+timeout 60 gdbus wait --session org.kde.plasmashell 2>/dev/null # no polling until Plasma is on the bus
+for _ in $(seq 10); do # the tray loads its applets a little after the panel
+  out=$(dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell         org.kde.PlasmaShell.evaluateScript "string:$js" 2>/dev/null) && [[ $out == *quicksettings* && $out == *notifications* ]] && break
   sleep 2
 done
-mkdir -p "${mark%/*}"; echo "applet shortcuts not set: ${out:-plasmashell not reachable}" | tee "$mark.log" >&2
-exit 1
+# done also when an applet was removed (or the panel layout already set the keys): stop retrying at every login
+mkdir -p "${mark%/*}"; echo "${out:-plasmashell not reachable}" > "$mark.log"
+[[ -n $out ]] && touch "$mark" # not reachable: try again at the next login
+exit 0

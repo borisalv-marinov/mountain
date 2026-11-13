@@ -1,4 +1,6 @@
 [KDE]
+# drag on the same drive moves, like Windows (Ctrl copies, Shift asks)
+DndBehavior=MoveIfSameDevice
 SingleClick=false
 DoubleClickInterval=500
 # snappier: animations at half length (lite mode turns them off)

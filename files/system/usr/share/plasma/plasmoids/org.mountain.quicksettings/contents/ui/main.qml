@@ -121,10 +121,10 @@ PlasmoidItem {
             columnSpacing: 12
             rowSpacing: 14
 
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "WifiTile.qml"; fallbackText: i18n("Wi-Fi unavailable"); fallbackIcon: "network-wireless-disconnected-symbolic" }
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "BluetoothTile.qml"; fallbackText: i18n("Bluetooth unavailable"); fallbackIcon: "preferences-system-bluetooth-symbolic" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "WifiTile.qml"; fallbackText: i18n("Wi-Fi"); fallbackIcon: "network-wireless-disconnected-symbolic" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "BluetoothTile.qml"; fallbackText: i18n("Bluetooth"); fallbackIcon: "preferences-system-bluetooth-symbolic" }
             OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "AirplaneTile.qml"; fallbackText: i18n("Airplane mode"); fallbackIcon: "network-flightmode-off" }
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "EnergyTile.qml"; fallbackText: i18n("Energy saver unavailable"); fallbackIcon: "battery-profile-powersave-symbolic" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "EnergyTile.qml"; fallbackText: i18n("Energy saver"); fallbackIcon: "battery-profile-powersave-symbolic" }
             Tile {
                 Layout.preferredWidth: grid.tileWidth
                 text: i18n("Accessibility")
@@ -134,27 +134,24 @@ PlasmoidItem {
                 onToggled: KCMUtils.KCMLauncher.openSystemSettings("kcm_access")
                 onArrowClicked: KCMUtils.KCMLauncher.openSystemSettings("kcm_access")
             }
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "NightLightTile.qml"; fallbackText: i18n("Night light unavailable"); fallbackIcon: "redshift-status-off" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "NightLightTile.qml"; fallbackText: i18n("Night light"); fallbackIcon: "redshift-status-off" }
         }
 
-        // Sliders card: glass gradient, 1 px rim, top-edge highlight, 12 px radius
+        // Sliders card: raised surface, 1 px rim, top-edge highlight, 8 px radius (wave/theme.md palette)
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: sliders.implicitHeight + 24
-            radius: 12
+            radius: 8
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.14)
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#1B1D22" }
-                GradientStop { position: 1.0; color: "#07080A" }
-            }
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+            color: "#1E1E1E"
             Rectangle {
                 anchors { top: parent.top; topMargin: 1; left: parent.left; right: parent.right; leftMargin: 12; rightMargin: 12 }
                 height: 1
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.38) }
+                    GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.14) }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -173,8 +170,8 @@ PlasmoidItem {
                 }
                 PC3.Label {
                     visible: volumeRow.status === Loader.Error
-                    text: i18n("Sound service unavailable")
-                    color: "#A4A9B2"
+                    text: i18n("Sound isn't available")
+                    color: "#C5C5C5"
                 }
             }
         }

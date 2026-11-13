@@ -1,0 +1,31 @@
+# File Explorer opens 1100x700 (Dolphin's own first size is 640 px wide: one icon column, breadcrumb and search pushed off the toolbar).
+# Apply initially (sizerule=3): the user can still resize; only normal windows (types=1), not dialogs.
+[General]
+count=2
+rules=mountain-explorer-size,mountain-emoji
+
+[mountain-explorer-size]
+Description=File Explorer default size
+wmclass=org.kde.dolphin
+wmclassmatch=1
+types=1
+size=1100,700
+sizerule=3
+
+# Win+. emoji picker as a flyout: borderless 380x460 under the pointer, above, not in the taskbar or Alt+Tab (rules 2 = force).
+[mountain-emoji]
+Description=Emoji picker flyout
+wmclass=emojier
+wmclassmatch=2
+noborder=true
+noborderrule=2
+size=380,460
+sizerule=2
+placement=7
+placementrule=2
+above=true
+aboverule=2
+skiptaskbar=true
+skiptaskbarrule=2
+skipswitcher=true
+skipswitcherrule=2

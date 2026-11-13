@@ -6,9 +6,9 @@ showTitle=true
 Title=Apps
 
 [Face-880000000001][org.kde.ksysguard.applicationstable][General]
-sortedColumns=appName,usage,memory,ioCharactersActuallyReadRate,netInbound,netOutbound,gpu_usage
+sortedColumns=appName,usage,memory,ioCharactersActuallyReadRate,ioCharactersActuallyWrittenRate,netInbound,netOutbound
 columnWidths=0.30,0.10,0.12,0.12,0.12,0.12,0.12
-columnDisplay={"appName":"text","usage":"text","memory":"text","ioCharactersActuallyReadRate":"text","netInbound":"text","netOutbound":"text","gpu_usage":"text"}
+columnDisplay={"appName":"text","usage":"textScaled","memory":"text","ioCharactersActuallyReadRate":"text","ioCharactersActuallyWrittenRate":"text","netInbound":"text","netOutbound":"text"}
 showToolBar=true
 askWhenKilling=false
 sortColumn=usage
@@ -19,17 +19,17 @@ showTitle=true
 Title=Background processes
 
 [Face-880000000002][org.kde.ksysguard.processtable][General]
-sortedColumns=name,usage,memory,ioCharactersActuallyReadRate,netInbound,netOutbound,gpu_usage
+sortedColumns=name,usage,memory,ioCharactersActuallyReadRate,ioCharactersActuallyWrittenRate,netInbound,netOutbound
 columnWidths=0.30,0.10,0.12,0.12,0.12,0.12,0.12
-columnDisplay={"name":"text","usage":"text","memory":"text","ioCharactersActuallyReadRate":"text","netInbound":"text","netOutbound":"text","gpu_usage":"text"}
-showToolBar=true
+columnDisplay={"name":"text","usage":"textScaled","memory":"text","ioCharactersActuallyReadRate":"text","ioCharactersActuallyWrittenRate":"text","netInbound":"text","netOutbound":"text"}
+showToolBar=false
 askWhenKilling=false
 sortColumn=usage
 viewMode=0
 userFilterMode=0
 
 [page]
-actionsFace=
+actionsFace=Face-880000000002
 icon=view-process-system
 loadType=
 margin=2

@@ -1,0 +1,19 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "System Information",
+    "Description": "Alt+F4 on the desktop: switch user, sign out, sleep, restart or shut down",
+    "Icon": "system-shutdown",
+    "Id": "org.mountain.shutdown",
+    "License": "GPL-2.0+",
+    "Name": "Shut Down Mountain",
+    "Version": "1.0"
+  },
+  "NoDisplay": true,
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

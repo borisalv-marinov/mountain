@@ -1,0 +1,19 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "System Information",
+    "Description": "The Run dialog (Win+R): open a program, folder, document or internet address",
+    "Icon": "system-run",
+    "Id": "org.mountain.run",
+    "License": "GPL-2.0+",
+    "Name": "Run",
+    "Version": "1.0"
+  },
+  "NoDisplay": true,
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

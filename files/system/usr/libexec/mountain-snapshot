@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Read-only Btrfs snapshots of every home folder (protection against mistakes and ransomware: a program running as you
 # cannot change or delete them). Browse them in File Explorer > Previous versions and copy a file back to restore it.
-# Keeps the newest 24 plus the newest of each of the last 7 days; with under 10 % free space only the newest 3.
+# Keeps the newest 24 plus the newest of each of the last 7 days. Under 10 % free space: no new snapshot, keep the newest 3
+# plus the newest of each of the last 3 days (so deleting files frees space within 3 days, yet filling the disk can never
+# push yesterday's clean copies out), and tell the signed-in users. Only the hourly timer prunes: a start by hand
+# (Security > Take a snapshot now, allowed without a password) only adds one, at most one per minute.
+# Game libraries are kept out: they are made nested subvolumes (a snapshot skips those) while still new or empty.
 # Usage: mountain-snapshot [--prune-only]. Needs /var/home to be a Btrfs subvolume (the installer's default layout).
 set -euo pipefail
 src=${MOUNTAIN_SNAP_SRC:-/var/home}
@@ -18,14 +22,33 @@ if [[ $(stat -c %i "$src" 2>/dev/null) != 256 ]] || ! btrfs subvolume show "$src
   echo "mountain-snapshot: $src is not a Btrfs subvolume, snapshots are off"; exit 0
 fi
 install -d -m 0755 "$dir"
+# game folders as nested subvolumes, created as the account itself (no root writes in a user-controlled path)
+games=(.local/share/Steam .var/app/com.valvesoftware.Steam .var/app/com.heroicgameslauncher.hgl Games)
+for h in "$src"/*/; do
+  u=$(stat -c %U "$h"); n=$(id -u "$u" 2>/dev/null || echo 0); (( n >= 1000 && n < 60000 )) || continue
+  runuser -u "$u" -- /bin/sh -c 'cd "$1" && shift && for p; do
+    [ -L "$p" ] && continue
+    if [ -d "$p" ]; then [ "$(stat -c %i "$p")" = 256 ] || [ -n "$(ls -A "$p")" ] || { rmdir "$p" && btrfs subvolume create "$p"; }
+    elif [ ! -e "$p" ]; then mkdir -p "$(dirname "$p")" && btrfs subvolume create "$p"; fi >/dev/null
+  done' sh "$h" "${games[@]}" || true
+done
+free=$(df --output=pcent "$src" | tail -1 | tr -dc 0-9)
+low=0; (( 100 - free < 10 )) && low=1
 if [[ ${1:-} != --prune-only ]]; then
   name=$(date +%Y-%m-%d_%H%M)
-  [[ -e $dir/$name ]] || btrfs subvolume snapshot -r "$src" "$dir/$name" >/dev/null
-  echo "mountain-snapshot: $dir/$name"
+  if (( low )); then echo "mountain-snapshot: under 10 % free space, no new snapshot (the older ones are kept)"
+  else [[ -e $dir/$name ]] || btrfs subvolume snapshot -r "$src" "$dir/$name" >/dev/null; echo "mountain-snapshot: $dir/$name"; fi
+  # prune only when the timer started this run (it fired in the last 5 minutes); a start by hand never deletes
+  t=$(systemctl show mountain-snapshot.timer -P LastTriggerUSec --timestamp=unix 2>/dev/null | tr -dc 0-9)
+  (( $(date +%s) - ${t:-0} < 300 )) || exit 0
 fi
-recent=24; days=7
-free=$(df --output=pcent "$src" | tail -1 | tr -dc 0-9)
-(( 100 - free < 10 )) && { recent=3; days=0; }
-ls -1 "$dir" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$' | sort -r | prune_list "$recent" "$days" | while read -r old; do
-  btrfs subvolume delete "$dir/$old" >/dev/null && echo "mountain-snapshot: removed $old"
+recent=24; days=7; (( low )) && { recent=3; days=3; }
+{ ls -1 "$dir" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$' || true; } | sort -r | prune_list "$recent" "$days" | while read -r old; do
+  btrfs subvolume delete "$dir/$old" >/dev/null && echo "mountain-snapshot: removed $old" || echo "mountain-snapshot: could not remove $old"
 done
+if (( low )); then
+  for b in /run/user/*/bus; do
+    n=${b#/run/user/}; n=${n%/bus}; (( n >= 1000 && n < 60000 )) || continue
+    runuser -u "$(id -nu "$n")" -- env DBUS_SESSION_BUS_ADDRESS="unix:path=$b" notify-send -a "Security" -i drive-harddisk -h string:desktop-entry:org.mountain.security "Disk almost full" "Previous versions keep deleted files for up to 3 days, so deleting files frees space only then. See Security > Ransomware protection." 2>/dev/null || true
+  done
+fi

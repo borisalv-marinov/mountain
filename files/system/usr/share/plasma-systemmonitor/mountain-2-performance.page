@@ -41,16 +41,8 @@ Title=Network
 [Face-880000000007][Sensors]
 highPrioritySensorIds=["network/all/download", "network/all/upload"]
 
-[Face-880000000008][Appearance]
-chartFace=org.kde.ksysguard.linechart
-showTitle=true
-Title=GPU
-
-[Face-880000000008][Sensors]
-highPrioritySensorIds=["gpu/all/usage"]
-
 [page]
-actionsFace=
+actionsFace=Face-880000000004
 icon=speedometer
 loadType=
 margin=2
@@ -122,15 +114,5 @@ showBackground=true
 
 [page][row-2][column-1][section-0]
 face=Face-880000000007
-isSeparator=false
-name=section-0
-
-[page][row-2][column-2]
-name=column-2
-noMargins=
-showBackground=true
-
-[page][row-2][column-2][section-0]
-face=Face-880000000008
 isSeparator=false
 name=section-0

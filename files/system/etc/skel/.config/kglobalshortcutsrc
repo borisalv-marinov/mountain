@@ -8,7 +8,9 @@ Switch to Next Keyboard Layout=Meta+Space,Meta+Alt+K,Switch to Next Keyboard Lay
 Window Close=none,Alt+F4,Close Window
 WindowsAltF4=Alt+F4,Alt+F4,Close window, or shut down from the desktop
 Overview=Meta+Tab	Meta+W,Meta+W,Toggle Overview
-Edit Tiles=Meta+Z	Meta+T,Meta+T,Toggle Tiles Editor
+Edit Tiles=Meta+T,Meta+T,Toggle Tiles Editor
+MountainSnapLayouts=Meta+Z,Meta+Z,Snap layouts
+MountainClipboard=Meta+V,Meta+V,Clipboard history
 
 [services][org.kde.plasma-systemmonitor.desktop]
 _launch=Ctrl+Shift+Esc	Ctrl+Esc
@@ -22,8 +24,18 @@ _launch=Meta+X
 [services][org.kde.dolphin.desktop]
 _launch=Meta+E
 
+[services][org.kde.spectacle.desktop]
+RectangularRegionScreenShot=Meta+Shift+Print
+
+[services][org.mountain.snip.desktop]
+_launch=Meta+Shift+S
+
+[services][org.mountain.run.desktop]
+_launch=Meta+R
+
 [services][org.kde.krunner.desktop]
-_launch=Meta+R	Alt+Space	Alt+F2	Search
+_launch=Alt+Space	Alt+F2	Search
 
 [plasmashell]
+show-on-mouse-pos=none,Meta+V,Show Clipboard Items at Mouse Position
 next activity=none,Meta+Tab,Walk through activities

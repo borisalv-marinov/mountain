@@ -1,7 +1,5 @@
 [Unit]
-Description=Switch Mountain image to match the GPU
-After=network-online.target
-Wants=network-online.target
+Description=Mountain: check whether the image matches the GPU (detect only, offline)
 
 [Service]
 Type=oneshot

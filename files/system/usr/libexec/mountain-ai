@@ -2,6 +2,8 @@
 # Launch an AI agent CLI, installing it per-user on first use.
 # Test overrides: MOUNTAIN_AI_DRYRUN=1 prints the install command; MOUNTAIN_AI_OFFLINE=1 fakes no network.
 export PATH="$HOME/.local/bin:$PATH"
+# no background self-updates or update checks (updates only when the user reinstalls or presses Update)
+export DISABLE_AUTOUPDATER=1 DISABLE_UPDATE_CHECK=1 CODEX_DISABLE_UPDATE_CHECK=1 NO_UPDATE_NOTIFIER=1 COPILOT_AUTO_UPDATE=false
 npm_i() { echo "npm install -g --prefix \"\$HOME/.local\" $1"; }
 case "${1:-}" in
   claude)  name="Claude Code"; cmd='curl -fsSL https://claude.ai/install.sh | bash' ;;

@@ -17,7 +17,7 @@ QQC2.AbstractButton {
         radius: height / 2
         color: pill.checked ? app.accent : (pill.hovered ? app.hover : "transparent")
         border.width: 1
-        border.color: pill.activeFocus ? app.accent : (pill.checked ? app.accent : app.textDim)
+        border.color: pill.visualFocus ? "#FFFFFF" : (pill.checked ? app.accent : app.textDim)
     }
     contentItem: Item {
         Rectangle {

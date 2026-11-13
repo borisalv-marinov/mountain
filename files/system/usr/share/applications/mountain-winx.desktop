@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Quick links
+Name=Quick Link menu
 Comment=The Win+X menu
 Exec=/usr/libexec/mountain-winx
 Icon=view-list-symbolic

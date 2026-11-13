@@ -34,7 +34,8 @@ startup() {
 
 startup_set() { # FILE on|off: a user override with Hidden=true is the XDG way to switch an autostart entry off
   local b=${1:-} want=${2:-} u
-  [[ $b =~ ^[A-Za-z0-9._@+-]+\.desktop$ ]] || { echo "bad entry: $b" >&2; return 2; }
+  # any file name the startup list shows (spaces, Cyrillic...), but never a path out of the two folders
+  [[ $b == ?*.desktop && $b != */* && $b != .* ]] || { echo "bad entry: $b" >&2; return 2; }
   [[ $want == on || $want == off ]] || { echo "say on or off" >&2; return 2; }
   u=$usr_dir/$b; mkdir -p "$usr_dir"
   if [[ $want == off ]]; then
@@ -52,8 +53,14 @@ startup_set() { # FILE on|off: a user override with Hidden=true is the XDG way t
 
 users() {
   printf 'id\tUser\tSessions\tCPU\tMemory\n'
-  local stats
-  stats=$(ps -eo user:64=,pcpu=,rss= | awk '{c[$1]+=$2; m[$1]+=$3} END {for (u in c) printf "%s %.1f %d\n", u, c[u], m[u]/1024}')
+  local stats a b
+  # CPU now (not ps's lifetime average) as a share of all cores, like Windows: CPU ticks over half a second
+  ticks() { cat /proc/[0-9]*/stat 2>/dev/null | awk '{p=$1; sub(/^.*\) /, ""); print p, $12+$13}'; }
+  a=$(ticks); sleep 0.5; b=$(ticks)
+  stats=$({ sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; ps -eo pid=,user:64=,rss= | sed 's/^/U /'; } |
+    awk -v hz="$(getconf CLK_TCK)" -v n="$(nproc)" '$1=="A" {a[$2]=$3} $1=="B" {b[$2]=$3} $1=="U" {u[$2]=$3; r[$2]=$4}
+      END {for (p in u) {if ((p in a) && (p in b)) c[u[p]]+=b[p]-a[p]; m[u[p]]+=r[p]}
+           for (x in m) {v=c[x]*100/(hz*0.5*n); printf "%s %.1f %d\n", x, (v>100?100:v), m[x]/1024}}')
   loginctl list-users --no-legend 2>/dev/null | while read -r uid name _; do
     [[ -n ${name:-} ]] || continue
     local n line

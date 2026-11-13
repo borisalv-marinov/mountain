@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Authors": [{ "Name": "Mountain" }],
+        "Description": "Win+V shows the clipboard history at the pointer, like Windows 11",
+        "EnabledByDefault": true,
+        "Id": "org.mountain.clipboard",
+        "License": "GPL-3.0-or-later",
+        "Name": "Clipboard history"
+    },
+    "X-Plasma-API": "declarativescript",
+    "X-Plasma-MainScript": "ui/main.qml"
+}

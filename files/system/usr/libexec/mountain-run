@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Win+R (the Run dialog): open what was typed: a program with its arguments, an app by name, a folder, a file or an internet address.
+#   mountain-run TEXT        open it and remember it; when it can't, print why and exit 1
+#   mountain-run --history   earlier entries, newest first
+# MOUNTAIN_RUN_DRY=1 prints what would run instead of running it (tests/test-run-dialog.sh).
+set -uo pipefail
+hist=${XDG_STATE_HOME:-$HOME/.local/state}/mountain/run-history
+[[ ${1:-} == --history ]] && { cat "$hist" 2>/dev/null; exit 0; }
+t=${1:-}; t=${t#"${t%%[![:space:]]*}"}; t=${t%"${t##*[![:space:]]}"}
+[[ -n $t ]] || { echo "Type the name of a program, folder, document or internet address."; exit 1; }
+go() { if [[ -n ${MOUNTAIN_RUN_DRY:-} ]]; then echo "$*"; else setsid -f "$@" >/dev/null 2>&1 </dev/null; fi; }
+save() { mkdir -p "${hist%/*}" && { printf '%s\n' "$t"; grep -vxF -- "$t" "$hist" 2>/dev/null | head -n 19; true; } >"$hist.new" && mv -f "$hist.new" "$hist"; }
+app() { # desktop file whose id ends in .NAME or whose Name= is NAME (Flatpak apps are not on PATH)
+  local d f IFS=:
+  for d in ${XDG_DATA_HOME:-$HOME/.local/share} ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
+    for f in "$d"/applications/*.desktop; do
+      [[ -f $f ]] || continue
+      local b=${f##*/}; b=${b%.desktop}
+      if [[ ${b,,} == "${1,,}" || ${b,,} == *."${1,,}" ]] || grep -qixF -- "Name=$1" "$f"; then echo "$f"; return 0; fi
+    done
+  done
+  return 1
+}
+p=$t; [[ $p == \"*\" && ${#p} -gt 1 ]] && p=${p:1:${#p}-2}
+[[ $p == "~" || $p == "~/"* ]] && p=$HOME${p:1}
+if [[ $p =~ ^[A-Za-z][A-Za-z0-9+.-]*:// || $p == mailto:* ]]; then go xdg-open "$p"
+elif [[ $p == www.* ]]; then go xdg-open "https://$p"
+elif [[ -e $p ]]; then
+  if [[ -f $p && -x $p ]]; then go "$p"; else go xdg-open "$p"; fi
+else
+  read -r w rest <<<"$t"
+  case ${w,,} in # what Windows users type
+    cmd|cmd.exe|powershell|pwsh|wt) w=konsole ;;
+    notepad|notepad.exe) w=kwrite ;;
+    calc|calc.exe) w=kcalc ;;
+    explorer|explorer.exe) w=dolphin ;;
+    taskmgr|taskmgr.exe) w=plasma-systemmonitor ;;
+    mspaint|mspaint.exe) w=kolourpaint ;;
+    control|ms-settings:*) w=plasmawindowed; rest=org.mountain.settings ;;
+  esac
+  if [[ $w == plasmawindowed ]]; then go sh -c "sleep 0.5; exec plasmawindowed $rest" # after the Run window (same program) has closed
+  elif command -v -- "$w" >/dev/null 2>&1; then go bash -c "$w${rest:+ $rest}"
+  elif [[ -z ${rest:-} ]] && d=$(app "$w"); then go gio launch "$d" # shortcut: arguments after an app name are dropped, use the program's command for those
+  else echo "Mountain can't find '$t'. Make sure you typed the name correctly, and then try again."; exit 1
+  fi
+fi
+save
+exit 0

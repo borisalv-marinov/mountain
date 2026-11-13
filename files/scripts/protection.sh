@@ -12,7 +12,7 @@ sc() { # desktop-file shortcuts, in applications/ and in kglobalaccel/ (Plasma 6
 }
 sc org.kde.plasma-systemmonitor.desktop "Ctrl+Shift+Esc,Ctrl+Esc"
 sc org.mountain.settings.desktop Meta+I
-sc org.kde.krunner.desktop "Meta+R,Alt+Space,Alt+F2,Search"
+sc org.kde.krunner.desktop "Alt+Space,Alt+F2,Search" # Win+R is the Run dialog (org.mountain.run.desktop)
 sc org.kde.dolphin.desktop Meta+E
 # Win+G: MangoHud performance overlay in games (hidden until toggled)
 install -d /etc/xdg/MangoHud
@@ -23,7 +23,8 @@ rm -f /etc/cron.d/clamav-update /etc/cron.d/clamav-freshclam
 systemctl disable clamav-freshclam.service clamav-freshclam-once.timer 2>/dev/null || true
 command -v clamscan freshclam >/dev/null
 # sign-in brute force: faillock locks the account for 5 minutes after 5 wrong passwords
-if authselect current >/dev/null 2>&1; then authselect enable-feature with-faillock >/dev/null; fi
+authselect current >/dev/null # no profile = no lockout: fail the build, not ship it silently
+authselect enable-feature with-faillock >/dev/null
 printf '\n# Mountain: lock for 5 minutes after 5 wrong passwords\ndeny = 5\nunlock_time = 300\n' >> /etc/security/faillock.conf
 # fonts outside KDE (GTK, Electron, Flatpak) render like KDE apps: RGB subpixel, slight hinting (Fedora's default)
 c=/usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf

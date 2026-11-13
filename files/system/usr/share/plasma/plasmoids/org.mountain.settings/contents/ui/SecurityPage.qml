@@ -95,7 +95,7 @@ ColumnLayout {
                      + " · In quarantine: " + sec.v("av_quarantine", "0")
                      + "\nDefinitions download only when you click a scan button. New files in Downloads are checked with the definitions you have"
                      + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."
-                     + (sec.list("av_history").length ? "\nHistory: " + sec.list("av_history").slice().reverse().join(" · ") : "")
+            tech: "Scanner: ClamAV, on demand only. Download checks: " + (sec.v("dl_watch") === "on" ? "on" : "off") + "."
             buttons: [
                 GlassButton { text: "Active Protection"; onClicked: app.page = "protection" },
                 GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
@@ -111,12 +111,13 @@ ColumnLayout {
             title: "Ransomware protection"
             level: sec.v("snapshots") === "off" ? 1 : 0
             details: sec.v("snapshots") === "off"
-                     ? "Off: Previous versions need the standard Btrfs layout the installer creates."
-                     : "Previous versions: " + sec.v("snapshots", "0") + " read-only snapshots of your files, taken every hour. Newest: " + (sec.v("snapshot_last") || "none yet")
+                     ? "Off: Previous versions need the standard disk layout the installer creates."
+                     : "Previous versions: " + sec.v("snapshots", "0") + " saved copies of your files, taken every hour. Newest: " + (sec.v("snapshot_last") || "none yet")
                        + "\nPrograms can't change or delete them. To restore, copy a file back from File Explorer › Previous versions."
+            tech: "Read-only Btrfs snapshots of /var/home in /var/home/.snapshots."
             buttons: [
                 GlassButton { text: "Open Previous versions"; enabled: sec.v("snapshots") !== "off"; onClicked: app.run("dolphin /var/home/.snapshots") },
-                GlassButton { text: "Take a snapshot now"; enabled: sec.v("snapshots") !== "off" && sec.running === ""; onClicked: sec.start("snapshot", "systemctl start mountain-snapshot.service") }
+                GlassButton { text: "Save a version now"; enabled: sec.v("snapshots") !== "off" && sec.running === ""; onClicked: sec.start("snapshot", "systemctl start mountain-snapshot.service") }
             ]
         }
         SecurityCard {
@@ -126,12 +127,13 @@ ColumnLayout {
             title: "Firewall & network protection"
             level: sec.v("fw") === "on" ? 0 : 2
             details: sec.v("fw") === "on"
-                     ? "Firewall is on (zone " + sec.v("fw_zone") + "). Open to the network: " + (sec.v("fw_open") || "nothing") + "."
-                     : "Firewall is off. Other devices could reach services on this PC."
-            details2: sec.v("fw") === "on" ? "Network profile: " + (sec.v("fw_profile") === "home" ? "Home (other PCs can find this one)" : "Public (hidden from other devices)") : ""
+                     ? "Firewall is on. Apps allowed through: " + (sec.list("fw_app").filter(x => x.split(":")[1] === "yes").map(x => x.split(":").slice(2).join(":")).join(", ") || "none") + "."
+                     : "Firewall is off. Other devices could reach apps on this PC."
+            details2: sec.v("fw") === "on" ? "Network profile: " + (sec.v("fw_profile") === "home" ? "Private (other PCs can find this one)" : "Public (hidden from other devices)") : ""
+            tech: sec.v("fw") === "on" ? "firewalld zone: " + sec.v("fw_zone") + ". Open services: " + (sec.v("fw_open") || "none") + "." : ""
             buttons: [
                 GlassButton { visible: sec.v("fw") !== "on"; text: "Turn on"; highlighted: true; onClicked: sec.start("fix", "systemctl start firewalld") },
-                GlassButton { visible: sec.v("fw") === "on"; text: "Home network"; highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
+                GlassButton { visible: sec.v("fw") === "on"; text: "Private network"; highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
                 GlassButton { visible: sec.v("fw") === "on"; text: "Public network"; highlighted: sec.v("fw_profile") !== "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile public") }
             ]
         }
@@ -141,7 +143,8 @@ ColumnLayout {
             iconName: "preferences-security"
             title: "App & browser protection"
             level: sec.v("flatpak_tight") === "5/5" ? 0 : 1
-            details: "Apps from the App Store run in a sandbox. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog (sandbox tightened for " + sec.v("flatpak_tight", "?") + " of them). Game launchers keep their own access."
+            details: "Apps from the App Store run in their own protected space. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog. Game launchers keep their own access."
+            tech: "Flatpak sandbox tightened for " + sec.v("flatpak_tight", "?") + " apps."
             buttons: [
                 GlassButton { text: "App permissions"; onClicked: app.openKcm("kcm_app-permissions") }
             ]
@@ -154,12 +157,13 @@ ColumnLayout {
             level: sec.v("selinux") !== "Enforcing" ? 2 : ((sec.v("sb") === "off" || sec.v("encrypted") === "no") ? 1 : 0)
             details: "Secure Boot: " + (sec.v("sb") === "on" ? "on" : sec.v("sb") === "off" ? "off" : "not supported")
                      + " · TPM: " + (sec.v("tpm") === "yes" ? "yes" : "no")
-                     + " · SELinux: " + sec.v("selinux", "?")
-                     + "\nKernel lockdown: " + sec.v("lockdown", "?") + " (off by default so game drivers load) · Disk encryption: " + (sec.v("encrypted") === "yes" ? "on" : "off")
+                     + " · Security policy: " + (sec.v("selinux") === "Enforcing" ? "on" : "off")
+                     + "\nDriver lockdown: " + (sec.v("lockdown") === "none" ? "off (so game drivers load)" : sec.v("lockdown") === "integrity" || sec.v("lockdown") === "confidentiality" ? "on" : "not available") + " · Disk encryption: " + (sec.v("encrypted") === "yes" ? "on" : "off")
                      + "\nUSB protection: " + (sec.v("usb") === "on" ? "on: new USB devices are blocked until you allow them" : "off (turning it on keeps everything plugged in now working)")
+            tech: "SELinux: " + sec.v("selinux", "?") + " · Kernel lockdown: " + sec.v("lockdown", "?") + " · USB protection: usbguard"
             buttons: [
                 GlassButton { text: sec.v("usb") === "on" ? "Turn off USB protection" : "Turn on USB protection"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " usb " + (sec.v("usb") === "on" ? "off" : "on")) },
-                GlassButton { visible: sec.v("selinux") !== "Enforcing"; text: "Turn on SELinux"; highlighted: true; onClicked: sec.start("fix", "pkexec setenforce 1") },
+                GlassButton { visible: sec.v("selinux") !== "Enforcing"; text: "Turn on security policy"; highlighted: true; onClicked: sec.start("fix", "pkexec setenforce 1") },
                 GlassButton { visible: sec.v("sb") === "off" || sec.v("encrypted") === "no"; text: "How to turn these on"; onClicked: Qt.openUrlExternally(sec.guide + "#secure-boot-and-disk-encryption") }
             ]
         }

@@ -9,7 +9,7 @@ Title=Startup apps
 mode=startup
 
 [page]
-actionsFace=
+actionsFace=Face-880000000013
 icon=preferences-system-startup
 loadType=
 margin=2

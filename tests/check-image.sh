@@ -2,7 +2,7 @@
 set -Eeuo pipefail # -E: the FAIL line trap also fires inside the phase functions
 trap 'echo "FAIL: line $LINENO: $BASH_COMMAND"' ERR
 
-# Runs inside the built image. Usage: check-image.sh <phase>
+# Runs inside the built image (also as the last recipe module, so a failure stops the push). Runs every check_phaseN.
 
 fail() {
   echo "FAIL: $*"
@@ -78,12 +78,11 @@ check_phase6() {
 }
 
 check_phase7() {
-  local s=/usr/lib/sysctl.d/90-mountain.conf t=/usr/lib/systemd/system/uupd.timer.d/mountain.conf
+  local s=/usr/lib/sysctl.d/90-mountain.conf
   assert_grep '^net.core.default_qdisc = fq$' "$s"
   assert_grep '^net.ipv4.tcp_congestion_control = bbr$' "$s"
-  # uupd.timer is Bazzite's update timer (ublue-os/uupd); no services are disabled on purpose
-  assert_grep '^OnCalendar=weekly$' "$t"
-  assert_grep '^Persistent=true$' "$t"
+  # uupd.timer (Bazzite's updater) is disabled in the recipe: no background updates, so its weekly drop-in is gone
+  [[ ! -e /usr/lib/systemd/system/uupd.timer.d/mountain.conf ]] || fail "dead uupd drop-in is back"
 }
 
 check_phase9() {
@@ -106,6 +105,11 @@ echo "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation [10de:2484]"
     echo "$want" > "$MOUNTAIN_STATE_DIR/gpu-switched"
     out=$(PATH="$d:$PATH" "$s" --dry-run); [[ $out == "already switched" ]] || fail "expected 'already switched', got: $out"
   fi
+  # detect only at boot: the switch runs only after a click (--switch, from the sign-in notification), never waits for the network
+  grep -q 'bootc switch' "$s" && ! grep -q -- '--switch' "$s" && fail "gpu-check switches without a click"
+  assert_grep '--notify' /etc/xdg/autostart/mountain-gpu-notify.desktop
+  assert_grep '-A switch=Switch' "$s"
+  ! grep -q network-online /usr/lib/systemd/system/mountain-gpu-check.service || fail "gpu-check waits for the network"
   unset MOUNTAIN_STATE_DIR
   rm -rf "$d"
 }
@@ -375,7 +379,8 @@ check_phase26() { # v4: smoother backend and hardening (docs/OWNER-GUIDE.md list
   assert_grep '^DefaultZone=mountain$' /etc/firewalld/firewalld.conf
   xmllint --noout /etc/firewalld/zones/mountain.xml || fail "firewall zone invalid"
   grep -q 'port=' /etc/firewalld/zones/mountain.xml && fail "mountain zone opens raw ports"
-  assert_grep 'steam-streaming' /etc/firewalld/zones/mountain.xml
+  assert_grep 'steam-streaming' /etc/firewalld/zones/mountain-home.xml
+  ! grep -q 'steam-streaming' /etc/firewalld/zones/mountain.xml || fail "Steam Remote Play open on Public networks"
   assert_grep '^SELINUX=enforcing$' /etc/selinux/config
 }
 
@@ -454,6 +459,25 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^name=mountain-glass$' /etc/xdg/plasmarc
   assert_grep '^ColorScheme=BlackGlass$' /etc/xdg/kdeglobals
   assert_grep '^theme=__aurorae__svg__BlackGlass$' /etc/xdg/kwinrc
+  # one palette: base #121212 (glass 0.82 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
+  for f in /usr/share/color-schemes/BlackGlass.colors $t/colors; do
+    assert_grep '^BackgroundNormal=18,18,18$' "$f"
+    assert_grep '^ForegroundInactive=197,197,197$' "$f"
+    assert_grep '^ContrastAmount=0.45$' "$f"
+    grep -q '^BackgroundNormal=0,120,212$' "$f" || fail "selection is not the accent: $f"
+    grep -qE '^(Background|Foreground)[A-Za-z]*=(16,18,22|11,12,15|7,8,10|27,29,34|164,169,178)$' "$f" && fail "old blue-black left in $f"
+  done
+  cmp -s /usr/share/color-schemes/BlackGlass.colors $t/colors || fail "Plasma theme and color scheme differ"
+  grep -q 'stop-color="#121212" stop-opacity="0.82"' $t/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.82"
+  grep -q 'stop-color="#121212" stop-opacity="0.82"' $t/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.82"
+  grep -q 'stop-color="#121212" stop-opacity="1"' $t/translucent/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
+  grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
+  assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  assert_grep '^disabled.text.color=#949494$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  grep -q '#1B1D22\|#0E0F12\|#07080A' /usr/share/Kvantum/BlackGlass/BlackGlass.svg && fail "Kvantum SVG has old blue-blacks"
+  grep -q '#1B1D22\|#24272D\|#101216' /usr/share/aurorae/themes/BlackGlass/decoration.svg && fail "title bar is not the window color"
+  assert_grep 'StandardBackground' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml
+  assert_grep 'maximumLineCount: 2' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemGridDelegate.qml
   MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=BlackGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=BlackGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
   true
 }
@@ -551,7 +575,10 @@ PY
   assert_grep '^text/x-python=com.microsoft.VSCode.desktop;$' /etc/xdg/mimeapps.list
   # Windows shortcuts
   assert_grep '^X-KDE-Shortcuts=Meta+I$' $a/org.mountain.settings.desktop
-  grep -qs '^X-KDE-Shortcuts=Meta+R,' $a/org.kde.krunner.desktop /usr/share/kglobalaccel/org.kde.krunner.desktop || fail "Win+R not bound"
+  assert_grep '^X-KDE-Shortcuts=Meta+R$' $a/org.mountain.run.desktop
+  grep -qs '^X-KDE-Shortcuts=.*Meta+R' $a/org.kde.krunner.desktop /usr/share/kglobalaccel/org.kde.krunner.desktop && fail "Win+R still on KRunner"
+  assert_grep $'^_launch=Alt+Space\tAlt+F2\tSearch$' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^\[services\]\[org.mountain.run.desktop\]$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^X-KDE-Shortcuts=Meta+E$' $a/org.kde.dolphin.desktop
   assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^next activity=none,' /etc/skel/.config/kglobalshortcutsrc
@@ -573,7 +600,8 @@ PY
   # Phone Link starts KDE Connect only when opened; Restore previous versions; Reset this PC
   assert_grep '^Exec=/usr/libexec/mountain-phonelink$' $a/org.kde.kdeconnect.app.desktop
   [[ ! -e /usr/share/dbus-1/services/org.kde.kdeconnect.service ]] || fail "Phone Link daemon D-Bus activated (background drain)"
-  assert_grep 'kdeconnect' /etc/firewalld/zones/mountain.xml
+  assert_grep 'kdeconnect' /etc/firewalld/zones/mountain-home.xml
+  ! grep -q 'kdeconnect' /etc/firewalld/zones/mountain.xml || fail "Phone Link open on Public networks"
   assert_grep 'Exec=/usr/libexec/mountain-previous-versions %f' /usr/share/kio/servicemenus/mountain-previous-versions.desktop
   for n in mountain-phonelink mountain-previous-versions; do [[ -x /usr/libexec/$n ]] || fail "$n not executable"; bash -n /usr/libexec/$n || fail "$n syntax"; done
   assert_grep 'reset) reset_pc' /usr/libexec/mountain-security
@@ -583,7 +611,7 @@ PY
 
 check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow an app, profiles, USB), personalize, Alt+F4, Win+X
   local x=/usr/libexec n
-  for n in mountain-windows-boot mountain-usbguard mountain-personalize mountain-winx; do
+  for n in mountain-windows-boot mountain-usbguard mountain-personalize mountain-winx mountain-run; do
     [[ -x $x/$n ]] || fail "$n not executable"; bash -n $x/$n || fail "$n syntax"
   done
   assert_cmd efibootmgr
@@ -605,7 +633,7 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   desktop-file-validate /usr/share/applications/org.mountain.protection.desktop || fail "Active Protection launcher"
   assert_file /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/ProtectionPage.qml
   assert_grep '^deny = 5$' /etc/security/faillock.conf
-  grep -qs pam_faillock /etc/pam.d/system-auth || echo "NOTE: pam_faillock not in system-auth (vm-test brute-force step shows the effect)"
+  grep -qs pam_faillock /etc/pam.d/system-auth || fail "pam_faillock not in system-auth (5 wrong passwords would not lock)"
   assert_grep 'repair-etc)' /usr/libexec/mountain-security
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /etc/firewalld/zones/mountain-home.xml || fail "bad home zone"
   grep -q 'port ' /etc/firewalld/zones/mountain-home.xml && fail "home profile opens ports"
@@ -632,11 +660,145 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   true
 }
 
-PHASE=${1:-0}
-for p in $(seq 0 "$PHASE"); do
-  fn="check_phase$p"
-  if declare -F "$fn" >/dev/null; then
-    "$fn"
-  fi
-done
-echo "PASS: phase $PHASE"
+check_phase32() { # v6: the start menu, panels and login/lock greeter load their QML (a broken import must fail the build, not ship)
+  local f m p q d n Q='/usr/lib64/qt6/qml /usr/lib/qt6/qml'
+  # every dotted "import X.Y" in our plasmoids, sensor face and the lock screen shell must resolve to an installed module
+  for m in $(grep -rhoE '^import +[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+' /usr/share/plasma/plasmoids/{menu.11.enhanced,org.mountain.*}       /usr/share/ksysguard/sensorfaces/org.mountain.* /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen 2>/dev/null | awk '{print $2}' | sort -u); do
+    p=${m//.//}; n=0
+    for q in $Q; do [[ -f $q/$p/qmldir ]] && n=1; done
+    [[ $n == 1 ]] || fail "QML module not installed: $m (start menu or panels would fail to load)"
+  done
+  # the patched breeze components qmldir (login + lock screen): every type it lists must exist on disk, and nothing may still "prefer" the compiled copy
+  d=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit 2>/dev/null || true)
+  [[ -n $d && -f $d/qmldir ]] || fail "breeze components qmldir missing"
+  for f in $(awk '$NF ~ /\.(qml|js)$/ && $1 != "prefer" {print $NF}' "$d/qmldir"); do
+    [[ -f $d/$f ]] || fail "breeze qmldir lists missing file: $f"
+  done
+  ! grep -q '^prefer ' "$d/qmldir" || fail "breeze qmldir still prefers the compiled copy"
+  for f in "$d"/*.qml; do
+    for m in $(grep -hoE '^import +[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+' "$f" | awk '{print $2}' | sort -u); do
+      p=${m//.//}; n=0
+      for q in $Q; do [[ -f $q/$p/qmldir ]] && n=1; done
+      [[ $n == 1 ]] || fail "$(basename "$f"): QML module not installed: $m"
+    done
+  done
+}
+
+check_phase33() { # v6 fix wave: Windows names, flyouts, File Explorer, Settings Background, Protection, Task Manager, dialogs, taskbar
+  local a=/usr/share/applications f t d s ui=/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  local L=/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  # lite mode once per account; Flatpak policy marker
+  assert_grep 'lite-mode' /usr/libexec/mountain-lite-mode
+  assert_grep 'flatpak-tight-' /usr/libexec/mountain-flatpak-policy
+  # Windows app names in menus and title bars, toast headers, PDF Reader icon
+  for t in "org.kde.okular:PDF Reader" "org.kde.kcalc:Calculator" "org.kde.kolourpaint:Paint" "org.kde.kwrite:Notepad" "org.kde.konsole:Terminal" "org.kde.plasma-systemmonitor:Task Manager" "org.kde.kdeconnect.app:Phone Link"; do
+    assert_grep "^Name=${t#*:}\$" "$a/${t%%:*}.desktop"
+  done
+  python3 -c 'import gettext,glob; v={x for f in glob.glob("/usr/share/locale/en@mountain/LC_MESSAGES/*.mo") for x in gettext.GNUTranslations(open(f,"rb"))._catalog.values()}; m={"Calculator","PDF Reader","Terminal","Paint","File Explorer"}-v; assert not m, m' || fail "title-bar name catalogs missing"
+  ! grep -rn 'notify-send [^>]' /usr/libexec/mountain-* | grep -v 'notify-send -a ' || fail "notify-send without -a (toast header says notify-send)"
+  f=$(find /usr/share/icons/We10X* -name 'okular.*' -print -quit 2>/dev/null || true); [[ -z $f || $(readlink "$f") == */application-pdf.svg ]] || fail "PDF Reader still uses the We10X okular (Outlook-like) icon"
+  ! grep -rqx 'Name=Konsole' /etc/skel/Desktop || fail "Konsole name on a desktop launcher"
+  # Win+Z snap layouts, Win+V clipboard, Win+. emoji flyout, Win+Shift+S snip
+  for s in snaplayouts clipboard; do
+    assert_grep '"X-Plasma-API": "declarativescript"' /usr/share/kwin/scripts/org.mountain.$s/metadata.json
+    assert_file /usr/share/kwin/scripts/org.mountain.$s/contents/ui/main.qml
+    assert_grep "^org.mountain.${s}Enabled=true$" /etc/xdg/kwinrc
+  done
+  assert_grep '^MountainSnapLayouts=Meta+Z,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^MountainClipboard=Meta+V,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^show-on-mouse-pos=none,' /etc/skel/.config/kglobalshortcutsrc
+  grep -q '^Edit Tiles=Meta+Z' /etc/skel/.config/kglobalshortcutsrc && fail "Win+Z opens the tile editor"
+  assert_grep '^wmclass=emojier$' /etc/xdg/kwinrulesrc
+  python3 - <<'PY' || fail "kwinrulesrc: [General] count/rules do not match the rule groups"
+import configparser
+c = configparser.RawConfigParser(strict=True); c.optionxform = str; c.read("/etc/xdg/kwinrulesrc")
+r = c["General"]["rules"].split(",")
+assert int(c["General"]["count"]) == len(r) and all(c.has_section(x) for x in r), r
+PY
+  desktop-file-validate $a/org.mountain.snip.desktop || fail "snip launcher"
+  assert_grep '^_launch=Meta+Shift+S$' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^useReleaseToCapture=true$' /etc/xdg/spectaclerc
+  assert_cmd spectacle
+  assert_cmd plasma-emojier
+  # File Explorer: no free-space status, short Details pane, 1100x700, This PC and Network, drag moves on the same drive
+  assert_grep '^ShowStatusBar=Small$' /etc/xdg/dolphinrc
+  assert_grep '^tags=false$' /etc/xdg/baloofileinformationrc
+  assert_grep '^rating=false$' /etc/xdg/baloofileinformationrc
+  assert_grep '^userComment=false$' /etc/xdg/baloofileinformationrc
+  assert_grep '^wmclass=org.kde.dolphin$' /etc/xdg/kwinrulesrc
+  assert_grep '^size=1100,700$' /etc/xdg/kwinrulesrc
+  assert_grep '<title>This PC</title>' /usr/share/mountain/user-places.xbel.in
+  assert_grep 'href="remote:/"' /usr/share/mountain/user-places.xbel.in
+  assert_grep '^DndBehavior=MoveIfSameDevice$' /etc/xdg/kdeglobals
+  # Settings: native Background page, no Linux jargon, Protection page polls only when shown
+  assert_file $ui/BackgroundPage.qml
+  [[ -x /usr/libexec/mountain-background ]] || fail "mountain-background missing or not executable"
+  bash -n /usr/libexec/mountain-background || fail "mountain-background: syntax error"
+  grep -q 'kcm_wallpaper' $ui/main.qml && fail "Settings > Background still opens KDE System Settings"
+  assert_grep 'page: "background"' $ui/main.qml
+  assert_grep 'hostWindow.active' $ui/ProtectionPage.qml
+  grep -q 'running: true' $ui/ProtectionPage.qml && fail "Active Protection page polls when hidden"
+  grep -rhoE '[{ ;](d|text|details|details2|title|subtitle): "[^"]*"' $ui | grep -iE 'colour|centre|KDE|MangoHud|ProtonDB|Btrfs|SELinux|Flatpak|firewalld|polkit|ClamAV|usbguard|bootc|rpm-ostree|snapshot|sandbox' \
+    && fail "Linux jargon or UK spelling in Settings text"
+  # Active Protection: file names never become a program, sandboxed scans, /tmp one level only, light status
+  grep -q 'sed -i' /usr/libexec/mountain-protect && fail "mountain-protect: file names must never become a sed program"
+  for s in PrivateNetwork=yes NoNewPrivileges=yes ProtectSystem=strict ProtectHome=read-only MemoryMax= ReadWritePaths= allow-hash xdg-user-dir 'status --av'; do assert_grep "$s" /usr/libexec/mountain-protect; done
+  grep -qE 'inotifywait -mrq[^#]*/tmp' /usr/libexec/mountain-protect && fail "Active Protection watches /tmp recursively"
+  assert_cmd xdg-user-dir
+  assert_grep 'allow-hash "$quarantine/' /usr/libexec/mountain-security
+  # snapshots: low-disk keep rule, game libraries as subvolumes; definitions download can't be looped
+  assert_grep '^StartLimitBurst=3$' /usr/lib/systemd/system/mountain-virus-definitions.service
+  assert_grep 'recent=3; days=3' /usr/libexec/mountain-snapshot
+  assert_grep 'btrfs subvolume create' /usr/libexec/mountain-user-setup
+  # Task Manager: no Edit Page, CPU 0-100 %, no missing GPU sensors, startup toggle takes any .desktop name
+  for f in /usr/share/plasma-systemmonitor/mountain-*.page; do
+    grep -q '^actionsFace=Face-' "$f" || fail "Task Manager page shows Edit Page: $f"
+  done
+  grep -q 'gpu/all/usage\|gpu_usage' /usr/share/plasma-systemmonitor/mountain-*.page && fail "Task Manager uses GPU sensors that are missing without a GPU"
+  for f in 1-processes 3-apphistory 6-details; do
+    assert_grep '"usage":"textScaled"' /usr/share/plasma-systemmonitor/mountain-$f.page
+  done
+  d=$(mktemp -d); mkdir -p "$d/autostart"; printf '[Desktop Entry]\nName=T\nExec=true\n' > "$d/autostart/Тест App.desktop"
+  XDG_CONFIG_HOME=$d MOUNTAIN_AUTOSTART_SYSTEM=$d/none /usr/libexec/mountain-taskmanager startup-set "Тест App.desktop" off || fail "startup toggle rejects a name with a space or Cyrillic"
+  grep -q '^Hidden=true' "$d/autostart/Тест App.desktop" || fail "startup toggle did not turn it off"
+  XDG_CONFIG_HOME=$d /usr/libexec/mountain-taskmanager startup-set ../x.desktop off 2>/dev/null && fail "startup toggle accepts a path"
+  rm -rf "$d"
+  # Win+R Run, Win+X Quick Link menu, Alt+F4 Shut Down: plasmawindowed dialogs placed by the mountain-altf4 KWin script
+  for s in run winx shutdown; do
+    python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"] == sys.argv[2]' /usr/share/plasma/plasmoids/org.mountain.$s/metadata.json org.mountain.$s || fail "org.mountain.$s metadata"
+    assert_file /usr/share/plasma/plasmoids/org.mountain.$s/contents/ui/main.qml
+  done
+  assert_grep 'exec plasmawindowed org.mountain.winx' /usr/libexec/mountain-winx
+  assert_grep 'mountain-shutdown-dialog.service' /usr/share/kwin/scripts/mountain-altf4/contents/code/main.js
+  assert_grep 'plasmawindowed org.mountain.shutdown' /usr/lib/systemd/user/mountain-shutdown-dialog.service
+  grep -q 'kdialog' /usr/libexec/mountain-winx && fail "Win+X is still a kdialog list"
+  desktop-file-validate $a/org.mountain.run.desktop || fail "Run launcher"
+  assert_cmd plasmawindowed; assert_cmd setsid; assert_cmd gio; assert_cmd xdg-open
+  python3 - <<'PY' || fail "dialog QML: accessible names and Esc"
+for n in ("run", "winx", "shutdown"):
+    s = open(f"/usr/share/plasma/plasmoids/org.mountain.{n}/contents/ui/main.qml").read()
+    assert "Accessible.name" in s and ("onEscapePressed" in s or "Key_Escape" in s), n
+PY
+  d=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/plasma/private/sessions' -print -quit 2>/dev/null || true); [[ -n $d ]] || fail "SessionManagement QML module missing (Shut Down / Win+X power items)"
+  # taskbar: floating flyouts, one bell, ^ first, M/d/yyyy clock, show-desktop sliver, toasts bottom right 5 s, stronger desktop label shadow
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="org.mountain.showdesktop"' /usr/share/plasma/plasmoids/org.mountain.showdesktop/metadata.json || fail "bad show-desktop metadata"
+  assert_file /usr/share/plasma/plasmoids/org.mountain.showdesktop/contents/ui/main.qml
+  assert_grep 'org.mountain.showdesktop' "$L"
+  assert_grep 'panel.floatingApplets = true' "$L"
+  assert_grep '"knownItems", knownItems' "$L"
+  assert_grep '"reverseIconOrder", true' "$L"
+  assert_grep '"customDateFormat", "M/d/yyyy"' "$L"
+  assert_grep '^PopupPosition=BottomRight$' /etc/xdg/plasmanotifyrc
+  assert_grep '^PopupTimeout=5000$' /etc/xdg/plasmanotifyrc
+  assert_grep 'Not available' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui/Tile.qml
+  grep -rq 'unavailable")' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui && fail "quick-settings tile names too long for the tile"
+  f=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -path '*/org/kde/plasma/extras/ShadowedLabel.qml' -print -quit 2>/dev/null || true); grep -qs 'spread: 0.55' "$f" || fail "desktop label shadow not patched"
+  assert_grep '^LANG=' /etc/locale.conf # sign-in screen clock follows US English (12 h, M/d) unless the installer chose another language
+  true
+}
+
+# every check_phaseN defined above runs, so a new phase can never be forgotten
+phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
+[[ -n $phases ]] || fail "no check_phase functions found"
+for fn in $phases; do "$fn"; done
+echo "PASS: $(echo "$phases" | wc -l) phases"

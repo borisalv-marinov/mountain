@@ -22,7 +22,7 @@ Tile {
 
     available: Boolean(nightLight.properties?.available)
     checked: Boolean(nightLight.properties?.enabled)
-    text: available ? i18n("Night light") : i18n("Night light unavailable")
+    text: i18n("Night light")
     iconName: checked ? "redshift-status-on" : "redshift-status-off"
     onToggled: exec.connectSource("kwriteconfig6 --file kwinrc --group NightColor --key Active --type bool --notify "
         + (checked ? "false" : "true")

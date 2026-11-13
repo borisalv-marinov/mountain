@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 
-// Calm button: glass gradient, rim, white text.
+// Calm button: flat fill, rim, white text.
 QQC2.AbstractButton {
     id: btn
     property bool highlighted: false
@@ -12,19 +12,19 @@ QQC2.AbstractButton {
     Accessible.name: text
     Keys.onReturnPressed: clicked()
 
+    // Windows 11: highlighted = the one accent-filled (primary or selected) button, the rest lighter than the card
     background: Rectangle {
-        radius: 8
-        border.width: 1
-        border.color: btn.activeFocus || btn.highlighted ? app.accent : app.rim
-        gradient: Gradient {
-            GradientStop { position: 0; color: btn.highlighted ? Qt.rgba(1, 1, 1, 0.16) : (btn.hovered ? "#2A2D33" : "#22252B") }
-            GradientStop { position: 1; color: btn.highlighted ? Qt.rgba(1, 1, 1, 0.08) : (btn.pressed ? "#07080A" : "#111317") }
-        }
+        radius: 6
+        border.width: btn.visualFocus ? 2 : 1
+        border.color: btn.visualFocus ? "#FFFFFF" : btn.highlighted ? app.accent : app.rim
+        color: btn.highlighted ? (btn.pressed ? "#4A9AE6" : btn.hovered ? "#6BB9FF" : app.accent)
+                               : (btn.pressed ? "#2E3036" : btn.hovered ? "#45474E" : "#3B3D43")
     }
     contentItem: GText {
         id: label
         text: btn.text
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        color: btn.highlighted ? "#000000" : btn.enabled ? app.textColor : app.textDim // dim stays >= 4.5:1 on the button
     }
 }

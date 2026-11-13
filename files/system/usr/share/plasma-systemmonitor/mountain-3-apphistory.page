@@ -8,7 +8,7 @@ Title=CPU time per app since you signed in
 [Face-880000000009][org.kde.ksysguard.applicationstable][General]
 sortedColumns=appName,totalTime,usage,memory,netInbound,netOutbound
 columnWidths=0.34,0.14,0.13,0.13,0.13,0.13
-columnDisplay={"appName":"text","totalTime":"text","usage":"text","memory":"text","netInbound":"text","netOutbound":"text"}
+columnDisplay={"appName":"text","totalTime":"text","usage":"textScaled","memory":"text","netInbound":"text","netOutbound":"text"}
 showToolBar=false
 askWhenKilling=true
 sortColumn=totalTime
@@ -38,7 +38,7 @@ Title=Network over time
 highPrioritySensorIds=["network/all/download", "network/all/upload"]
 
 [page]
-actionsFace=
+actionsFace=Face-880000000009
 icon=office-chart-line
 loadType=
 margin=2

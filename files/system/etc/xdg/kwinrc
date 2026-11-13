@@ -1,5 +1,7 @@
 [Plugins]
 mountain-altf4Enabled=true
+org.mountain.snaplayoutsEnabled=true
+org.mountain.clipboardEnabled=true
 blurEnabled=true
 contrastEnabled=true
 wobblywindowsEnabled=false

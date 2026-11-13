@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Black glass card: vertical gloss gradient, 1 px rim, inner shadow, brighter top edge.
+// Black glass card: a step lighter than the page (>= 1.3:1), 1 px rim, inner shadow, brighter top edge.
 Rectangle {
     id: card
     default property alias content: column.data
     property int padding: 0
     implicitHeight: column.implicitHeight + padding * 2
-    radius: 12
+    radius: 8
     border.width: 1
     border.color: app.rim
     gradient: Gradient {
@@ -18,7 +18,7 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         anchors.margins: 1
-        radius: 11
+        radius: 7
         color: "transparent"
         border.width: 1
         border.color: app.innerShadow

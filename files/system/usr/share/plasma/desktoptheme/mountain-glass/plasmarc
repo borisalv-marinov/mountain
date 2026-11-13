@@ -1,5 +1,5 @@
 # Theme-level settings (libplasma ThemePrivate). Missing SVGs fall back to the
-# default Breeze theme, recoloured by this theme's colors file.
+# default Breeze theme, recolored by this theme's colors file.
 [ContrastEffect]
 enabled=true
 contrast=0.3

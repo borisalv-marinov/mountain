@@ -58,6 +58,7 @@ modules:
       - explorer-title.sh
       - desktop-drag-fix.sh
       - lock-screen.sh
+      - mountain-desktop-labels.sh
       - icons-finalize.sh
       - hardening.sh
       - protection.sh
@@ -99,3 +100,8 @@ modules:
   - type: initramfs # boot splash watermark lives in the initramfs
 
   - type: signing
+
+  # last module: a failing check stops the build before anything is pushed (CI copies tests/check-image.sh here first)
+  - type: script
+    scripts:
+      - check-image.sh

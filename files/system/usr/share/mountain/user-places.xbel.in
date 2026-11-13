@@ -6,7 +6,6 @@
    <kde_places_version>4</kde_places_version>
    <withRecentlyUsed>true</withRecentlyUsed>
    <withBaloo>true</withBaloo>
-   <GroupState-Remote-IsHidden>true</GroupState-Remote-IsHidden>
    <GroupState-RecentlySaved-IsHidden>true</GroupState-RecentlySaved-IsHidden>
    <GroupState-SearchFor-IsHidden>true</GroupState-SearchFor-IsHidden>
    <GroupState-Tags-IsHidden>true</GroupState-Tags-IsHidden>
@@ -14,4 +13,19 @@
    <GroupState-Devices-IsHidden>true</GroupState-Devices-IsHidden>
   </metadata>
  </info>
-@PLACES@</xbel>
+@PLACES@ <!-- Windows "This PC" (the whole computer) and "Network" (remote:/ is KIO's own network view, in the Remote group) -->
+ <bookmark href="file:///">
+  <title>This PC</title>
+  <info>
+   <metadata owner="http://freedesktop.org"><bookmark:icon name="computer"/></metadata>
+   <metadata owner="http://www.kde.org"><ID>mountain/thispc</ID><isSystemItem>true</isSystemItem></metadata>
+  </info>
+ </bookmark>
+ <bookmark href="remote:/">
+  <title>Network</title>
+  <info>
+   <metadata owner="http://freedesktop.org"><bookmark:icon name="network-workgroup"/></metadata>
+   <metadata owner="http://www.kde.org"><ID>mountain/network</ID><isSystemItem>true</isSystemItem></metadata>
+  </info>
+ </bookmark>
+</xbel>

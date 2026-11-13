@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 
 // One Windows Security style tile: icon, title, status (dot + words, never colour alone), details, one-click fixes.
@@ -10,6 +11,8 @@ GlassCard {
     property int level: 0 // 0 good, 1 recommended, 2 needed
     property string details: ""
     property string details2: ""
+    property string tech: "" // technical names, shown only under "Details"
+    property bool showTech: false
     property alias buttons: row.data // the one-click fixes: buttons: [ GlassButton {...} ]
     padding: 16
     Accessible.role: Accessible.Grouping
@@ -42,7 +45,7 @@ GlassCard {
                 GText {
                     id: status
                     text: card.level === 0 ? "No action needed" : (card.level === 1 ? "Action recommended" : "Action needed")
-                    color: card.level === 0 ? "#7EE2A8" : (card.level === 1 ? "#F2CC60" : "#FF9B94") // all >= 7:1 on the card
+                    color: card.level === 0 ? "#7EE2A8" : (card.level === 1 ? "#F2CC60" : "#FF9B94") // all >= 6:1 on the card
                 }
             }
             GText {
@@ -59,6 +62,30 @@ GlassCard {
                 dim: true
                 wrapMode: Text.WordWrap
                 elide: Text.ElideNone
+            }
+            QQC2.AbstractButton {
+                id: techLink
+                visible: card.tech !== ""
+                hoverEnabled: true
+                activeFocusOnTab: true
+                text: card.showTech ? "Hide details" : "Details"
+                Accessible.name: text + " for " + card.title
+                onClicked: card.showTech = !card.showTech
+                Keys.onReturnPressed: clicked()
+                contentItem: GText {
+                    text: techLink.text
+                    color: app.accent
+                    font.underline: techLink.hovered || techLink.visualFocus
+                }
+            }
+            GText {
+                Layout.fillWidth: true
+                visible: card.showTech && card.tech !== ""
+                text: card.tech
+                dim: true
+                wrapMode: Text.WordWrap
+                elide: Text.ElideNone
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
             }
             Flow {
                 id: row
