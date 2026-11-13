@@ -17,6 +17,7 @@ import org.kde.plasma.components as PlasmaComponents3
 
 
 import org.kde.kirigami as Kirigami
+import org.kde.kirigamiaddons.components as KirigamiComponents // Avatar left Kirigami in KF6
 import org.kde.plasma.private.sessions
 import org.kde.plasma.plasma5support as P5Support
 
@@ -67,7 +68,7 @@ RowLayout{
         onClicked: accountMenu.popup(accountButton, 0, -accountMenu.implicitHeight)
         contentItem: RowLayout {
             spacing: Kirigami.Units.largeSpacing
-            Kirigami.Avatar { // round picture, initials when there is none
+            KirigamiComponents.Avatar { // round picture, initials when there is none
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
                 source: kuser.faceIconUrl

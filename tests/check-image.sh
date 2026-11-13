@@ -832,7 +832,8 @@ PY
   assert_file $mu/Pill.qml
   assert_grep 'text: i18n("All")' $mu/MenuRepresentation.qml
   assert_grep 'i18n("Best match")' $mu/ItemMultiGridView.qml
-  assert_grep 'Kirigami.Avatar' $mu/Footer.qml
+  assert_grep 'KirigamiComponents.Avatar' $mu/Footer.qml; assert_grep 'org.kde.kirigamiaddons.components' $mu/Footer.qml
+  [[ -f /usr/lib64/qt6/qml/org/kde/kirigamiaddons/components/qmldir ]] || fail "Kirigami Addons components missing (start menu footer avatar)"
   [[ -z $(grep -E "icon.name: +\"(user-home|configure)\"" $mu/Footer.qml || true) ]] || fail "start menu footer has more than account and power"
   [[ -z $(grep -E "source: '(bookmarks|tag-recents|view-grid)'" $mu/MenuRepresentation.qml || true) ]] || fail "start menu section titles carry KDE icons"
   [[ -z $(grep -l '#F2F3F5' /usr/share/plasma/plasmoids/org.mountain.{run,winx,shutdown}/contents/ui/main.qml || true) ]] || fail "Run / Win+X / Shut Down text is not #FFFFFF"
