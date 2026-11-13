@@ -549,9 +549,9 @@ jobs:
           QM rclick $((700*W/1280)) $((500*H/800)); sleep 2; shot explorer-context-menu; QM key esc; sleep 1 # "New", "Sort"
           chk "File Explorer uses the Windows labels (en@mountain first)" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep '^LANGUAGE='" 'en@mountain' 
           K -x dolphin; L 'dolphin /'; sleep 7; shot explorer-thispc; K -x dolphin
-          # folder launchers have no ".desktop" in their name (File Explorer shows the file name): they still open their app
+          # a folder launcher opened the way File Explorer opens it starts its app
           L 'dolphin "/home/looktest/Desktop/Coding"'; sleep 6; shot explorer-launchers; K -x dolphin
-          L 'kioclient exec "/home/looktest/Desktop/Coding/Terminal"'; wchk "a folder launcher opens its app" 0 konsole 20; sleep 2; K -x konsole
+          L 'kioclient exec "/home/looktest/Desktop/Coding/Terminal.desktop"'; wchk "a folder launcher opens its app" 0 konsole 20; sleep 2; K -x konsole
           L 'dolphin remote:/'; sleep 7; shot explorer-network; K -x dolphin
           L dolphin; sleep 6
           if ! R "test -e /etc/skel/.local/state/dolphinstaterc"; then # record the window state with the Details pane on (F11) for the skel default

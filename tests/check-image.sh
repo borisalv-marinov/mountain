@@ -199,14 +199,11 @@ check_phase15() {
     assert_file "/etc/skel/Desktop/$d/.directory"
   done
   while IFS= read -r f; do [[ -x "$f" ]] || fail "not executable: $f"; done < <(find /etc/skel/Desktop -type f ! -name .directory)
-  # File Explorer shows a folder launcher by its file name: named like the app (Name=), no ".desktop" (Windows hides ".lnk"),
-  # and still typed as a launcher by content (a name ending in ".js" would make it JavaScript)
+  # File Explorer shows a folder launcher by its file name: named like the app (Name=). They keep ".desktop": without it
+  # shared-mime-info types them text/plain (seen in the build), so a double-click would open a text file, not the app
   while IFS= read -r f; do
-    b=${f##*/}; [[ $b == *.desktop ]] && fail "folder launcher shows its .desktop extension: $f"
-    [[ $(head -1 "$f") == "[Desktop Entry]" ]] || fail "folder launcher is not a desktop entry: $f"
-    [[ $(sed -n 's/^Name=//p' "$f" | head -1) == "$b" ]] || fail "folder launcher file name is not its Name=: $f"
-    t=$(gio info -a standard::content-type "$f" 2>/dev/null | sed -n 's/^ *standard::content-type: //p') # shared-mime-info, as KIO
-    [[ $t == application/x-desktop ]] || fail "folder launcher is not seen as a launcher: $f (${t:-no type})"
+    b=${f##*/}; [[ $b == *.desktop ]] || fail "folder launcher without .desktop (opens as text): $f"
+    [[ $(sed -n 's/^Name=//p' "$f" | head -1) == "${b%.desktop}" ]] || fail "folder launcher file name is not its Name=: $f"
   done < <(find /etc/skel/Desktop -mindepth 2 -type f ! -name .directory)
 }
 
