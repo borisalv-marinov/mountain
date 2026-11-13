@@ -32,9 +32,12 @@ status() {
     local c z zf s on open; c=$(nmcli -t -f NAME connection show --active 2>/dev/null | grep -v '^lo$' | head -1)
     z=$(nmcli -g connection.zone connection show "$c" 2>/dev/null); z=${z:-${v:-mountain}}
     [[ $z == mountain-home ]] && echo "fw_profile=home" || echo "fw_profile=public"; echo "fw_profile_zone=$z"
-    zf=/etc/firewalld/zones/$z.xml; [[ -e $zf ]] || zf=/usr/lib/firewalld/zones/$z.xml
-    if [[ -r $zf ]]; then open=$(grep -oE '<(service name|port port)="[^"]*"' "$zf" | sed -E 's/.*="//; s/"$//' | paste -sd' ')
-    else open=$(timeout 10 firewall-cmd --zone="$z" --list-services --list-ports 2>/dev/null | paste -sd' '); fi # zones dir is root-only
+    if [[ -r /etc/firewalld/zones && -x /etc/firewalld/zones ]]; then # root: read the zone file
+      zf=/etc/firewalld/zones/$z.xml; [[ -e $zf ]] || zf=/usr/lib/firewalld/zones/$z.xml
+      open=$(grep -oE '<(service name|port port)="[^"]*"' "$zf" | sed -E 's/.*="//; s/"$//' | paste -sd' ')
+    else # the zones folder is root-only: ask firewalld (read-only, allowed by 60-mountain.rules)
+      open=$({ timeout 10 firewall-cmd --zone="$z" --list-services; timeout 10 firewall-cmd --zone="$z" --list-ports; } 2>/dev/null | paste -sd' ')
+    fi
     echo "fw_open=$open"
     IFS='|' read -ra list <<<"$apps"
     for s in "${list[@]}"; do
@@ -98,9 +101,14 @@ scan() { # [--no-update] quick|full|DIR...
         --exclude-dir='/\.local/share/lutris' --exclude-dir='/\.local/share/mountain/quarantine' \
         --exclude='\.(part|crdownload|tmp)$' "$@" 2>&1)
   rc=$?
+  local f # clamscan's own move fails on FAT/exFAT USB drives: move what it found and left behind
+  while IFS= read -r f; do
+    [[ -f $f ]] && mv -n -- "$f" "$quarantine/"; rmdir "${f%/*}"/.clamav-unlink-* 2>/dev/null
+  done < <(sed -n 's/: [^:]* FOUND$//p' <<<"$out")
   find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
   found=$(awk -F': *' '/^Infected files:/ {print $2}' <<<"$out")
   case $rc in 0) r=clean ;; 1) r=found ;; *) r=error ;; esac
+  [[ ${found:-0} -gt 0 ]] && r=found # a failed move is an error too, but the threat was found
   printf 'av_last=%s\nav_result=%s\nav_found=%s\n' "$now" "$r" "${found:-0}" > "$state/last-scan"
   echo "$now $kind scan: $r${found:+, $found found}" >> "$state/scan-history"
   echo "av_result=$r"; echo "av_found=${found:-0}"

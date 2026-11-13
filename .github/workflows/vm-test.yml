@@ -384,6 +384,7 @@ jobs:
           }
           chk "Win+A and Win+N set on the applets" 0 "grep -h '^global=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort | paste -sd' '" 'Meta\+A.*Meta\+N'
           chk "applet shortcut helper" 2 "cat ~looktest/.local/state/mountain/applet-shortcuts.log 2>/dev/null || echo ok" '.'
+          R "cat ~looktest/.local/state/mountain/applet-shortcuts.log" > applet-shortcuts.txt 2>&1
           R "cat ~looktest/.config/kglobalshortcutsrc; ls -l /usr/share/kglobalaccel" > kglobalshortcutsrc.txt 2>&1
           scut "Win+A (quick settings)" meta_l a
           scut "Win+N (notifications)" meta_l n
@@ -596,13 +597,13 @@ jobs:
           
           # Task Manager: Ctrl+Shift+Esc, every tab, End task, Startup apps
           R "$(TL 'cp /usr/bin/sleep ~/.local/bin/endtasktest')"; L /home/looktest/.local/bin/endtasktest 99999
-          QM key ctrl shift esc; wchk "Ctrl+Shift+Esc opens Task Manager" 0 plasma-systemmonitor 15; sleep 6; shot taskmanager
+          K -f plasma-systemmonitor; QM key ctrl shift esc; PGF=-f wchk "Ctrl+Shift+Esc opens Task Manager" 0 plasma-systemmonitor 15; sleep 6; shot taskmanager
           chk "Task Manager RAM" 2 "ps -o rss=,comm= -C plasma-systemmonitor | awk '{print int(\$1/1024)\" MB\"}'" '.'
           for pg in 1-processes 2-performance 3-apphistory 4-startup 5-users 6-details 7-services; do
-            K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-$pg.page"; sleep 8; shot "taskmanager-${pg#*-}"
+            K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-$pg.page"; sleep 8; shot "taskmanager-${pg#*-}"
           done
           # End task on Processes (maximized): search the test process, click its row, Delete, confirm
-          K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8
           QM key meta_l pgup; sleep 2; QM click $((565*W/1280)) $((453*H/800)); sleep 1; QM type endtasktest; sleep 3
           QM click $((300*W/1280)) $((515*H/800)); sleep 1; shot taskmanager-endtask-select
           QM key delete; sleep 2; shot taskmanager-endtask-confirm; QM key ret; sleep 3
@@ -611,10 +612,10 @@ jobs:
           chk "startup test app ran at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' >/dev/null && echo running" '^running$'
           chk "Startup apps tab lists it" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'mtm-autostart-test.desktop'
           R "$(TL '/usr/libexec/mountain-taskmanager startup-set mtm-autostart-test.desktop off')"
-          K -x plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-4-startup.page"; sleep 8; shot taskmanager-startup-disabled
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-4-startup.page"; sleep 8; shot taskmanager-startup-disabled
           chk "Task Manager services list" 2 "$(TL '/usr/libexec/mountain-taskmanager services | head -4 | tr "\t" " "')" 'Running'
           chk "Task Manager device names" 2 "$(TL '/usr/libexec/mountain-taskmanager device | tr "\t" " " | paste -sd";"')" 'Processor'
-          K -x plasma-systemmonitor
+          K -f plasma-systemmonitor
           # sharpness at 1920x1080 (screenshots only)
           KS="$LT WAYLAND_DISPLAY=wayland-0 kscreen-doctor"
           OUT=$(R "$KS -o" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
@@ -725,7 +726,7 @@ jobs:
           chk "Heroic (games) keeps its access" 2 "$LT HOME=/home/looktest flatpak run --command=cat com.heroicgameslauncher.hgl /home/looktest/Documents/private.txt 2>&1 | tail -1" '.'
           # snapshots: delete a file, copy it back from Previous versions
           R "$(TL 'echo precious > ~/Documents/precious.txt')"
-          chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service && ls /var/home/.snapshots | tail -1" '^[0-9]{4}-'
+          chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service && ls /var/home/.snapshots | tail -1 || { journalctl -u mountain-snapshot -b -n 4 --no-pager -o cat; stat -c %i /var/home; } | paste -sd' '" '^[0-9]{4}-'
           SNAP=$(R "ls /var/home/.snapshots | tail -1")
           R "$(TL 'rm ~/Documents/precious.txt')"
           chk "deleted file restored from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP/looktest/Documents/precious.txt ~/Documents/ && cat ~/Documents/precious.txt")" '^precious$'

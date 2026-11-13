@@ -4,19 +4,15 @@
 set -uo pipefail
 mark=${XDG_STATE_HOME:-$HOME/.local/state}/mountain/applet-shortcuts
 [[ -e $mark ]] && exit 0
-js='var n = 0;
-panels().forEach(function (p) { p.widgets().forEach(function (w) {
-  if (w.type == "org.mountain.quicksettings") { if (!w.globalShortcut) w.globalShortcut = "Meta+A"; n++; }
+js='var n = 0, seen = [], keys = { "org.mountain.quicksettings": "Meta+A", "org.kde.plasma.notifications": "Meta+N" };
+[panels(), desktops()].forEach(function (list) { list.forEach(function (c) { // the tray keeps its icons in a containment of its own
+  seen.push(c.type + "#" + c.id + ":" + c.widgets().map(function (w) { return w.type + "#" + w.id; }).join("+"));
+  c.widgets().forEach(function (w) { if (keys[w.type]) { if (!w.globalShortcut) w.globalShortcut = keys[w.type]; n++; } });
 }); });
-var seen = [];
-desktops().forEach(function (d) { // the tray keeps its icons in a containment of its own
-  seen.push(d.type);
-  d.widgets("org.kde.plasma.notifications").forEach(function (b) { if (!b.globalShortcut) b.globalShortcut = "Meta+N"; n++; });
-});
-print("set=" + n + " containments=" + seen.join(","));'
+print("set=" + n + " in " + seen.join(" "));'
 for _ in $(seq 60); do # the tray loads its applets a little after the panel
   out=$(dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell \
-        org.kde.PlasmaShell.evaluateScript "string:$js" 2>/dev/null) && [[ $out == *set=2* ]] && { mkdir -p "${mark%/*}"; touch "$mark"; exit 0; }
+        org.kde.PlasmaShell.evaluateScript "string:$js" 2>/dev/null) && [[ $out == *set=2\ * ]] && { mkdir -p "${mark%/*}"; touch "$mark"; echo "$out" > "$mark.log"; exit 0; }
   sleep 2
 done
 mkdir -p "${mark%/*}"; echo "applet shortcuts not set: ${out:-plasmashell not reachable}" | tee "$mark.log" >&2
