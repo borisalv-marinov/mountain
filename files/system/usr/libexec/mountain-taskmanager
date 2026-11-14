@@ -140,7 +140,7 @@ inotifywait=Active Protection|catatonit=Container Helper|bash=Command Shell
 sshd=SSH Server|sshd-session=SSH Server|systemd-nsresourced=Namespace Resource Service|findmnt=Drive Watcher
 plasmalogin=Sign-in screen'
 # comm names (15 chars) that must never be ended: ending them signs you out or breaks admin prompts, audio, portals
-locked='^(plasmashell|kwin_.*|ksmserver|startplasma.*|plasma_session|systemd|dbus-.*|Xwayland|kded6|polkit.*|at-spi.*|xdg-desktop-portal.*|xdg-document-portal|xdg-permission-store|pipewire.*|wireplumber|plasmalogin|sddm.*)$'
+locked='^(plasmashell|kwin_.*|ksmserver|startplasma.*|plasma_session|systemd|dbus-.*|Xwayland|kded6|polkit.*|at-spi.*|xdg-desktop-por.*|xdg-document-po.*|xdg-permission-.*|pipewire.*|wireplumber|plasmalogin|sddm.*)$'
 
 processes() {
   printf 'id\tName\tCPU\tMemory\tLocked\n'
