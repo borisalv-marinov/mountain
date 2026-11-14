@@ -146,6 +146,7 @@ scan() { # [--no-update] quick|full|DIR...
     sed -n 's/^\(.*\): \([^:]*\) FOUND$/\1\t\2/p' <<<"$out" | head -20 |
       while IFS=$'\t' read -r f t; do echo "$now Threat quarantined: ${f##*/} ($t)"; done >> "$state/scan-history"
   fi
+  [[ $(wc -l < "$state/scan-history") -gt 1000 ]] && { tail -n 500 "$state/scan-history" > "$state/scan-history.new" && mv -f "$state/scan-history.new" "$state/scan-history"; }
   echo "av_result=$r"; echo "av_found=${found:-0}"
   grep ' FOUND$' <<<"$out" | head -20
   [[ $r == error ]] && return 2 || return 0
@@ -172,7 +173,7 @@ restore() { # NAME: back to Downloads, and tell Active Protection so it is not q
     chmod 0400 "$quarantine/$1"; t=$(mktemp "$a.XXXXXX") && { grep -vxF -- "$h" "$a" > "$t"; mv -f -- "$t" "$a"; }
     echo "could not restore $1" >&2; exit 1
   fi
-  echo "$(date '+%F %H:%M') Allowed (restored from quarantine): $1" >> "$state/scan-history"
+  echo "$(date '+%F %H:%M') Allowed (restored from quarantine): ${1//[$'\n\t']/_}" >> "$state/scan-history"
   echo "restored=$d/$1"
 }
 

@@ -127,7 +127,7 @@ pairs = [
         id: mtPower
         parent: root.Window.window ? root.Window.window.contentItem : root
         z: 1000
-        visible: root.visible && root.mtActions.length > 0
+        visible: root.visible && root.actionItemsVisible && root.mtActions.length > 0
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: Kirigami.Units.gridUnit * 2
@@ -139,7 +139,7 @@ pairs = [
         Accessible.name: text
         PlasmaComponents3.ToolTip.text: text
         PlasmaComponents3.ToolTip.visible: hovered
-        focusPolicy: Qt.NoFocus // typing still goes to the password box
+        focusPolicy: Qt.TabFocus // reachable with Tab; a click leaves typing in the password box
         onClicked: mtMenu.open()
     }
     PlasmaComponents3.Menu {
