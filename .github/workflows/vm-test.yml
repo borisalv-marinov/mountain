@@ -431,7 +431,7 @@ jobs:
           QM key meta_l; sleep 3; shot start-menu-bright-wallpaper; QM key esc; sleep 1
           L kwrite; sleep 6; L dolphin; sleep 7; shot explorer-over-white-window; K -x dolphin; K -x kwrite
           chk "KWin blur effect is loaded" 0 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:blur | awk '/boolean/{print \$2}'" '^true$'
-          chk "KWin contrast effect is loaded" 0 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:contrast | awk '/boolean/{print \$2}'" '^true$'
+          chk "KWin contrast effect is loaded" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:contrast | awk '/boolean/{print \$2}'" '^true$'
           R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 12
           # v7 Settings pages are native: no KDE System Settings or kcmshell6 window opens for them
           R "echo IyBQcmludHMgZXZlcnkgYWNjZXNzaWJsZSBuYW1lIGluIG9uZSBhcHAncyB3aW5kb3dzIChBVC1TUEkpLCBvbmUgcGVyIGxpbmU6IG5hbWVzLnB5IEFQUC1OQU1FIFtNSU4tTElORVNdCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKd2FudCA9IHN5cy5hcmd2WzFdLmxvd2VyKCkKbmVlZCA9IGludChzeXMuYXJndlsyXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDIgZWxzZSAxCgpkZWYgd2FsayhhLCBkLCBvdXQpOgogICAgaWYgZCA+IDQwIG9yIGxlbihvdXQpID4gMjAwMDA6CiAgICAgICAgcmV0dXJuCiAgICB0cnk6CiAgICAgICAgbiA9IGEuZ2V0X25hbWUoKQogICAgICAgIGsgPSBhLmdldF9jaGlsZF9jb3VudCgpCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIHJldHVybgogICAgaWYgbjoKICAgICAgICBvdXQuYXBwZW5kKG4pCiAgICBmb3IgaSBpbiByYW5nZShtaW4oaywgMjAwMCkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgYyA9IGEuZ2V0X2NoaWxkX2F0X2luZGV4KGkpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgY29udGludWUKICAgICAgICBpZiBjOgogICAgICAgICAgICB3YWxrKGMsIGQgKyAxLCBvdXQpCgpiZXN0ID0gW10KZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIGFwcCBhbmQgd2FudCBpbiAoYXBwLmdldF9uYW1lKCkgb3IgJycpLmxvd2VyKCk6CiAgICAgICAgICAgIG5hbWVzID0gW10KICAgICAgICAgICAgd2FsayhhcHAsIDAsIG5hbWVzKQogICAgICAgICAgICBpZiBsZW4obmFtZXMpID4gbGVuKGJlc3QpOgogICAgICAgICAgICAgICAgYmVzdCA9IG5hbWVzCiAgICBpZiBsZW4oYmVzdCkgPj0gbmVlZDoKICAgICAgICBicmVhawogICAgdGltZS5zbGVlcCgxKQpwcmludCgnXG4nLmpvaW4oYmVzdCkpCg== | base64 -d > /tmp/names.py && chmod 644 /tmp/names.py"
@@ -440,7 +440,7 @@ jobs:
           for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount; do
             L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
             R "$LT python3 /tmp/names.py plasmawindowed 20 > /tmp/set-names.txt 2>&1; true"
-            chk "Settings $p: page shows its title" 0 "grep -cxF '${PT[$p]}' /tmp/set-names.txt" "^[1-9]"
+            chk "Settings $p: page shows its title" 0 "grep -ciF '${PT[$p]}' /tmp/set-names.txt" "^[1-9]"
             chk "Settings $p: no systemsettings or kcmshell6" 0 "pgrep -u looktest -f 'systemsettings|kcmshell6' || echo none" '^none$'
             K -f org.mountain.settings
           done

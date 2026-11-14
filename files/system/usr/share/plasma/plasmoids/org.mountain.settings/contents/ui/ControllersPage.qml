@@ -6,7 +6,7 @@ ColumnLayout {
     id: pad
     spacing: 10
     property var pads: []
-    Component.onCompleted: app.sh("cat /sys/class/input/js*/device/name 2>/dev/null; true", out => { pads = out === "" ? [] : out.split("\n"); })
+    Component.onCompleted: app.sh("cat /sys/class/input/js*/device/name 2>/dev/null | grep -viE 'tablet|mouse|touchpad|keyboard'; true", out => { pads = out === "" ? [] : out.split("\n"); })
 
     PageTitle { title: "Game controllers" }
 

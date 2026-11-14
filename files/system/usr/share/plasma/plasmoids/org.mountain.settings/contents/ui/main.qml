@@ -230,7 +230,7 @@ PlasmoidItem {
         Layout.minimumHeight: 560
         Layout.preferredWidth: 1100
         Layout.preferredHeight: 720
-        color: Qt.rgba(0.043, 0.047, 0.059, 0.8) // pageColor, see-through so the blur shows
+        color: Qt.rgba(0.043, 0.047, 0.059, 0.93) // pageColor, lightly see-through: plasmawindowed asks KWin for no blur, so more would show sharp desktop icons behind text
 
         // Top bar: title on the left, "Find a setting" in the middle like Windows 11.
         Item {

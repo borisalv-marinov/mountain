@@ -114,7 +114,11 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   fi
   # 5 or more new files in one burst under a subfolder (Ark, Dolphin "Extract here", a folder moved in) are an extraction: all of
   # it is scanned in this one scan, so a .txt or .png from an archive is not skipped, and the result is one calm notification
-  ((xn >= 5)) && files+=("${rest[@]}")
+  # an extraction can span two bursts: for 2 minutes, a new file in a folder that just had one belongs to it
+  local now; now=$(date +%s)
+  if ((xn >= 5)); then files+=("${rest[@]}"); for f in "${files[@]}"; do printf '%s\t%s\n' "$now" "${f%/*}"; done | sort -u >> "$pdir/xdirs"
+  else for f in "${rest[@]}"; do D=${f%/*} N=$now awk -F'\t' '$1 > ENVIRON["N"] - 120 && $2 == ENVIRON["D"] { f = 1 } END { exit !f }' "$pdir/xdirs" 2>/dev/null && files+=("$f"); done; fi
+  [[ -s $pdir/xdirs ]] && N=$now awk -F'\t' '$1 > ENVIRON["N"] - 120' "$pdir/xdirs" > "$pdir/xdirs.new" && mv -f "$pdir/xdirs.new" "$pdir/xdirs"
   ((${#files[@]} + ${#odd[@]})) || return 0
   # sandbox: no network, no user bus (the scan cannot start units outside it), read-only system and home; writable only the
   # mountain folder (scan results; the review list stays read-only) and the scanner's temp folder (in the runtime dir, not the
