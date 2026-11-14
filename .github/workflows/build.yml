@@ -55,6 +55,8 @@ jobs:
         run: bash tests/test-run-dialog.sh
       - name: Check Flathub IDs
         run: bash tests/check-flathub-ids.sh
+      - name: Shadow margins match corners
+        run: python3 tests/shadowcheck.py files/system/usr/share/plasma/desktoptheme/mountain-glass
 
   bluebuild:
     name: Build Custom Image

@@ -5,7 +5,7 @@
 
 [%General]
 author=Mountain
-comment=Glossy black glass with chrome rims
+comment=Frosted black glass with chrome rims
 x11drag=all
 alt_mnemonic=true
 left_tabs=false
@@ -34,12 +34,13 @@ progressbar_thickness=6
 menubar_mouse_tracking=true
 toolbutton_style=0
 click_behavior=0
-; v5.1: app windows are solid (content behind must never read through); v6: menus 94 % over blur (text behind never reads through)
-translucent_windows=false
-blurring=false
+; v7 "everything glass": window backgrounds 80 % #121212 over KWin blur (white text 10:1, #C5C5C5 5.9:1 on a white wallpaper);
+; menus 80 % too. Views (lists, editors) stay opaque base. BlackGlassSolid (lite mode) turns translucency and blur off.
+translucent_windows=true
+blurring=true
 popup_blurring=true
-reduce_window_opacity=0
-reduce_menu_opacity=6
+reduce_window_opacity=20
+reduce_menu_opacity=20
 opaque=kaffeine,kmplayer,subtitlecomposer,kdenlive,vlc,smplayer,smplayer2,avidemux,avidemux2_qt4,avidemux3_qt4,avidemux3_qt5,kamoso,QtCreator,VirtualBox,VirtualBoxVM,trojita,dragon,digikam,lyx
 vertical_spin_indicators=false
 fill_rubberband=false

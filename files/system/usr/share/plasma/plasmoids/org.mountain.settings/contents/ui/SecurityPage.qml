@@ -10,12 +10,23 @@ ColumnLayout {
     spacing: 10
 
     property var s: ({})
+    property var ap: ({}) // mountain-protect status: Active Protection on/off, files checked today, threats
     property string running: "" // scan | rollback | snapshot | fix
     property string note: ""
     readonly property string statusCmd: "/usr/libexec/mountain-security status"
     readonly property string guide: "https://github.com/borisalv-marinov/mountain/blob/main/docs/OWNER-GUIDE.md"
 
-    function refresh() { exec.connectSource(statusCmd); }
+    readonly property string apCmd: "/usr/libexec/mountain-protect status"
+    function refresh() { exec.connectSource(statusCmd); exec.connectSource(apCmd); }
+    function a(k, d) { return ap[k] !== undefined ? ap[k] : (d || ""); }
+    // one level per tile (0 good, 1 recommended, 2 needed); the headline is the worst of them
+    readonly property int lvAv: v("av_result") === "found" ? 1 : 0
+    readonly property int lvAp: a("ap") === "on" ? 0 : 2
+    readonly property int lvFw: v("fw") === "on" ? 0 : 2
+    readonly property int lvApp: v("flatpak_tight") === "5/5" ? 0 : 1
+    readonly property int lvDev: v("selinux") !== "Enforcing" ? 2 : ((v("sb") === "off" || v("encrypted") === "no") ? 1 : 0)
+    readonly property bool loaded: s.fw !== undefined && ap.ap !== undefined
+    readonly property int overall: !loaded ? 0 : Math.max(lvAv, lvAp, lvFw, lvApp, lvDev)
     function start(what, cmd) {
         running = what;
         note = "";
@@ -33,7 +44,7 @@ ColumnLayout {
         onNewData: (source, data) => {
             disconnectSource(source);
             const out = data["stdout"] || "";
-            if (source === sec.statusCmd) {
+            if (source === sec.statusCmd || source === sec.apCmd) {
                 const m = { fw_app: [], av_history: [], av_q: [] };
                 for (const l of out.split("\n")) {
                     const i = l.indexOf("=");
@@ -41,7 +52,7 @@ ColumnLayout {
                     const k = l.slice(0, i), val = l.slice(i + 1);
                     if (Array.isArray(m[k])) m[k].push(val); else m[k] = val;
                 }
-                sec.s = m;
+                if (source === sec.apCmd) sec.ap = m; else sec.s = m;
                 return;
             }
             if (sec.running === "scan") {
@@ -66,10 +77,42 @@ ColumnLayout {
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }
-    GText {
-        text: "Mountain Security"
-        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
-        font.weight: Font.DemiBold
+    GlassCard { // Windows Security's home: one sentence that says whether you need to do anything
+        Layout.fillWidth: true
+        padding: 16
+        Accessible.role: Accessible.StaticText
+        Accessible.name: headline.text + ". " + sub.text
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 14
+            Kirigami.Icon {
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+                source: sec.overall === 0 ? "dialog-ok-apply" : "dialog-warning"
+                isMask: true
+                color: sec.overall === 0 ? "#7EE2A8" : (sec.overall === 1 ? "#F2CC60" : "#FF9B94")
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                GText {
+                    id: headline
+                    Layout.fillWidth: true
+                    text: !sec.loaded ? "Checking your device…" : sec.overall === 0 ? "Your device is protected" : sec.overall === 1 ? "Action recommended" : "Action needed"
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.5
+                    font.weight: Font.DemiBold
+                }
+                GText {
+                    id: sub
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    dim: true
+                    text: sec.overall === 0 ? "Nothing needs your attention. New files are checked as they arrive, on this PC only."
+                        : sec.overall === 1 ? "Your device is working, but a few settings below could be stronger."
+                        : "Something below is turned off. Open the tile marked Action needed to fix it."
+                }
+            }
+        }
     }
     GText {
         Layout.fillWidth: true
@@ -91,7 +134,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "security-high"
             title: "Virus & threat protection"
-            level: sec.v("av_result") === "clean" ? 0 : (sec.v("av_result") === "found" ? 1 : 1)
+            level: sec.lvAv
             details: (sec.v("av_last", "never") === "never" ? "No scan yet." : "Last scan: " + sec.v("av_last") + (sec.v("av_result") === "found" ? " · " + sec.v("av_found") + " found" : sec.v("av_result") === "clean" ? " · no threats" : ""))
                      + "\nDefinitions: " + (sec.v("av_defs") === "none" ? "not downloaded yet" : sec.v("av_defs"))
                      + " · In quarantine: " + sec.v("av_quarantine", "0")
@@ -99,25 +142,26 @@ ColumnLayout {
                      + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."
             tech: "Scanner: ClamAV, on demand only. Download checks: " + (sec.v("dl_watch") === "on" ? "on" : "off") + "."
             buttons: [
-                GlassButton { text: "Active Protection"; onClicked: app.page = "protection" },
                 GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
                 GlassButton { text: "Full scan"; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
                 GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") || { echo av_result=cancelled; exit 0; }; " + sec.helper + " scan \"$d\"") },
                 GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }
-        SecurityCard { // Windows Security > Protection history: newest first
+        SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            iconName: "view-history"
-            title: "Protection history"
-            level: 0
-            details: sec.list("av_history").length === 0 ? "No recent protection actions."
-                     : sec.list("av_history").slice().reverse().join("\n")
-            tech: "Scans, threats moved to quarantine and files you allowed or restored. In quarantine now: " + sec.v("av_quarantine", "0") + "."
+            iconName: "view-visible"
+            title: "Active Protection"
+            level: sec.lvAp
+            details: sec.a("ap") === "on"
+                     ? "On. Files checked today: " + sec.a("ap_checked_today", "0") + " · Threats blocked: " + sec.a("ap_threats", "0")
+                       + "\nNew files in Downloads, Desktop, Documents and USB drives are checked as they arrive. When you extract an archive, you get one result."
+                     : "Off. New files are not checked until you scan by hand."
+            tech: "Watcher: inotify + ClamAV in a sandboxed low-priority unit that exits when done."
             buttons: [
-                GlassButton { text: "See all"; onClicked: app.page = "protection" },
-                GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
+                GlassButton { visible: sec.a("ap") !== "on"; text: "Turn on"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-protect on") },
+                GlassButton { text: "Open Active Protection"; onClicked: app.page = "protection" }
             ]
         }
         SecurityCard {
@@ -141,7 +185,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "network-firewall"
             title: "Firewall & network protection"
-            level: sec.v("fw") === "on" ? 0 : 2
+            level: sec.lvFw
             details: sec.v("fw") === "on"
                      ? "Firewall is on. Apps allowed through: " + (sec.list("fw_app").filter(x => x.split(":")[1] === "yes").map(x => x.split(":").slice(2).join(":")).join(", ") || "none") + "."
                      : "Firewall is off. Other devices could reach apps on this PC."
@@ -158,7 +202,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "preferences-security"
             title: "App & browser protection"
-            level: sec.v("flatpak_tight") === "5/5" ? 0 : 1
+            level: sec.lvApp
             details: "Apps from the App Store run in their own protected space. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog. Game launchers keep their own access."
             tech: "Flatpak sandbox tightened for " + sec.v("flatpak_tight", "?") + " apps."
             buttons: [
@@ -170,7 +214,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "cpu"
             title: "Device security"
-            level: sec.v("selinux") !== "Enforcing" ? 2 : ((sec.v("sb") === "off" || sec.v("encrypted") === "no") ? 1 : 0)
+            level: sec.lvDev
             details: "Secure Boot: " + (sec.v("sb") === "on" ? "on" : sec.v("sb") === "off" ? "off" : "not supported")
                      + " · TPM: " + (sec.v("tpm") === "yes" ? "yes" : "no")
                      + " · Security policy: " + (sec.v("selinux") === "Enforcing" ? "on" : "off")
@@ -181,6 +225,20 @@ ColumnLayout {
                 GlassButton { text: sec.v("usb") === "on" ? "Turn off USB protection" : "Turn on USB protection"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " usb " + (sec.v("usb") === "on" ? "off" : "on")) },
                 GlassButton { visible: sec.v("selinux") !== "Enforcing"; text: "Turn on security policy"; highlighted: true; onClicked: sec.start("fix", "pkexec setenforce 1") },
                 GlassButton { visible: sec.v("sb") === "off" || sec.v("encrypted") === "no"; text: "How to turn these on"; onClicked: Qt.openUrlExternally(sec.guide + "#secure-boot-and-disk-encryption") }
+            ]
+        }
+        SecurityCard { // Windows Security > Protection history: newest first
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
+            iconName: "view-history"
+            title: "Protection history"
+            level: 0
+            details: sec.list("av_history").length === 0 ? "No recent protection actions."
+                     : sec.list("av_history").slice().reverse().join("\n")
+            tech: "Scans, threats moved to quarantine and files you allowed or restored. In quarantine now: " + sec.v("av_quarantine", "0") + "."
+            buttons: [
+                GlassButton { text: "See all"; onClicked: app.page = "protection" },
+                GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }
         SecurityCard {

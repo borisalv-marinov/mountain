@@ -92,6 +92,7 @@ ColumnLayout {
         elide: Text.ElideNone
         dim: true
         text: "Watches new files in Downloads, Desktop, Documents, your home folder, temporary files and USB drives, on this PC only: nothing is uploaded. "
+              + "When you extract an archive (Ark, Extract here), everything that came out is checked and you get one result. "
               + "It uses almost no memory until a file appears, and never watches games."
     }
     GText {

@@ -17,5 +17,5 @@ cd "$d"
 cp -r BlackGlass BlackGlassSolid
 mv BlackGlassSolid/BlackGlass.kvconfig BlackGlassSolid/BlackGlassSolid.kvconfig
 mv BlackGlassSolid/BlackGlass.svg BlackGlassSolid/BlackGlassSolid.svg
-sed -i -E 's/^translucent_windows=true$/translucent_windows=false/; s/^(blurring|popup_blurring)=true$/\1=false/; s/^reduce_window_opacity=.*/reduce_window_opacity=0/' BlackGlassSolid/BlackGlassSolid.kvconfig
+sed -i -E 's/^translucent_windows=true$/translucent_windows=false/; s/^(blurring|popup_blurring)=true$/\1=false/; s/^reduce_window_opacity=.*/reduce_window_opacity=0/; s/^reduce_menu_opacity=.*/reduce_menu_opacity=0/' BlackGlassSolid/BlackGlassSolid.kvconfig
 grep -q '^translucent_windows=false$' BlackGlassSolid/BlackGlassSolid.kvconfig

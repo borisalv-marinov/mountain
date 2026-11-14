@@ -346,6 +346,7 @@ jobs:
           R "userdel tester; useradd -m -c 'Look Test' looktest; echo looktest:$LPW | chpasswd; install -d -o looktest -g looktest ~looktest/.config ~looktest/.config/autostart ~looktest/.local ~looktest/.local/bin; cp /usr/bin/sleep ~looktest/.local/bin/mtm-autostart-test; printf '[Desktop Entry]\nType=Application\nName=Startup test\nExec=/home/looktest/.local/bin/mtm-autostart-test 99999\n' > ~looktest/.config/autostart/mtm-autostart-test.desktop; chown -R looktest: ~looktest/.config ~looktest/.local; systemctl restart display-manager" # one account on the sign-in screen, like a fresh PC
           sleep 30; W=1280; H=800; shot login-lock # clock and date only
           QM click 640 200; sleep 2; shot login-hello # "Hello, <name>", picture, password box
+          QM move $((W-58)) $((H-58)); sleep 3; shot login-power-tooltip # review crop: bottom right, tooltip corners over the wallpaper
           QM click $((W-58)) $((H-58)); sleep 2; shot login-power-menu # Windows: power at the bottom right (Sleep, Restart, Shut down)
           QM key esc; sleep 1; QM click 640 200; sleep 1
           QM type wrongpass; QM key ret; sleep 5; shot login-wrong
@@ -425,6 +426,18 @@ jobs:
           R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 15; shot settings-background-color
           chk "Background: solid color" 0 "grep -E '^(wallpaperplugin=org.kde.color|Color=)' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort -u | paste -sd' '" 'org.kde.color'
           chk "Background: status" 2 "$LT /usr/libexec/mountain-background status | paste -sd' '" 'plugin=org.kde.color'
+          # v7 glass over a bright wallpaper: white desktop, Start menu, then File Explorer over a white window (blur and tint must stay dark)
+          R "$LT /usr/libexec/mountain-background color '#FFFFFF'" >> bg-apply.txt 2>&1; sleep 12
+          QM key meta_l; sleep 3; shot start-menu-bright-wallpaper; QM key esc; sleep 1
+          L kwrite; sleep 6; L dolphin; sleep 7; shot explorer-over-white-window; K -x dolphin; K -x kwrite
+          R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 12
+          # v7 Settings pages are native: no KDE System Settings or kcmshell6 window opens for them
+          for p in display sound bluetooth nightlight language typing; do
+            L "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
+            chk "Settings $p: no systemsettings or kcmshell6" 0 "pgrep -u looktest -f 'systemsettings|kcmshell6' || echo none" '^none$'
+            K -f org.mountain.settings
+          done
+          chk "tray layout indicator says ENG" 0 "grep -h '^DisplayNames=' /etc/xdg/kxkbrc ~looktest/.config/kxkbrc 2>/dev/null | tail -1" 'ENG'
           R "$LT /usr/libexec/mountain-background picture /usr/share/wallpapers/mountain-silk/ 2" >> bg-apply.txt 2>&1; sleep 3 # back to the default for the later shots
           K -f org.mountain.settings
           # quick settings flyout (Win+A), and the tiles this VM can toggle
@@ -595,6 +608,12 @@ jobs:
           QM rclick $((700*W/1280)) $((500*H/800)); sleep 2; shot explorer-context-menu; QM key esc; sleep 1 # "New", "Sort"
           chk "File Explorer uses the Windows labels (en@mountain first)" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep '^LANGUAGE='" 'en@mountain' 
           K -x dolphin; L 'dolphin /'; sleep 7; shot explorer-thispc; K -x dolphin
+          R "$LT /usr/libexec/mountain-explorer --this-pc"
+          chk "This PC lists Local Disk (C:)" 0 "$LT ls '/home/looktest/.local/share/mountain/This PC'" 'Local Disk \(C:\)'
+          L 'dolphin "/home/looktest/.local/share/mountain/This PC"'; sleep 7; shot this-pc; K -x dolphin
+          QM key meta_l; sleep 3; shot start-menu-pins; QM key esc; sleep 1
+          L 'dolphin /home/looktest/Pictures'; sleep 6; shot pictures-folder; K -x dolphin
+          chk "shipped launcher is trusted (u+x and metadata::trusted): no open-or-run dialog" 0 "{ stat -c %A /home/looktest/Desktop/Coding/Terminal.desktop | cut -c4; $LT gio info -a metadata::trusted /home/looktest/Desktop/Coding/Terminal.desktop | grep -o 'trusted: .*'; } | paste -sd' '" '^x trusted: true$'
           # a folder launcher opened the way File Explorer opens it starts its app
           L 'dolphin "/home/looktest/Desktop/Coding"'; sleep 6; shot explorer-launchers; K -x dolphin
           L 'kioclient exec "/home/looktest/Desktop/Coding/Terminal.desktop"'; wchk "a folder launcher opens its app" 0 konsole 20; sleep 2; K -x konsole
@@ -941,6 +960,13 @@ jobs:
           N1=$(R "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c '^checking '")
           chk "Active Protection: 50 text saves in Documents start no scan" 0 "echo $((N1-N0))" '^0$'
           R "rm -f ~looktest/Documents/note-*.txt"
+          # v7: an extracted folder (5 or more new files in a subfolder) gets one scan and one result, text files included
+          R "sudo -u looktest mkdir -p ~looktest/Documents/ext; for i in 1 2 3 4 5 6; do echo note\$i | sudo -u looktest tee ~looktest/Documents/ext/f\$i.txt >/dev/null; done"; sleep 20
+          chk "Active Protection: an extracted folder gets one scan and one result" 0 "$LT journalctl --user -u mountain-protect --since '-2min' | grep -c 'checking 6 file'" '^1$'
+          R "rm -rf ~looktest/Documents/ext"
+          R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d | sudo -u looktest tee eicar.txt >/dev/null"; sleep 25
+          chk "Active Protection: EICAR named .txt in an extracted folder is caught" 0 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
+          R "rm -rf ~looktest/Documents/ext2"
           chk "Active Protection: no scanner left running at idle" 0 "pgrep -u looktest -x clamscan || echo none" '^none$'
           APM=$(R "$LT systemctl --user show mountain-protect.service -p MemoryCurrent --value")
           [[ $APM =~ ^[0-9]+$ ]] || APM=
@@ -951,6 +977,8 @@ jobs:
           R "$LT systemctl --user stop mountain-protect.service"; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
           R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
           L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans
+          K -f org.mountain.settings; L "/usr/libexec/mountain-settings-open home"; sleep 8; shot security-home; K -f org.mountain.settings
+          L "/usr/libexec/mountain-settings-open privacy"; sleep 9
           QM move 640 400; sleep 1; shot security-protection-history # the card under Virus & threat protection; K -f org.mountain.settings
           R "rm -f /var/lib/clamav/mountain-test.hdb"
           # firewall: a service listening on 8765 answers inside the VM but not from outside

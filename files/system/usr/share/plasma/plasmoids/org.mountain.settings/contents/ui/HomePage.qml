@@ -95,9 +95,9 @@ ColumnLayout {
                 Layout.fillWidth: true
                 padding: 6
                 CardHeader { title: "Recommended settings"; subtitle: "Recent and commonly used settings" }
-                SettingRow { text: "Sound"; iconName: "preferences-desktop-sound"; onClicked: app.openKcm("kcm_pulseaudio") }
+                SettingRow { text: "Sound"; iconName: "preferences-desktop-sound"; onClicked: app.page = "sound" }
                 SettingRow { text: "Power & battery"; iconName: "battery"; divider: true; onClicked: app.openKcm("kcm_powerdevilprofilesconfig") }
-                SettingRow { text: "Display"; iconName: "preferences-desktop-display"; divider: true; onClicked: app.openKcm("kcm_kscreen") }
+                SettingRow { text: "Display"; iconName: "preferences-desktop-display"; divider: true; onClicked: app.page = "display" }
             }
 
             GlassCard {

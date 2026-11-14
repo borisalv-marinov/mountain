@@ -23,6 +23,17 @@ fi
 for p in "${XDG_DATA_HOME:-$HOME/.local/share}"/plasma-systemmonitor/mountain-*.page; do
   [[ -f $p ]] && grep -q 'gpu/' "$p" && rm -f -- "$p"
 done
+# Shipped Desktop launchers are trusted: Plasma asks "open or execute?" for a .desktop file unless it is executable. Only files
+# identical to the ones in /etc/skel/Desktop (a user's own or downloaded launchers keep the prompt); every login, cheap.
+skel=${MOUNTAIN_SKEL_DESKTOP:-/etc/skel/Desktop}; dd=${MOUNTAIN_DESKTOP_DIR:-$(xdg-user-dir DESKTOP 2>/dev/null || true)}
+[[ -n $dd && $dd != "$HOME" ]] || dd=$HOME/Desktop
+if [[ -d $skel && -d $dd ]]; then
+  while IFS= read -r -d '' f; do
+    g=$dd/${f#"$skel"/}
+    if [[ -f $g && ! -L $g ]] && cmp -s "$f" "$g"; then chmod u+x "$g"; gio set "$g" metadata::trusted true 2>/dev/null || true; fi
+  done < <(find "$skel" -type f -name '*.desktop' -print0)
+fi
+"${MOUNTAIN_EXPLORER:-/usr/libexec/mountain-explorer}" --this-pc 2>/dev/null || true # the This PC drive links
 out=${XDG_DATA_HOME:-$HOME/.local/share}/user-places.xbel
 tpl=${MOUNTAIN_PLACES_TEMPLATE:-/usr/share/mountain/user-places.xbel.in}
 [[ -e $out ]] && exit 0
@@ -60,8 +71,8 @@ done
 snap=${MOUNTAIN_SNAP_SRC:-/var/home}
 [[ ${MOUNTAIN_SNAPSHOTS_PLACE:-} == 1 || $(stat -c %i "$snap" 2>/dev/null) == 256 ]] && add "$(url "$snap/.snapshots")" "Previous versions" document-revert
 mkdir -p "$(dirname "$out")"
-python3 - "$tpl" "$out" "$places" <<'PY'
+python3 - "$tpl" "$out" "$places" "$(url "${XDG_DATA_HOME:-$HOME/.local/share}/mountain/This PC")" <<'PY'
 import sys
-t, o, p = sys.argv[1:]
-open(o, "w").write(open(t).read().replace("@PLACES@", p))
+t, o, p, h = sys.argv[1:]
+open(o, "w").write(open(t).read().replace("@PLACES@", p).replace("@THISPC@", h))
 PY

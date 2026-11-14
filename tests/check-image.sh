@@ -477,6 +477,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_file /usr/share/Kvantum/BlackGlass/BlackGlass.svg
   assert_grep '^theme=BlackGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
   assert_grep '^translucent_windows=false$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig
+  assert_grep '^reduce_menu_opacity=0$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig # lite mode: no see-through menus either
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /usr/share/Kvantum/BlackGlass/BlackGlass.svg || fail "Kvantum SVG invalid"
   local t=/usr/share/plasma/desktoptheme/mountain-glass f
   python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="mountain-glass"' $t/metadata.json || fail "bad Plasma theme metadata"
@@ -488,7 +489,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^name=mountain-glass$' /etc/xdg/plasmarc
   assert_grep '^ColorScheme=BlackGlass$' /etc/xdg/kdeglobals
   assert_grep '^theme=__aurorae__svg__BlackGlass$' /etc/xdg/kwinrc
-  # one palette: base #121212 (glass 0.82 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
+  # one palette: base #121212 (glass 0.62 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
   for f in /usr/share/color-schemes/BlackGlass.colors $t/colors; do
     assert_grep '^BackgroundNormal=18,18,18$' "$f"
     assert_grep '^ForegroundInactive=197,197,197$' "$f"
@@ -497,8 +498,8 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
     grep -qE '^(Background|Foreground)[A-Za-z]*=(16,18,22|11,12,15|7,8,10|27,29,34|164,169,178)$' "$f" && fail "old blue-black left in $f"
   done
   cmp -s /usr/share/color-schemes/BlackGlass.colors $t/colors || fail "Plasma theme and color scheme differ"
-  grep -q 'stop-color="#121212" stop-opacity="0.82"' $t/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.82"
-  grep -q 'stop-color="#121212" stop-opacity="0.82"' $t/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.82"
+  grep -q 'stop-color="#121212" stop-opacity="0.62"' $t/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.62"
+  grep -q 'stop-color="#121212" stop-opacity="0.62"' $t/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.62"
   grep -q 'stop-color="#121212" stop-opacity="1"' $t/translucent/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
   assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
@@ -535,7 +536,7 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
   python3 -c 'import base64,sys; b=base64.b64decode(open(sys.argv[1]).read().split("State=")[1]); w=int.from_bytes(b[17:21],"big"); assert w>=150, w' /etc/skel/.local/state/dolphinstaterc || fail "File Explorer sidebar too narrow"
   # contrast: solid app windows, glass menus; Windows-like minimize; crisp fonts
   f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
-  assert_grep '^translucent_windows=false$' $f
+  assert_grep '^translucent_windows=true$' $f # v7 everything glass (phase 34 asserts blur and opacity)
   assert_grep '^popup_blurring=true$' $f
   assert_grep '^transparent_dolphin_view=false$' $f
   assert_grep '^squashEnabled=true$' /etc/xdg/kwinrc
@@ -638,8 +639,9 @@ PY
   assert_grep '^MANGOHUD_CONFIGFILE=/etc/xdg/MangoHud/MangoHud.conf$' /usr/lib/environment.d/60-mountain-mangohud.conf
   assert_grep '^clipboardGroup=PostScreenshotCopyImage$' /etc/xdg/spectaclerc
   # Bulgarian keyboard, Cyrillic fonts
-  assert_grep '^LayoutList=us,bg,bg$' /etc/xdg/kxkbrc
-  assert_grep '^VariantList=,phonetic,$' /etc/xdg/kxkbrc
+  assert_grep '^LayoutList=us,bg$' /etc/xdg/kxkbrc
+  assert_grep '^VariantList=,phonetic$' /etc/xdg/kxkbrc
+  assert_grep '^DisplayNames=ENG,БГ$' /etc/xdg/kxkbrc
   assert_grep '^Options=grp:alt_shift_toggle$' /etc/xdg/kxkbrc
   n=$(fc-list :lang=bg family 2>/dev/null || true); [[ -n $n ]] || fail "no font covers Bulgarian" # captured: grep -q would SIGPIPE fc-list under pipefail
   # Windows 11 taskbar: 48 px, not floating, show-desktop corner
@@ -866,7 +868,7 @@ PY
   grep -qx 'Send feedback' <<<"$v" || fail "Notepad welcome page still says Get involved"
   # Windows 11 menus and 8 px corners, no Overview hot corner, yellow folders, no classic menubars
   f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
-  for p in '^frame.left=8$' '^menu_shadow_depth=8$' '^menu_blur_radius=8$' '^reduce_menu_opacity=6$' '^text.iconspacing=12$'; do assert_grep "$p" $f; done
+  for p in '^frame.left=8$' '^menu_shadow_depth=8$' '^menu_blur_radius=8$' '^reduce_menu_opacity=20$' '^text.iconspacing=12$'; do assert_grep "$p" $f; done
   for f in /usr/share/Kvantum/BlackGlass/BlackGlass.svg /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.svg; do assert_grep 'id="menu-shadow-topleft"' $f; done
   assert_grep 'id="menu-shadow-hint-left"' /usr/share/Kvantum/BlackGlass/BlackGlass.svg
   [[ -z "$(grep -o 'A10,10' /usr/share/aurorae/themes/BlackGlass/decoration.svg || true)" ]] || fail "window corners are not 8 px"
@@ -943,6 +945,31 @@ PY
   grep -rq 'unavailable")' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui && fail "quick-settings tile names too long for the tile"
   f=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -path '*/org/kde/plasma/extras/ShadowedLabel.qml' -print -quit 2>/dev/null || true); grep -qs 'spread: 0.55' "$f" || fail "desktop label shadow not patched"
   assert_grep '^LANG=' /etc/locale.conf # sign-in screen clock follows US English (12 h, M/d) unless the installer chose another language
+  true
+}
+
+check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
+  local t=/usr/share/plasma/desktoptheme/mountain-glass ui=/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui f p
+  f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  for p in '^translucent_windows=true$' '^blurring=true$' '^reduce_window_opacity=20$' '^reduce_menu_opacity=20$'; do assert_grep "$p" $f; done
+  assert_grep '^contrast=0.8$' $t/plasmarc
+  assert_grep '^BlurStrength=12$' /etc/xdg/kwinrc
+  ! grep -q 'fill-opacity="0.86"' /usr/share/aurorae/themes/BlackGlass/decoration.svg || fail "BlackGlass title bar still 0.86 opaque"
+  # Settings: own pages for Display, Sound, Bluetooth, Night light, Language, Typing (no KDE System Settings window)
+  for p in PageTitle ChoiceRow DeviceCard SoundPage DisplayPage BluetoothPage NightLightPage LanguagePage TypingPage; do assert_file $ui/$p.qml; done
+  ! grep -q systemsettings $ui/main.qml || fail "Settings main.qml still opens systemsettings"
+  assert_cmd kscreen-doctor
+  [[ -f /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo ]] || echo "NOTE: Bulgarian plasmashell.mo not installed (translations are not part of this image check)"
+  # Security: one scan and one calm result for an extracted folder; the page shows the live state
+  assert_grep 'xn >= 5' /usr/libexec/mountain-protect
+  assert_grep 'extracted files' /usr/libexec/mountain-protect
+  assert_grep 'mountain-protect status' $ui/SecurityPage.qml
+  assert_grep 'Your device is protected' $ui/SecurityPage.qml
+  # File Explorer: This PC is a folder of drive links, not the file system root
+  assert_grep 'href="@THISPC@"' /usr/share/mountain/user-places.xbel.in
+  ! grep -q 'href="file:///"' /usr/share/mountain/user-places.xbel.in || fail "This PC still opens /"
+  assert_grep 'Local Disk (C:)' /usr/libexec/mountain-explorer
+  f=$(find /usr/share/icons/We10X-dark -name 'folder-pictures.*' -print -quit 2>/dev/null || true); [[ -n $f ]] || fail "We10X-dark has no folder-pictures icon (Pictures place)"
   true
 }
 

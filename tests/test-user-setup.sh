@@ -10,7 +10,7 @@ ok '[[ -f "$f" ]]' "file written"
 ok 'python3 -c "import sys,xml.dom.minidom as m;m.parse(sys.argv[1])" "$f"' "valid XML"
 ok 'grep -q "<kde_places_version>4</kde_places_version>" "$f"' "version 4 (no re-seeding)"
 ok '! grep -q "Remote-IsHidden" "$f" && grep -q "href=\"remote:/\"" "$f"' "Network shown (remote:/)"
-ok 'grep -q "href=\"file:///\"" "$f" && grep -q "<title>This PC</title>" "$f"' "This PC place"
+ok 'grep -q "href=\"file://[^\"]*/mountain/This%20PC\"" "$f" && grep -q "<title>This PC</title>" "$f"' "This PC place is the drive-letter folder"
 ok 'grep -q "<GroupState-Devices-IsHidden>true</GroupState-Devices-IsHidden>" "$f"' "internal Devices group hidden"
 ok '! grep -q "RemovableDevices-IsHidden" "$f"' "USB drives still shown"
 ok 'grep -q "href=\"desktop:/\"" "$f"' "Desktop via desktop:/"
@@ -33,4 +33,9 @@ ok '[[ $(cat "$f") == edited ]]' "existing file kept"
 P=$H/.local/share/plasma-systemmonitor; mkdir -p "$P"; echo '"gpu/all/usage"' > "$P/mountain-2-performance.page"; echo '"cpu/all/usage"' > "$P/mountain-1-processes.page"
 HOME=$H XDG_DATA_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok '[[ ! -e $P/mountain-2-performance.page && -e $P/mountain-1-processes.page ]]' "an old Task Manager page with the GPU chart is dropped, others kept"
+K=$H/skel; D=$H/Desk; mkdir -p "$K/Coding" "$D/Coding"; echo '[Desktop Entry]' > "$K/Coding/Terminal.desktop"; cp "$K/Coding/Terminal.desktop" "$D/Coding/"
+echo '[Desktop Entry]' > "$K/Coding/Mine.desktop"; echo '[Desktop Entry]
+Exec=evil' > "$D/Coding/Mine.desktop"; echo '[Desktop Entry]' > "$D/Coding/Downloaded.desktop"; chmod -x "$D"/Coding/*
+HOME=$H XDG_DATA_HOME= MOUNTAIN_SKEL_DESKTOP=$K MOUNTAIN_DESKTOP_DIR=$D MOUNTAIN_EXPLORER=true MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok '[[ -x $D/Coding/Terminal.desktop && ! -x $D/Coding/Mine.desktop && ! -x $D/Coding/Downloaded.desktop ]]' "shipped launchers are trusted (executable, no open-or-run prompt); edited and downloaded ones are not"
 rm -rf "$H"; exit $rc

@@ -19,7 +19,7 @@ ColumnLayout {
 
     GText {
         visible: searching && items.length === 0
-        text: "No settings found. Try another word, or open All settings in Updates."
+        text: "No settings found. Try another word."
         dim: true
     }
 

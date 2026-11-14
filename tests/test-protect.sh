@@ -45,7 +45,7 @@ while [[ $1 != /usr/libexec/mountain-security ]]; do shift; done; shift 3; r=cle
 for f; do if [[ $f == - ]]; then grep -q EVIL && { echo "stdin: Evil FOUND"; r=found; }; elif grep -q EVIL "$f"; then echo "$f: Evil FOUND"; r=found; fi; done
 echo "av_result=$r"
 STUB
-printf '#!/bin/sh\n' > "$B/notify-send"; chmod +x "$B/systemd-run" "$B/notify-send"
+printf '%s\n' '#!/bin/sh' 'for a; do :; done; printf "%s\n" "$a" >> "$0.log"' > "$B/notify-send"; chmod +x "$B/systemd-run" "$B/notify-send"
 echo EVIL > "$H/Downloads/node_modules/a.zip"; echo EVIL > "$H/proj/node_modules/b.zip"; echo fine > "$H/Downloads/ok.zip"
 pc() { HOME=$H XDG_DATA_HOME=$D XDG_RUNTIME_DIR=$T/run PATH=$B:$PATH bash "$S" check "$@" >/dev/null 2>&1; }
 mkdir -p "$T/run"; pc "$H/Downloads/node_modules/a.zip" "$H/proj/node_modules/b.zip" "$H/Downloads/ok.zip"
@@ -60,4 +60,15 @@ truncate -s 401M "$H/Downloads/big.zip"; pc "$H/Downloads/big.zip"
 truncate -s 401M "$H/Downloads/film.mkv"; pc "$H/Downloads/film.mkv"
 ok '! grep -q film.mkv "$D/mountain/protect/unverified"' "a big movie is not listed (no pop-up for every large download)"
 ok 'grep -q "big.zip	too large to scan$" "$D/mountain/protect/unverified" && ! grep -q big.zip "$B/systemd-run.log"' "a file over 400 MB is listed as too large to scan, not hashed, scanned or passed as clean"
+# extracted archives: 5+ new files under one subfolder = one scan, one calm result; fewer = no notification at all
+rl() { rm -f "$B/systemd-run.log" "$B/notify-send.log"; }
+mkdir -p "$H/Documents/ex"; for i in 1 2 3 4 5 6; do echo fine$i > "$H/Documents/ex/f$i.txt"; done
+rl; pc "$H"/Documents/ex/*
+ok '[[ $(grep -c "^--collect$" "$B/systemd-run.log") == 1 && $(cat "$B/notify-send.log") == "Checked 6 extracted files: no threats found." ]]' "6 extracted files: one scan, one result notification"
+mkdir -p "$H/Documents/ey"; for i in 1 2 3; do echo fine$i > "$H/Documents/ey/f$i.txt"; done
+rl; pc "$H/Documents/ey/f1.txt" "$H/Documents/ey/f2.txt" "$H/Documents/ey/f3.txt"
+ok '[[ ! -e $B/systemd-run.log && ! -e $B/notify-send.log ]]' "3 normal files in a subfolder: no scan, no notification"
+mkdir -p "$H/Documents/ez"; for i in 1 2 3 4 5; do echo fine$i > "$H/Documents/ez/f$i.png"; done; echo EVIL > "$H/Documents/ez/bad.txt"
+rl; pc "$H"/Documents/ez/*
+ok '[[ ! -e $H/Documents/ez/bad.txt && -e $D/mountain/quarantine/bad.txt ]] && ! grep -q Checked "$B/notify-send.log" && grep -q "Threat blocked: bad.txt" "$B/notify-send.log"' "a threat in an extracted .txt is quarantined and replaces the clean notice"
 rm -rf "$T"; exit $rc

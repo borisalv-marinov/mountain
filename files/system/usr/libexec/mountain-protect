@@ -63,7 +63,7 @@ skip() { # FILE: never checked
 }
 
 check() { # FILE...: count, flag unverified, scan the risky ones in a separate sandboxed low-priority unit
-  local f r h sig out o one="" all=() sub files=() odd=() new=() found=() props=() tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
+  local f r h sig out o one="" all=() sub files=() odd=() new=() found=() props=() rest=() xn=0 res="" tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
   for f; do # a folder moved in: its files, like a new drive's (not in /tmp, where apps and game runtimes unpack folders)
     if [[ -d $f && ! -L $f && $f != /tmp/* && $f != /var/tmp/* ]]; then mapfile -d '' -t sub < <(find "$f" -maxdepth 2 -type f -print0 2>/dev/null | head -z -n 200); all+=("${sub[@]}")
     else all+=("$f"); fi
@@ -83,6 +83,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
       h=; [[ -s $allowed ]] && h=$(sha256sum -- "$f" | cut -d' ' -f1) && grep -qsxF -- "$h" "$allowed" && continue # you allowed or restored it
     fi
     echo x >> "$pdir/checked-$(date +%F)"
+    case $f in "$dl"/*/*|"$desk"/*/*|"$docs"/*/*) ((xn++)) ;; esac # inside a subfolder of a watched folder: maybe an extracted archive
     # a tab or newline breaks the review list, and D-Bus (systemd-run) refuses names that are not UTF-8: such files are
     # scanned through stdin and never listed, only reported
     o=0; [[ $f == *[$'\n\t']* ]] || ! iconv -f UTF-8 -t UTF-8 <<<"$f" >/dev/null 2>&1 && o=1
@@ -94,7 +95,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
       new+=("$f"); one=$r
     fi
     [[ $h == - ]] && continue
-    risky "$f" "$r" || ((o)) || continue
+    risky "$f" "$r" || ((o)) || { case $f in "$dl"/*/*|"$desk"/*/*|"$docs"/*/*) rest+=("$f") ;; esac; continue; }
     if ((o)); then odd+=("$f"); else files+=("$f"); fi
   done
   ((${#seen[@]} > 20000)) && seen=()
@@ -103,6 +104,9 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
     ((${#new[@]} == 1)) && r="Unverified ${one}: $f." || r="${#new[@]} unverified files, including $f."
     notify-send -a "Active Protection" -i security-medium -h string:desktop-entry:org.mountain.protection "Active Protection" "$r Review it in Active Protection." 2>/dev/null
   fi
+  # 5 or more new files in one burst under a subfolder (Ark, Dolphin "Extract here", a folder moved in) are an extraction: all of
+  # it is scanned in this one scan, so a .txt or .png from an archive is not skipped, and the result is one calm notification
+  ((xn >= 5)) && files+=("${rest[@]}")
   ((${#files[@]} + ${#odd[@]})) || return 0
   # sandbox: no network, no user bus (the scan cannot start units outside it), read-only system and home; writable only the
   # mountain folder (scan results; the review list stays read-only) and the scanner's temp folder (in the runtime dir, not the
@@ -117,7 +121,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   if ((${#files[@]})); then
     echo "checking ${#files[@]} file(s): ${files[0]}" # to the journal (journalctl --user -u mountain-protect)
     out=$(sbscan "${files[@]}" </dev/null)
-    echo "result: $(grep -m1 '^av_result=' <<<"$out" || echo 'none, the scan unit failed')"
+    res=$(grep -m1 '^av_result=' <<<"$out"); echo "result: ${res:-none, the scan unit failed}"
     for f in "${files[@]}"; do P="$f: " awk 'index($0, ENVIRON["P"]) == 1 && / FOUND$/ { f = 1 } END { exit !f }' <<<"$out" && found+=("$f"); done
   fi
   for f in "${odd[@]:0:5}"; do # one scan each, through stdin; at most 5 per burst (each loads the definitions)
@@ -125,7 +129,10 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
     o=$(sbscan - <"$f"); echo "result: $(grep -m1 '^av_result=' <<<"$o" || echo 'none, the scan unit failed')"
     grep -q '^av_result=found' <<<"$o" && found+=("$f")
   done
-  ((${#found[@]})) || return 0
+  if ((! ${#found[@]})); then
+    ((xn >= 5)) && [[ $res == av_result=clean ]] && notify-send -a "Active Protection" -i security-high -h string:desktop-entry:org.mountain.protection "Active Protection" "Checked ${#files[@]} extracted files: no threats found." 2>/dev/null
+    return 0
+  fi
   echo x >> "$pdir/threats"
   for f in "${found[@]}"; do qmove "$f" || echo "note=could not quarantine $f"; drop "$f"; done
   f=$(basename -- "${found[0]}"); f=$(iconv -f UTF-8 -t UTF-8 -c <<<"${f//[$'\n\t']/ }")
