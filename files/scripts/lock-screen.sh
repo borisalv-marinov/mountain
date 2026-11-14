@@ -191,7 +191,7 @@ python3 - "$l" <<'PY'
 import sys
 p = sys.argv[1]; s = open(p, encoding='utf-8').read()
 old = 'text: i18ndc("plasma_shell_org.kde.plasma.desktop", "Button to show/hide virtual keyboard", "Virtual Keyboard")'
-new = ('text: inputPanel.keyboardActive ? i18ndc("plasmashellprivateplugin", "@action:button", "Hide On-Screen Keyboard")'
+new = ('text: Qt.inputMethod.visible ? i18ndc("plasmashellprivateplugin", "@action:button", "Hide On-Screen Keyboard")'
        ' : i18ndc("plasmashellprivateplugin", "@action:button", "Show On-Screen Keyboard")')
 assert s.count(old) == 1, f'LockScreenUi.qml: expected 1 "Virtual Keyboard" button, got {s.count(old)}'
 open(p, 'w', encoding='utf-8', newline='').write(s.replace(old, new))
