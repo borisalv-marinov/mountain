@@ -106,6 +106,20 @@ ColumnLayout {
                 GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }
+        SecurityCard { // Windows Security > Protection history: newest first
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
+            iconName: "view-history"
+            title: "Protection history"
+            level: 0
+            details: sec.list("av_history").length === 0 ? "No recent protection actions."
+                     : sec.list("av_history").slice().reverse().join("\n")
+            tech: "Scans, threats moved to quarantine and files you allowed or restored. In quarantine now: " + sec.v("av_quarantine", "0") + "."
+            buttons: [
+                GlassButton { text: "See all"; onClicked: app.page = "protection" },
+                GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
+            ]
+        }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop

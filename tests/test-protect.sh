@@ -46,5 +46,6 @@ ok '[[ -e $H/proj/node_modules/b.zip ]]' "node_modules outside Downloads is stil
 if touch "$H/Downloads/t"$'\t'"x.zip" 2>/dev/null; then # tabs in names: not on Windows file systems
   echo EVIL > "$H/Downloads/t"$'\t'"x.zip"; pc "$H/Downloads/t"$'\t'"x.zip"
   ok '[[ ! -e $H/Downloads/t$'"'\t'"'x.zip && -e $D/mountain/quarantine/t_x.zip ]] && ! grep -q "t	x" "$D/mountain/protect/unverified" 2>/dev/null' "a file with a tab in its name is scanned and quarantined under a plain name"
+  ok 'grep -q "Threat quarantined: t_x.zip" "$D/mountain/scan-history"' "the quarantine shows in Protection history"
 fi
 rm -rf "$T"; exit $rc

@@ -58,6 +58,7 @@ modules:
       - explorer-title.sh
       - desktop-drag-fix.sh
       - lock-screen.sh
+      - process-table.sh
       - mountain-desktop-labels.sh
       - icons-finalize.sh
       - hardening.sh

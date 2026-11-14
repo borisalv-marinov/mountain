@@ -111,7 +111,8 @@ qmove() { # FILE: into quarantine under a plain name (no tab, newline or bad UTF
   mkdir -p "$q" && chmod 700 "$q" || return 1
   b=$(basename -- "$1"); b=$(iconv -f UTF-8 -t UTF-8 -c <<<"${b//[$'\n\t']/_}"); [[ -n $b ]] || b="file"
   [[ -e $q/$b ]] && b=$b.$(date +%s%N)
-  mv -n -- "$1" "$q/$b" && [[ ! -e $1 ]] && chmod 0400 "$q/$b"
+  mv -n -- "$1" "$q/$b" && [[ ! -e $1 ]] && chmod 0400 "$q/$b" &&
+    echo "$(date '+%F %H:%M') Threat quarantined: $b" >> "$state/scan-history" # Protection history
 }
 
 daemon() {
@@ -190,7 +191,8 @@ case ${1:-} in
   status) status ;;
   on) systemctl --user enable --now mountain-protect.service ;;
   off) systemctl --user disable --now mountain-protect.service ;;
-  allow) listed "${2:-}"; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed"; drop "$2" ;;
+  allow) listed "${2:-}"; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed"; drop "$2"
+    b=${2##*/}; echo "$(date '+%F %H:%M') Allowed: ${b//[$'\n\t']/_}" >> "$state/scan-history" ;;
   allow-hash) [[ -f ${2:-} ]] || { echo "no such file: ${2:-}" >&2; exit 2; }; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed" ;; # quarantine restore
   quarantine) listed "${2:-}"; qmove "$2" && drop "$2" ;;
   delete) listed "${2:-}"; rm -f -- "$2"; drop "$2" ;;

@@ -64,7 +64,7 @@ status() {
   /usr/libexec/mountain-windows-boot check >/dev/null 2>&1 && echo windows=yes || echo windows=no
   echo "autolock_min=$(kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout --default 5 2>/dev/null)"
   status_av | grep '^dl_watch='
-  tail -5 "$state/scan-history" 2>/dev/null | sed 's/^/av_history=/'
+  tail -8 "$state/scan-history" 2>/dev/null | sed 's/^/av_history=/'
   find "$quarantine" -maxdepth 1 -type f -printf 'av_q=%f\n' 2>/dev/null | head -20
   v=0; for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
     grep -qs '!home' "/var/lib/flatpak/overrides/$a" && v=$((v+1))
@@ -142,6 +142,10 @@ scan() { # [--no-update] quick|full|DIR...
   [[ ${found:-0} -gt 0 ]] && r=found # a failed move is an error too, but the threat was found
   printf 'av_last=%s\nav_result=%s\nav_found=%s\n' "$now" "$r" "${found:-0}" > "$state/last-scan"
   echo "$now $kind scan: $r${found:+, $found found}" >> "$state/scan-history"
+  if [[ -n ${mvq[*]} ]]; then # Protection history: each threat by name
+    sed -n 's/^\(.*\): \([^:]*\) FOUND$/\1\t\2/p' <<<"$out" | head -20 |
+      while IFS=$'\t' read -r f t; do echo "$now Threat quarantined: ${f##*/} ($t)"; done >> "$state/scan-history"
+  fi
   echo "av_result=$r"; echo "av_found=${found:-0}"
   grep ' FOUND$' <<<"$out" | head -20
   [[ $r == error ]] && return 2 || return 0
@@ -168,6 +172,7 @@ restore() { # NAME: back to Downloads, and tell Active Protection so it is not q
     chmod 0400 "$quarantine/$1"; t=$(mktemp "$a.XXXXXX") && { grep -vxF -- "$h" "$a" > "$t"; mv -f -- "$t" "$a"; }
     echo "could not restore $1" >&2; exit 1
   fi
+  echo "$(date '+%F %H:%M') Allowed (restored from quarantine): $1" >> "$state/scan-history"
   echo "restored=$d/$1"
 }
 

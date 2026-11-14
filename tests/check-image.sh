@@ -445,6 +445,13 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^State=' /etc/skel/.local/state/dolphinstaterc # File Explorer opens with the Details (Information) pane
   assert_grep 'BelowTime' "$L"
   assert_grep '"arrangement", 1' "$L"
+  assert_grep '"iconSize", 3' "$L" # Medium icons
+  bc=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit 2>/dev/null || true)
+  assert_grep 'id: mtPower' "$bc/SessionManagementScreen.qml" # sign-in and lock screen: power menu at the bottom right
+  assert_grep 'title: "Protection history"' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  pt=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml # KDE's process lists
+  assert_grep 'id: kthreads' $pt; assert_grep '"plasmashell": "Windows Explorer"' $pt; assert_grep 'mtUnits(model.display)' $pt
+  assert_grep 'Threat quarantined: ' /usr/libexec/mountain-protect; assert_grep 'Threat quarantined: ' /usr/libexec/mountain-security
   grep -q 'location = "top"' "$L" && fail "top bar is on by default"
   grep -q 'systemtray' /usr/libexec/mountain-topbar && fail "top bar would add a second tray"
   assert_grep '^URL=trash:/$' "/etc/skel/Desktop/Recycle Bin.desktop"
@@ -620,7 +627,9 @@ PY
     [[ ! -e $f ]] || { assert_grep '^X-KDE-Shortcuts=Print$' "$f"; assert_grep '^X-KDE-Shortcuts=$' "$f"
       ! grep -qE '^X-KDE-Shortcuts=(.*,)?Meta\+(R|Shift\+S)(,|$)' "$f" || fail "Spectacle still holds Win+R or Win+Shift+S: $f"; }
   done
-  assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep $'^Expose=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc # Task view without the desktops strip
+  assert_grep '^Overview=none,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^windowviewEnabled=true$' /etc/xdg/kwinrc
   assert_grep '^next activity=none,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep $'^_launch=Ctrl+Shift+Esc\tCtrl+Esc$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^\[services\]\[mountain-winx.desktop\]$' /etc/skel/.config/kglobalshortcutsrc

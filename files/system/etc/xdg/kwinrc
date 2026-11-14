@@ -1,4 +1,5 @@
 [Plugins]
+windowviewEnabled=true
 mountain-altf4Enabled=true
 org.mountain.snaplayoutsEnabled=true
 org.mountain.clipboardEnabled=true

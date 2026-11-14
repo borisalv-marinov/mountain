@@ -41,6 +41,8 @@ jobs:
         run: bash tests/test-protect.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
+      - name: vm-test carries the current hwsim.sh
+        run: bash -n tests/vm/hwsim.sh && grep -oE 'echo [A-Za-z0-9+/=]+ \| base64 -d > /tmp/hwsim.sh' .github/workflows/vm-test.yml | cut -d' ' -f2 | base64 -d | cmp - tests/vm/hwsim.sh
       - name: File Explorer opens Desktop folders through desktop:/
         run: bash tests/test-explorer.sh
       - name: Firewall profile picks the default-route connection
