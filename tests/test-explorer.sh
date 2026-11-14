@@ -18,5 +18,8 @@ P=$T/data/mountain/This\ PC; x --this-pc
 ok '[[ $(ls "$P") == $'"'"'Games (D:)
 Local Disk (C:)
 USB Drive (E:)'"'"' && $(readlink "$P/Local Disk (C:)") == / && $(readlink "$P/Games (D:)") == /run/media/u/Games ]]' "This PC: C: system disk, other drives lettered D:, E: with their labels (USB without a label: USB Drive)"
+ok 'grep -qx "SortRole=destination" "$P/.directory" && [[ $(for f in "$P"/*; do echo "$(readlink "$f") $f"; done | sort | sed "s/.*\///") == $'"'"'Local Disk (C:)
+Games (D:)
+USB Drive (E:)'"'"' ]]' "This PC: Dolphin sorts by link target, giving C:, D:, E: (not by name)"
 ok '[[ $(readlink "$P/USB Drive (E:)") == "/run/media/u/USB stick" ]]' "a mount point with a space is linked right"
 exit $rc

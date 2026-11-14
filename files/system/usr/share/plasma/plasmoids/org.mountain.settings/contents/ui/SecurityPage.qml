@@ -205,9 +205,7 @@ ColumnLayout {
             level: sec.lvApp
             details: "Apps from the App Store run in their own protected space. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog. Game launchers keep their own access."
             tech: "Flatpak sandbox tightened for " + sec.v("flatpak_tight", "?") + " apps."
-            buttons: [
-                GlassButton { text: "App permissions"; onClicked: app.openKcm("kcm_app-permissions") }
-            ]
+            buttons: []
         }
         SecurityCard {
             Layout.fillWidth: true
@@ -266,7 +264,7 @@ ColumnLayout {
                      + " · Screen lock: " + (sec.v("screenlock") === "false" ? "off" : "on, after " + sec.v("autolock_min", "5") + " minutes")
                      + "\nAdmin tasks always ask for your password."
             buttons: [
-                GlassButton { visible: sec.v("password") === "none"; text: "Set a password"; highlighted: true; onClicked: app.openKcm("kcm_users") },
+                GlassButton { visible: sec.v("password") === "none"; text: "Set a password"; highlighted: true; onClicked: app.page = "youraccount" },
                 GlassButton { visible: sec.v("screenlock") === "false"; text: "Turn on screen lock"; onClicked: sec.start("fix", "kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock true") }
             ]
         }

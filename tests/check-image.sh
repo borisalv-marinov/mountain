@@ -959,6 +959,11 @@ check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
   for p in PageTitle ChoiceRow DeviceCard SoundPage DisplayPage BluetoothPage NightLightPage LanguagePage TypingPage; do assert_file $ui/$p.qml; done
   ! grep -q systemsettings $ui/main.qml || fail "Settings main.qml still opens systemsettings"
   assert_cmd kscreen-doctor
+  for p in NotificationsPage MousePage DefaultAppsPage PowerPage AboutPage StoragePage StartupPage DateTimePage LockScreenPage ColorsPage ControllersPage PrintersPage AccountPage; do assert_file $ui/$p.qml; done
+  ! grep -rqE 'KCMLauncher|kcmshell|systemsettings|openSystemSettings|openKcm' $ui /usr/share/plasma/plasmoids/org.mountain.quicksettings || fail "Settings or quick settings still open a KDE System Settings window"
+  # Start: the 18 pins of ruling 19 (no Welcome), VS Code with its own icon
+  ! grep -q yafti_gtk /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc || fail "Welcome is still pinned"
+  f=$(sed -n 's/^Icon=//p' /usr/share/applications/com.microsoft.VSCode.desktop 2>/dev/null | head -n1); [[ -z $f || $f == /* && -f $f || $f != /* ]] || fail "VS Code icon file missing: $f"
   [[ -f /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo ]] || echo "NOTE: Bulgarian plasmashell.mo not installed (translations are not part of this image check)"
   # Security: one scan and one calm result for an extracted folder; the page shows the live state
   assert_grep 'xn >= 5' /usr/libexec/mountain-protect

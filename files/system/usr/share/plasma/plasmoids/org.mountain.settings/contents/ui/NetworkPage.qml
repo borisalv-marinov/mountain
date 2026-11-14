@@ -121,13 +121,6 @@ ColumnLayout {
             }
             SettingRow {
                 Layout.preferredWidth: 1
-                text: "Properties"
-                description: net.online ? net.typeOf(net.heroLine) : "Adapters and connections"
-                iconName: "document-properties"
-                onClicked: app.openKcm("kcm_networkmanagement")
-            }
-            SettingRow {
-                Layout.preferredWidth: 1
                 text: "Data usage"
                 description: net.usage || "Not connected"
                 iconName: "network-transmit-receive"
@@ -145,7 +138,7 @@ ColumnLayout {
                 text: modelData.t
                 description: net.sub(modelData)
                 iconName: modelData.i
-                onClicked: modelData.net === "airplane" ? net.flip(modelData) : app.openItem(modelData)
+                onClicked: if (net.hasSwitch(modelData)) net.flip(modelData)
                 trailing: [
                     GText {
                         visible: net.hasSwitch(modelData)

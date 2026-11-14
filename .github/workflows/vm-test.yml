@@ -432,7 +432,7 @@ jobs:
           L kwrite; sleep 6; L dolphin; sleep 7; shot explorer-over-white-window; K -x dolphin; K -x kwrite
           R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 12
           # v7 Settings pages are native: no KDE System Settings or kcmshell6 window opens for them
-          for p in display sound bluetooth nightlight language typing; do
+          for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount; do
             L "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
             chk "Settings $p: no systemsettings or kcmshell6" 0 "pgrep -u looktest -f 'systemsettings|kcmshell6' || echo none" '^none$'
             K -f org.mountain.settings

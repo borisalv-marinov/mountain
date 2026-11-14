@@ -6,6 +6,12 @@ d=$(realpath -m -- "$d") # /home is a link to /var/home on Bazzite: compare real
 # This PC: a folder of links named like Windows drives ("Local Disk (C:)", "Games (D:)"); only names, nothing on the drives is renamed
 t=${XDG_DATA_HOME:-$HOME/.local/share}/mountain/This\ PC
 if mkdir -p "$t" 2>/dev/null; then
+  # Dolphin sorts by name: ask it to sort by link target instead ("/" first, then mount points in the same order as D:, E:)
+  printf '[Dolphin]
+Version=4
+SortRole=destination
+SortOrder=0
+' > "$t/.directory"
   find "$t" -maxdepth 1 -type l -delete; ln -s / "$t/Local Disk (C:)"; i=0
   while IFS=' ' read -r mp src; do # other drives (USB, extra disks) in mount-point order: D:, E:, ...
     (( i < 23 )) || break; mp=$(printf '%b' "$mp"); lab=$(lsblk -dno LABEL "$src" 2>/dev/null)

@@ -71,4 +71,7 @@ ok '[[ ! -e $B/systemd-run.log && ! -e $B/notify-send.log ]]' "3 normal files in
 mkdir -p "$H/Documents/ez"; for i in 1 2 3 4 5; do echo fine$i > "$H/Documents/ez/f$i.png"; done; echo EVIL > "$H/Documents/ez/bad.txt"
 rl; pc "$H"/Documents/ez/*
 ok '[[ ! -e $H/Documents/ez/bad.txt && -e $D/mountain/quarantine/bad.txt ]] && ! grep -q Checked "$B/notify-send.log" && grep -q "Threat blocked: bad.txt" "$B/notify-send.log"' "a threat in an extracted .txt is quarantined and replaces the clean notice"
+mkdir -p "$H/Documents/proj/.git"; for i in 1 2 3 4 5 6; do echo fine$i > "$H/Documents/proj/f$i.txt"; done
+rl; pc "$H"/Documents/proj/*.txt
+ok '[[ ! -e $B/systemd-run.log && ! -e $B/notify-send.log ]]' "a git clone / project copy (6 files under a .git folder) is not an extracted archive: no scan, no notice"
 rm -rf "$T"; exit $rc
