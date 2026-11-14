@@ -22,7 +22,7 @@ jobs:
       TRY_PASSWORD: ${{ secrets.TRY_PASSWORD }}
       MINUTES: ${{ inputs.minutes || '240' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: try
       - name: Check inputs

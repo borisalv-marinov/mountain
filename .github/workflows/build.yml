@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install yamllint
         run: pip install yamllint
       - name: Check recipe YAML
@@ -71,7 +71,7 @@ jobs:
           - recipe-nvidia.yml
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       # Publish gate: check-image.sh is the last recipe module, so a failing check fails the build before the push.
       # The generated copy is not committed (.gitignore: files/scripts/check-image.sh).
       - name: Add the image checker as the last recipe step
@@ -101,7 +101,7 @@ jobs:
         image: [mountain, mountain-nvidia]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Log in to ghcr.io
         run: echo ${{ github.token }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Install skopeo
