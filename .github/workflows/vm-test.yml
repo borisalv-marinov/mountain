@@ -856,13 +856,14 @@ jobs:
           K -f org.mountain.settings
           R "$LT systemctl --user stop mountain-protect.service" # on-demand scans must not race the watcher
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
-          SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" > scan-log.txt
+          # without --quiet systemd-run prints the scan unit's runtime, CPU time and memory peak (the "virus scan cost" row)
+          SCAN=$(R "timeout 600 $LT systemd-run --user --wait --pipe --collect /usr/libexec/mountain-security scan /home/looktest/Downloads" 2>&1); echo "$SCAN" > scan-log.txt
           chk "virus definitions service log" 2 "journalctl -u mountain-virus-definitions -b --no-pager | tail -4 | cut -c1-160; journalctl -b --no-pager | grep -i 'polkit.*mountain-virus' | tail -2" '.'
           chk "virus definitions downloaded on Scan now (no password)" 2 "ls /var/lib/clamav | paste -sd' '" '.'
           if ! grep -q 'av_result=found' <<<"$SCAN"; then # the definitions server may refuse CI machines: test the pipeline with one test signature
             echo "| virus scan with downloaded definitions | INFO | $(grep -m1 -E 'av_result|note' <<<"$SCAN") - retrying with a test signature |" >> report.md
             R "printf '44d88612fea8a8f36de82e1278abb02f:68:Eicar-Test-Signature\n' > /var/lib/clamav/mountain-test.hdb"
-            SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" >> scan-log.txt
+            SCAN=$(R "timeout 600 $LT systemd-run --user --wait --pipe --collect /usr/libexec/mountain-security scan /home/looktest/Downloads" 2>&1); echo "$SCAN" >> scan-log.txt
           fi
           chk "virus scan finds the test file and quarantines it" 0 "test ! -e ~looktest/Downloads/eicar.com && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo quarantined" '^quarantined$'
           chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
@@ -899,6 +900,14 @@ jobs:
           chk "Active Protection: an unsigned script is flagged unverified" 0 "echo '$(grep -c 'ap_unverified=.*install.sh|program or script' <<<"$AP")'" '^1$'
           chk "Active Protection: a new autostart entry is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*updater.desktop|starts at sign-in' <<<"$AP")'" '^1$'
           chk "Active Protection status" 2 "echo '$(grep -E '^ap_(checked|threats)' <<<"$AP" | paste -sd' ')'" '.'
+          # persistence beyond autostart, a link into autostart (listed, never followed), a folder with a threat moved in (same disk: one rename event)
+          R "$(TL 'printf "[Service]\nExecStart=/bin/true\n" > ~/.config/systemd/user/apa-cfg.service; printf "[Service]\nExecStart=/bin/true\n" > ~/.local/share/systemd/user/apa-data.service; echo "# apa test" >> ~/.bashrc; ln -s /tmp/apa-nowhere.desktop ~/.config/autostart/apa-link.desktop; mkdir -p ~/apa-stage && echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/apa-stage/apa-dir.com && mv ~/apa-stage ~/Desktop/')"; apwait /home/looktest/Desktop/apa-stage/apa-dir.com; sleep 5
+          AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
+          chk "Active Protection: a new user service is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*/apa-[a-z]*\.service|starts at sign-in' <<<"$AP")'" '^2$'
+          chk "Active Protection: a .bashrc change is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*/\.bashrc|starts at sign-in' <<<"$AP")'" '^1$'
+          chk "Active Protection: a link into autostart is flagged, not followed" 0 "echo '$(grep -c 'ap_unverified=.*/apa-link\.desktop|link that starts at sign-in' <<<"$AP")'" '^1$'
+          chk "Active Protection: a threat in a folder moved to the Desktop is caught" 0 "test ! -e ~looktest/Desktop/apa-stage/apa-dir.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-dir && echo caught" '^caught$'
+          R "rm -rf ~looktest/Desktop/apa-stage ~looktest/.config/systemd/user/apa-cfg.service ~looktest/.local/share/systemd/user/apa-data.service ~looktest/.config/autostart/apa-link.desktop"
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
           # the Active Protection page polls only while it is on screen: none at all with the window hidden (Win+D)
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot settings-protection
@@ -921,6 +930,11 @@ jobs:
           R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore new-download.com"; sleep 20
           chk "Active Protection: a restored file is not quarantined again" 0 "test -e ~looktest/Downloads/new-download.com && echo kept" '^kept$'
           R "rm -f ~looktest/Downloads/new-download.com"
+          # a stopped watcher restarts by itself (RestartSec=30, no start limit): seen within 30 s, back 30 s later
+          R "pkill -u looktest -x inotifywait"
+          for _ in $(seq 40); do [[ $(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value") =~ ^[1-9] ]] && R "$LT systemctl --user is-active -q mountain-protect.service" && break; sleep 3; done
+          chk "Active Protection: a killed watcher restarts by itself" 0 "echo \$($LT systemctl --user show mountain-protect.service -p NRestarts --value) \$($LT systemctl --user is-active mountain-protect.service)" '^[1-9][0-9]* active$'
+          chk "Active Protection: the stop is logged (the user gets a notification)" 2 "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c 'a watcher stopped'" '^[1-9]'
           # light: 50 ordinary saves in Documents start no scan
           N0=$(R "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c '^checking '")
           R "$(TL 'cd ~/Documents && seq 50 | xargs -I@ sh -c "echo note > note-@.txt"')"; sleep 20

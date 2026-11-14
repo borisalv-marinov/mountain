@@ -14,9 +14,11 @@ computer on the same Wi-Fi.
 | Write the system (`/usr`) as root | Impossible: read-only image | see the latest run |
 | SUID programs in user-writable places | None | see the latest run |
 | SELinux | Stays enforcing | see the latest run |
-| EICAR in Downloads, `/tmp`, a USB drive, an attachment-like folder | Caught within seconds and quarantined | see the latest run |
-| EICAR downloaded from the web | Caught (best effort: needs the internet) | see the latest run |
-| A new unsigned script, a new autostart entry (persistence) | Flagged "unverified" in Active Protection | see the latest run |
+| EICAR in Downloads, `/tmp`, a USB drive, an attachment-like folder, a folder moved to the Desktop | Caught after the file is written (a burst is gathered for up to 10 s, then scanned at low priority; the test allows 120 s) and quarantined | see the latest run |
+| EICAR downloaded from the web | INFO only, not a pass/fail check (needs the internet; the server may refuse CI machines) | see the latest run |
+| A new unsigned script; persistence: a new autostart entry or link to one, a user service, a `.bashrc` change | Flagged "unverified" in Active Protection (files over 400 MB are listed as "too large to scan", never passed as clean) | see the latest run |
+| The Active Protection watcher is killed | Restarts by itself within about a minute, and tells the user it stopped | see the latest run |
+| Cost of a full virus scan | Runtime, CPU time and memory peak of the scan unit, reported as INFO (no limit is asserted); Active Protection idle: ≤ 150 MB RAM, ~0 % CPU | see the latest run |
 | A Flatpak chat app reads `~/Documents` and `~/.ssh` | Not visible inside the sandbox | see the latest run |
 | A test service on port 8765 | Answers inside the PC, blocked from outside | see the latest run |
 | Fake ransomware encrypts a folder | Restored from Previous versions | see the latest run |

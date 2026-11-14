@@ -679,6 +679,8 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   [[ $(systemctl --global is-enabled mountain-protect.service 2>/dev/null) == enabled ]] || fail "Active Protection off"
   assert_cmd inotifywait
   assert_grep '^MemoryHigh=150M$' /usr/lib/systemd/user/mountain-protect.service
+  assert_grep '^StartLimitIntervalSec=0$' /usr/lib/systemd/user/mountain-protect.service; assert_grep '^RestartSec=30$' /usr/lib/systemd/user/mountain-protect.service
+  for s in .local/share/systemd/user .config/environment.d .local/share/dbus-1/services plasma-workspace/shutdown 'too large to scan' 'link that starts at sign-in'; do assert_grep "$s" /usr/libexec/mountain-protect; done
   [[ -x /usr/libexec/mountain-protect ]] && bash -n /usr/libexec/mountain-protect || fail "mountain-protect"
   grep -q 'Steam' /usr/libexec/mountain-protect && grep -qE 'rec=.*Steam' /usr/libexec/mountain-protect && fail "Active Protection watches games"
   desktop-file-validate /usr/share/applications/org.mountain.protection.desktop || fail "Active Protection launcher"
