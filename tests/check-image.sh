@@ -465,14 +465,11 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep 'org.mountain.quicksettings' "$L"
   assert_grep 'org.mountain.settings.desktop' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/config/main.xml
   assert_cmd plasmawindowed
-  for id in $(grep -rhoE 'kcm_[A-Za-z0-9_-]+' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings | sort -u); do
+  for id in $({ grep -rhoE 'kcm_[A-Za-z0-9_-]+' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings || true; } | sort -u); do # v7: none left is the goal
     compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/*/$id.so" >/dev/null || compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/$id.so" >/dev/null \
       || [[ -e /usr/share/applications/$id.desktop ]] || missing="$missing $id"
   done
   [[ -z $missing ]] || fail "Settings pages without a KDE module:$missing"
-  for id in kcm_kscreen kcm_pulseaudio kcm_bluetooth kcm_networkmanagement kcm_wallpaper kcm_colors kcm_users kcm_clock kcm_access; do
-    [[ " $missing " == *" $id "* ]] && fail "Settings page has no module: $id"
-  done
   # black glass
   assert_file /usr/share/Kvantum/BlackGlass/BlackGlass.svg
   assert_grep '^theme=BlackGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
@@ -887,7 +884,7 @@ PY
   assert_file $su/NetworkPage.qml
   assert_grep 'NetworkPage.qml' $su/main.qml
   assert_grep 'app.netFailed' $su/main.qml # falls back to the plain rows without plasma-nm
-  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode' 'Proxy' 'Advanced network settings'; do assert_grep "{ t: \"$t\"" $su/main.qml; done
+  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode'; do assert_grep "{ t: \"$t\"" $su/main.qml; done # v7: Proxy and Advanced network removed (they opened KDE windows)
   assert_grep 'handler.enableAirplaneMode(on)' $su/NetworkPage.qml
   n=$({ grep -c 'Timer' $su/NetworkPage.qml || true; }); [[ $n == 0 ]] || fail "Network page polls"
   assert_grep 'navButton.visualFocus ? 2 : 0' $su/main.qml
