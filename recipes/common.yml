@@ -98,6 +98,10 @@ modules:
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
 
+  - type: script
+    scripts:
+      - flatpak-quiet.sh
+
   - type: initramfs # boot splash watermark lives in the initramfs
 
   - type: signing

@@ -17,7 +17,7 @@ ok '[[ $(UH=$T/var/home/u x "$T/home/u/Desktop/Coding") == "[desktop:/Coding]" ]
 P=$T/data/mountain/This\ PC; x --this-pc
 ok '[[ $(ls "$P") == $'"'"'Games (D:)
 Local Disk (C:)
-USB Drive (E:)'"'"' && $(readlink "$P/Local Disk (C:)") == / && $(readlink "$P/Games (D:)") == /run/media/u/Games ]]' "This PC: C: system disk, other drives lettered D:, E: with their labels (USB without a label: USB Drive)"
+USB Drive (E:)'"'"' && $(readlink "$P/Local Disk (C:)") == /home && $(readlink "$P/Games (D:)") == /run/media/u/Games ]]' "This PC: C: the home parent, other drives lettered D:, E: with their labels (USB without a label: USB Drive)"
 ok 'grep -qx "SortRole=destination" "$P/.directory" && [[ $(for f in "$P"/*; do echo "$(readlink "$f") $f"; done | sort | sed "s/.*\///") == $'"'"'Local Disk (C:)
 Games (D:)
 USB Drive (E:)'"'"' ]]' "This PC: Dolphin sorts by link target, giving C:, D:, E: (not by name)"

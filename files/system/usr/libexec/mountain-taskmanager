@@ -71,13 +71,29 @@ users() {
   done
 }
 
-services() {
-  printf 'id\tName\tDescription\tStatus\n'
-  systemctl list-units --type=service --all --no-legend --plain --no-pager 2>/dev/null |
-    awk '$2!="not-found" {d=""; for (i=5; i<=NF; i++) d=d (i>5?" ":"") $i;
-         s=($4=="running") ? "Running" : ($3=="failed" ? "Failed" : "Stopped");
-         n=$1; sub(/\.service$/, "", n); printf "%s\t%s\t%s\t%s\n", $1, n, d, s}' |
-    sort -t$'\t' -k4,4r -k2,2
+services() { # id, Name (the unit's description, like Windows), Status, Offer (stop|start|empty = nothing to press)
+  printf 'id\tName\tStatus\tOffer\n'
+  local u
+  u=$(systemctl list-units --type=service --all --no-legend --plain --no-pager 2>/dev/null | awk '$2!="not-found" {print $1}')
+  [[ -n $u ]] || return 0
+  # shellcheck disable=SC2086
+  systemctl show -p Id -p Description -p Type -p RemainAfterExit -p UnitFileState -p ActiveState --no-pager -- $u 2>/dev/null |
+    awk 'function out(  n, st, o) {
+           if (id == "") return
+           # not meant to be started by hand: image plumbing, one-shot jobs that just run and finish, idle static units
+           if (id ~ /^(bazzite|bootc|ostree)-/ || (ty == "oneshot" && rae != "yes") || (uf == "static" && act != "active")) return
+           n = (d != "" ? d : id); if (d == "") sub(/\.service$/, "", n)
+           st = (act == "active") ? "Running" : (act == "failed" ? "Failed" : "Stopped")
+           o = (st == "Running") ? "stop" : "start"
+           if (id ~ /^(dbus|dbus-broker|systemd-logind|polkit|plasmalogin|sddm)\.service$/) o = "" # stopping these ends the session
+           printf "%s\t%s\t%s\t%s\n", id, n, st, o
+         }
+         /^$/ {out(); id = d = ty = rae = uf = act = ""; next}
+         {i = index($0, "="); k = substr($0, 1, i - 1); v = substr($0, i + 1)
+          if (k == "Id") id = v; else if (k == "Description") d = v; else if (k == "Type") ty = v
+          else if (k == "RemainAfterExit") rae = v; else if (k == "UnitFileState") uf = v; else if (k == "ActiveState") act = v}
+         END {out()}' |
+    sort -t$'\t' -k3,3r -k2,2
 }
 
 service() { # start|stop|restart UNIT; systemctl asks polkit, which shows the admin password prompt
@@ -120,26 +136,29 @@ ibus-daemon=Text Input Host|plasma-browser-integration-host=Browser integration|
 ksecretd=Credential Manager|kiod6=File transfers|kioworker=File transfers|gvfsd=File transfers
 gvfsd-metadata=File System Helper|gvfsd-fuse=File System Helper|gvfsd-trash=File System Helper|gvfs-udisks2-vo=File System Helper
 cupsd=Print Spooler|cups-browsed=Print Spooler|tuned-ppd=Power Profiles Service|tuned=Power Profiles Service
-inotifywait=Active Protection|catatonit=Container Helper|bash=Command Shell'
-nokill=' plasmashell kwin_wayland kwin_wayland_wr kwin_x11 ksmserver startplasma-way plasma_session systemd dbus-broker dbus-broker-lau dbus-daemon Xwayland '
+inotifywait=Active Protection|catatonit=Container Helper|bash=Command Shell
+sshd=SSH Server|sshd-session=SSH Server|systemd-nsresourced=Namespace Resource Service|findmnt=Drive Watcher
+plasmalogin=Sign-in screen'
+# comm names (15 chars) that must never be ended: ending them signs you out or breaks admin prompts, audio, portals
+locked='^(plasmashell|kwin_.*|ksmserver|startplasma.*|plasma_session|systemd|dbus-.*|Xwayland|kded6|polkit.*|at-spi.*|xdg-desktop-portal.*|xdg-document-portal|xdg-permission-store|pipewire.*|wireplumber|plasmalogin|sddm.*)$'
 
 processes() {
-  printf 'id\tName\tCPU\tMemory\n'
+  printf 'id\tName\tCPU\tMemory\tLocked\n'
   local d own=() a b cg
   for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
   ((${#own[@]})) || return 0
   a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
   cg=$(grep -l '/app-.*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null | sed -E 's|.*/([0-9]+)/cgroup$|\1|')
   { sed 's/^/C /' <<<"$cg"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
-    names=$names awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
-    BEGIN {k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
+    names=$names locked=$locked awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
+    BEGIN {lk_re = ENVIRON["locked"]; k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
     $1 == "C" {app[$2] = 1; next}
     {pid = $2; c = $0; sub(/^[A-Z] [0-9]+ \(/, "", c); r = c; sub(/\) [^)]*$/, "", c); sub(/^.*\) /, "", r); split(r, f, " ")
      if ($1 == "A") {t[pid] = f[12] + f[13]; next}
      if (f[1] == "Z" || pid in app) next
      v = (pid in t) ? (f[12] + f[13] - t[pid]) * 100 / (hz * 0.5 * n) : 0; mb = f[22] * pg / 1048576
-     w = (c in nm ? nm[c] : c); if (!(w in cnt)) order[++no] = w; cnt[w]++; ids[w] = (w in ids ? ids[w] "," : "") pid; cpu[w] += v; mem[w] += mb}
-    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\n", ids[w], w, (cnt[w] > 1 ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w]))}}' |
+     w = (c in nm ? nm[c] : c); if (!(w in cnt)) order[++no] = w; cnt[w]++; if (c ~ lk_re) lk[w] = "locked"; ids[w] = (w in ids ? ids[w] "," : "") pid; cpu[w] += v; mem[w] += mb}
+    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\t%s\n", ids[w], w, (cnt[w] > 1 ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w])), lk[w]}}' |
     sort -t$'\t' -k2,2 -k1,1n
 }
 
@@ -151,7 +170,7 @@ end_one() {
   [[ $pid =~ ^[1-9][0-9]{0,9}$ ]] || { echo "bad process id: $pid" >&2; return 2; }
   ((EUID != 0)) && [[ -O /proc/$pid ]] || { echo "not your process: $pid" >&2; return 1; }
   c=$(cat "/proc/$pid/comm" 2>/dev/null)
-  [[ $nokill == *" $c "* ]] && { echo "Ending $c would sign you out." >&2; return 1; }
+  [[ $c =~ $locked ]] && { echo "Ending $c would sign you out or break the desktop." >&2; return 1; }
   kill -TERM -- "$pid" || return 1
   for _ in 1 2 3 4 5 6; do kill -0 -- "$pid" 2>/dev/null || return 0; sleep 0.5; done
   kill -KILL -- "$pid" 2>/dev/null; return 0

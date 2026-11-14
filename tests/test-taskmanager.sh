@@ -62,12 +62,12 @@ st 106 kaccess 0 7; st 107 at-spi2-registr 0 3; st 108 baloorunner 0 70; st 109 
 # during the half-second sample, kwin uses a quarter of 4 cores and plasmashell more than all of them
 (sleep 0.2; st 101 kwin_wayland $((hz / 2)) 300; st 102 plasmashell $((hz * 9)) 2048) &
 L=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 bash "$S" processes); wait
-ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tCPU\tMemory'"'"' ]]' "processes: header"
-ok 'grep -q $'"'"'^101\tDesktop Window Manager\t25.0 %\t300.0 MB$'"'"' <<<"$L"' "processes: kwin named, CPU normalised by cores, MB"
-ok 'grep -q $'"'"'^102\tWindows Explorer\t100.0 %\t2.0 GB$'"'"' <<<"$L"' "processes: CPU capped at 100 %, GB"
+ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tCPU\tMemory\tLocked'"'"' ]]' "processes: header"
+ok 'grep -q $'"'"'^101\tDesktop Window Manager\t25.0 %\t300.0 MB\tlocked$'"'"' <<<"$L"' "processes: kwin named, CPU normalised by cores, MB"
+ok 'grep -q $'"'"'^102\tWindows Explorer\t100.0 %\t2.0 GB\tlocked$'"'"' <<<"$L"' "processes: CPU capped at 100 %, GB"
 ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t'"'"' <<<"$L"' "processes: 15-char comm still named"
 ok 'grep -q $'"'"'^103\tmy (odd) tool\t0.0 %'"'"' <<<"$L"' "processes: unknown names kept, parentheses survive"
-ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB$'"'"' <<<"$L"' "processes: same-name rows merged into one, ids kept"
+ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB\tlocked$'"'"' <<<"$L"' "processes: same-name rows merged into one, ids kept"
 ok 'grep -q $'"'"'^108,109	Search Indexer (2)	'"'"' <<<"$L" && ! grep -q baloorunner <<<"$L"' "processes: baloorunner named, merged"
 ok 'grep -q $'"'"'^110	Print Spooler	'"'"' <<<"$L" && grep -q $'"'"'^111	File System Helper	'"'"' <<<"$L" && grep -q $'"'"'^112	Container Helper	'"'"' <<<"$L" && grep -q $'"'"'^113	Active Protection	'"'"' <<<"$L" && grep -q $'"'"'^114	Power Profiles Service	'"'"' <<<"$L" && grep -q $'"'"'^115	Command Shell	'"'"' <<<"$L"' "processes: service helpers named (cupsd, gvfsd, catatonit, inotifywait, tuned-ppd, bash)"
 ok '! grep -q "^105" <<<"$L"' "processes: apps (app scopes) left out"
@@ -77,4 +77,35 @@ if ((EUID != 0)) && [[ -e /proc/1 && ! -O /proc/1 ]]; then ok '! bash "$S" end 1
 sleep 30 & p=$!
 ok 'bash "$S" end $p 2>/dev/null; ! kill -0 $p 2>/dev/null' "end: ends own process"
 wait $p 2>/dev/null
+# session-critical rows are marked locked (End task disabled) and end refuses them
+ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t[0-9.]* %\t[0-9.]* MB\tlocked$'"'"' <<<"$L"' "processes: polkit agent locked"
+ok 'grep -q $'"'"'^103\tmy (odd) tool\t[0-9.]* %\t[0-9.]* MB\t$'"'"' <<<"$L" && grep -q $'"'"'^110\tPrint Spooler\t[0-9.]* %\t[0-9.]* MB\t$'"'"' <<<"$L"' "processes: ordinary rows not locked"
+for c in polkit-kde-authentication-agent-1 at-spi2-registryd xdg-desktop-portal-kde pipewire-pulse wireplumber plasmalogin dbus-broker kded6 ksmserver; do
+  cp /bin/sleep "$T/${c:0:15}"; "$T/${c:0:15}" 30 & p=$!; sleep 0.2
+  ok '! bash "$S" end $p 2>/dev/null && kill -0 $p 2>/dev/null' "end: refuses $c"; kill $p 2>/dev/null; wait $p 2>/dev/null
+done
+st 120 sshd 0 2; st 121 systemd-nsresou 0 2; st 122 findmnt 0 1
+L=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 bash "$S" processes)
+ok 'grep -q $'"'"'SSH Server'"'"' <<<"$L" && grep -q $'"'"'Namespace Resource Service'"'"' <<<"$L" && grep -q $'"'"'Drive Watcher'"'"' <<<"$L"' "processes: sshd, nsresourced, findmnt named"
+# services: unit description as the name, no oneshot or image plumbing, Start/Stop only where it makes sense
+mkdir -p "$T/bin"
+cat > "$T/bin/systemctl" <<'SC'
+#!/bin/sh
+if [ "$1" = list-units ]; then for u in a b c d e f g h; do echo "$u.service loaded active running x"; done; echo "gone.service not-found inactive dead x"; exit; fi
+blk() { printf 'Id=%s.service\nDescription=%s\nType=%s\nRemainAfterExit=%s\nUnitFileState=%s\nActiveState=%s\n\n' "$@"; }
+blk a "Audio thing" simple no enabled active
+blk b "Restore sound" oneshot no enabled inactive
+blk c "Firewall" oneshot yes enabled active
+blk d "Idle helper" simple no static inactive
+blk e "" simple no enabled failed
+blk bazzite-flatpak-manager "Flatpak" simple no enabled active
+blk systemd-logind "Login" simple no static active
+blk bootc-status "Bootc" simple no enabled active
+SC
+chmod +x "$T/bin/systemctl"
+L=$(PATH=$T/bin:$PATH bash "$S" services)
+ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tStatus\tOffer'"'"' ]]' "services: header"
+ok 'grep -q $'"'"'^a.service\tAudio thing\tRunning\tstop$'"'"' <<<"$L" && grep -q $'"'"'^c.service\tFirewall\tRunning\tstop$'"'"' <<<"$L" && grep -q $'"'"'^e.service\te\tFailed\tstart$'"'"' <<<"$L"' "services: description as name, start/stop offered"
+ok '! grep -q -e ^b.service -e ^d.service -e ^bazzite -e ^bootc -e ^gone <<<"$L"' "services: oneshot, idle static and image units hidden"
+ok 'grep -q $'"'"'^systemd-logind.service\tLogin\tRunning\t$'"'"' <<<"$L"' "services: session-critical unit offers nothing"
 rm -rf "$T"; exit $rc

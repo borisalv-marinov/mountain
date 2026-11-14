@@ -991,8 +991,8 @@ jobs:
           R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
           L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans
           K -f org.mountain.settings; L "/usr/libexec/mountain-settings-open home"; sleep 8; shot security-home; K -f org.mountain.settings
-          L "/usr/libexec/mountain-settings-open privacy"; sleep 9
-          QM move 640 400; sleep 1; shot security-protection-history # the card under Virus & threat protection; K -f org.mountain.settings
+          L "/usr/libexec/mountain-settings-open protection"; sleep 9
+          QM move 1270 790; sleep 1; shot security-protection-history # the Active Protection page with its history (pointer parked off popups); K -f org.mountain.settings
           R "rm -f /var/lib/clamav/mountain-test.hdb"
           # firewall: a service listening on 8765 answers inside the VM but not from outside
           L "python3 -m http.server 8765 --directory /tmp"; sleep 3
@@ -1080,8 +1080,8 @@ jobs:
           chk "attack: snapshot runs while the disk is full" 2 "journalctl -u mountain-snapshot -b -n 6 --no-pager -o cat | paste -sd' '" '.'
           chk "attack: a full disk can't push out the clean snapshot" 0 "cat /var/home/.snapshots/$SNAP2/looktest/Documents/rt/f2.txt" '^precious-2$'
           chk "attack: no new snapshot while the disk is full" 0 "ls /var/home/.snapshots | tail -1" "^$SNAP2$"
-          R "rm -f /var/home/looktest/rt-fill /tmp/rt-fill.py"
-          chk "attack: space back after the fill file is deleted" 2 "df --output=pcent /var/home | tail -1" '.'
+          R "rm -f /var/home/looktest/rt-fill /tmp/rt-fill.py; sync; btrfs filesystem sync /var/home; sleep 5"
+          chk "attack: space back after the fill file is deleted" 0 "df --output=pcent /var/home | tail -1" '^ *[0-8]?[0-9]%$'
           chk "game library kept out of snapshots (own subvolume)" 2 "stat -c %i /var/home/looktest/Games" '^256$'
           # broken system file (/etc) and deleted user settings, then recover
           R "cp -a /etc/xdg/kdeglobals /tmp/kdeglobals.ok; echo garbage > /etc/xdg/kdeglobals"

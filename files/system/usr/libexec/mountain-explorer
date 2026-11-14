@@ -3,7 +3,7 @@
 # "Terminal.desktop", as Windows hides ".lnk"); Plasma's desktop opens them by their file:// path. Everything else passes through.
 d=$(xdg-user-dir DESKTOP 2>/dev/null); [[ -n $d && $d != "$HOME" ]] || d=$HOME/Desktop
 d=$(realpath -m -- "$d") # /home is a link to /var/home on Bazzite: compare real paths
-# This PC: a folder of links named like Windows drives ("Local Disk (C:)", "Games (D:)"); only names, nothing on the drives is renamed
+# C: is the real parent of the home (/var/home, like C:\Users), not / (composefs: bin, ostree, sysroot). This PC: a folder of links named like Windows drives ("Local Disk (C:)", "Games (D:)"); only names, nothing on the drives is renamed
 t=${XDG_DATA_HOME:-$HOME/.local/share}/mountain/This\ PC
 if mkdir -p "$t" 2>/dev/null; then
   # Dolphin sorts by name: ask it to sort by link target instead ("/" first, then mount points in the same order as D:, E:)
@@ -12,7 +12,7 @@ Version=4
 SortRole=destination
 SortOrder=0
 ' > "$t/.directory"
-  find "$t" -maxdepth 1 -type l -delete; ln -s / "$t/Local Disk (C:)"; i=0
+  find "$t" -maxdepth 1 -type l -delete; ln -s "$(realpath -m -- "$HOME/..")" "$t/Local Disk (C:)"; i=0
   while IFS=' ' read -r mp src; do # other drives (USB, extra disks) in mount-point order: D:, E:, ...
     (( i < 23 )) || break; mp=$(printf '%b' "$mp"); lab=$(lsblk -dno LABEL "$src" 2>/dev/null)
     [[ -n $lab ]] || { [[ $(lsblk -dno RM "$src" 2>/dev/null) == *1* ]] && lab="USB Drive" || lab="Local Disk"; }
@@ -20,7 +20,7 @@ SortOrder=0
   done < <(findmnt -rno TARGET,SOURCE 2>/dev/null | grep -E '^(/run/media|/var/run/media|/mnt|/var/mnt)/' | sort)
 fi
 [[ ${1:-} == --this-pc ]] && exit 0
-tu=file://${t// /%20}; tr=$(realpath -m -- "$t") # the This PC folder, spelled exactly as its sidebar place so Dolphin's location bar reads "This PC" (not /home/...)
+tr=$(realpath -m -- "$t"); tu=file://${tr// /%20} # the This PC folder, spelled exactly as its sidebar place so Dolphin's location bar reads "This PC" (not /home/...)
 [[ ${1:-} == --open-this-pc ]] && set -- "$tu" # "This PC" shortcut
 a=()
 for u; do

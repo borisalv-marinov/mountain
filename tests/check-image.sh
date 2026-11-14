@@ -486,7 +486,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^name=mountain-glass$' /etc/xdg/plasmarc
   assert_grep '^ColorScheme=BlackGlass$' /etc/xdg/kdeglobals
   assert_grep '^theme=__aurorae__svg__BlackGlass$' /etc/xdg/kwinrc
-  # one palette: base #121212 (glass 0.80 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
+  # one palette: base #121212 (glass 0.85 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
   for f in /usr/share/color-schemes/BlackGlass.colors $t/colors; do
     assert_grep '^BackgroundNormal=18,18,18$' "$f"
     assert_grep '^ForegroundInactive=197,197,197$' "$f"
@@ -495,8 +495,8 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
     grep -qE '^(Background|Foreground)[A-Za-z]*=(16,18,22|11,12,15|7,8,10|27,29,34|164,169,178)$' "$f" && fail "old blue-black left in $f"
   done
   cmp -s /usr/share/color-schemes/BlackGlass.colors $t/colors || fail "Plasma theme and color scheme differ"
-  grep -q 'stop-color="#121212" stop-opacity="0.80"' $t/translucent/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.80"
-  grep -q 'stop-color="#121212" stop-opacity="0.80"' $t/translucent/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.80"
+  grep -q 'stop-color="#121212" stop-opacity="0.85"' $t/translucent/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.85"
+  grep -q 'stop-color="#121212" stop-opacity="0.85"' $t/translucent/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.85"
   grep -q 'stop-color="#121212" stop-opacity="1"' $t/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
   assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
@@ -529,7 +529,7 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
   grep -q 'item.visible' $q/main.qml && fail "brightness row can still disappear"
   # File Explorer: tab bar only with 2+ tabs, item-count-only status bar (v6, see phase 33), sidebar wide enough for "Documents"/"Recycle Bin"/"Previous versions"
   assert_grep '^AlwaysShowTabBar=false$' /etc/xdg/dolphinrc
-  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc; assert_grep '^ShowSpaceInfo=false$' /etc/xdg/dolphinrc
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc; ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key (free space shows only in FullWidth)'
   python3 -c 'import base64,sys; b=base64.b64decode(open(sys.argv[1]).read().split("State=")[1]); w=int.from_bytes(b[17:21],"big"); assert w>=150, w' /etc/skel/.local/state/dolphinstaterc || fail "File Explorer sidebar too narrow"
   # contrast: solid app windows, glass menus; Windows-like minimize; crisp fonts
   f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
@@ -782,7 +782,7 @@ PY
   assert_cmd spectacle
   assert_cmd plasma-emojier
   # File Explorer: no free-space status, short Details pane, 1100x700, This PC and Network, drag moves on the same drive
-  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc; assert_grep '^ShowSpaceInfo=false$' /etc/xdg/dolphinrc
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc; ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key (free space shows only in FullWidth)'
   assert_grep '^tags=false$' /etc/xdg/baloofileinformationrc
   assert_grep '^rating=false$' /etc/xdg/baloofileinformationrc
   assert_grep '^userComment=false$' /etc/xdg/baloofileinformationrc
@@ -994,6 +994,11 @@ check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
   for p in winx run shutdown; do assert_grep FramelessWindowHint /usr/share/plasma/plasmoids/org.mountain.$p/contents/ui/main.qml; done
   [[ -f /usr/share/icons/hicolor/512x512/apps/mountain-vscode.png ]] || fail "VS Code icon not installed for Start"
   assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc
+  # v7 wave 5: first-boot Flatpak installer stays quiet, one Security status, This PC/Home on real paths
+  ! grep -q 'notify: true' /usr/share/bluebuild/default-flatpaks/configuration.yaml || fail "flatpak install toast still on"
+  assert_grep 'Math.max(lvAv, lvAp, lvFw, lvApp, lvDev, lvSnap, lvUpd, lvAcc)' $ui/SecurityPage.qml
+  ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key'
+  assert_grep 'realpath -m' /usr/libexec/mountain-user-setup
   true
 }
 

@@ -47,7 +47,7 @@ name=section-0
 
 [page][row-1]
 Title=
-heightMode=balanced
+heightMode=minimum
 isTitle=false
 name=row-1
 

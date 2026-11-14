@@ -124,6 +124,12 @@ patch('FullRepresentation.qml', [
      '            }\n'),
 ])
 patch('LineChart.qml', [('Charts.HistoryProxySource.FillFromEnd', 'Charts.HistoryProxySource.FillFromStart')])
+# Disk and Network idle at 0 B/s, so every axis label read 0 B/s: keep the axis at least 1 MB/s (disk) or 128 KB/s (network) tall.
+# Guarded so a face without those names still loads; the check below fails the build if the range block was not found.
+patch('LineChart.qml', [('yRange {',
+    'yRange {\n'
+    '            minimum: (typeof root === "undefined" || !root.controller) ? 0 : (String(root.controller.highPrioritySensorIds).indexOf("disk/") >= 0 ? 1000000 : (String(root.controller.highPrioritySensorIds).indexOf("network/") >= 0 ? 128000 : 0))\n')])
 PY
+grep -q 'highPrioritySensorIds).indexOf' "$l/LineChart.qml"
 grep -q 'root.mtUnits(Formatter' "$l/FullRepresentation.qml" && grep -q FillFromStart "$l/LineChart.qml"
 echo "process-table: patched $f"

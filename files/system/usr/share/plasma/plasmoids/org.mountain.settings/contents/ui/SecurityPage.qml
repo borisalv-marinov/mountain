@@ -21,12 +21,16 @@ ColumnLayout {
     function a(k, d) { return ap[k] !== undefined ? ap[k] : (d || ""); }
     // one level per tile (0 good, 1 recommended, 2 needed); the headline is the worst of them
     readonly property int lvAv: v("av_result") === "found" ? 1 : (v("av_defs") === "none" ? 1 : 0)
-    readonly property int lvAp: a("ap") === "on" ? 0 : 2
+    readonly property int nUnv: Array.isArray(ap.ap_unverified) ? ap.ap_unverified.length : 0
+    readonly property int lvAp: a("ap") !== "on" ? 2 : (v("av_defs") === "none" ? 2 : (nUnv > 0 ? 1 : 0)) // same rule as the Active Protection page
     readonly property int lvFw: v("fw") === "on" ? 0 : 2
     readonly property int lvApp: v("flatpak_tight") === "5/5" ? 0 : 1
     readonly property int lvDev: v("selinux") !== "Enforcing" ? 2 : ((v("sb") === "off" || v("encrypted") === "no") ? 1 : 0)
+    readonly property int lvSnap: v("snapshots") === "off" ? 1 : 0
+    readonly property int lvUpd: v("rollback") === "yes" ? 0 : 1
+    readonly property int lvAcc: v("password") === "none" ? 2 : (v("screenlock") === "false" ? 1 : 0)
     readonly property bool loaded: s.fw !== undefined && ap.ap !== undefined
-    readonly property int overall: !loaded ? 0 : Math.max(lvAv, lvAp, lvFw, lvApp, lvDev)
+    readonly property int overall: !loaded ? 0 : Math.max(lvAv, lvAp, lvFw, lvApp, lvDev, lvSnap, lvUpd, lvAcc) // every card shown, so banner and cards agree
     function start(what, cmd) {
         running = what;
         note = "";
@@ -45,7 +49,7 @@ ColumnLayout {
             disconnectSource(source);
             const out = data["stdout"] || "";
             if (source === sec.statusCmd || source === sec.apCmd) {
-                const m = { fw_app: [], av_history: [], av_q: [] };
+                const m = { fw_app: [], av_history: [], av_q: [], ap_unverified: [] };
                 for (const l of out.split("\n")) {
                     const i = l.indexOf("=");
                     if (i <= 0) continue;
@@ -157,6 +161,7 @@ ColumnLayout {
             level: sec.lvAp
             details: sec.a("ap") === "on"
                      ? "On. Files checked today: " + sec.a("ap_checked_today", "0") + " · Threats blocked: " + sec.a("ap_threats", "0")
+                       + (sec.nUnv > 0 ? "\n" + sec.nUnv + " files to review" : "")
                        + "\nNew files in Downloads, Desktop, Documents and USB drives are checked as they arrive. When you extract an archive, you get one result."
                      : "Off. New files are not checked until you scan by hand."
             tech: "Watcher: inotify + ClamAV in a sandboxed low-priority unit that exits when done."
@@ -170,7 +175,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "document-revert"
             title: "Ransomware protection"
-            level: sec.v("snapshots") === "off" ? 1 : 0
+            level: sec.lvSnap
             details: sec.v("snapshots") === "off"
                      ? "Off: Previous versions need the standard disk layout the installer creates."
                      : "Previous versions: " + sec.v("snapshots", "0") + " saved copies of your files, taken every hour. Newest: " + (sec.v("snapshot_last") || "none yet")
@@ -245,7 +250,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "system-software-update"
             title: "Updates & recovery"
-            level: sec.v("rollback") === "yes" ? 0 : 1
+            level: sec.lvUpd
             details: "This version: " + sec.v("upd_time", "?") + (sec.v("upd_signed") === "yes" ? " · signed updates" : "")
                      + "\n" + (sec.v("rollback") === "yes" ? "The previous version is kept: you can go back at any time, here or in the boot menu." : "No previous version yet (it appears after your first update).")
             buttons: [
@@ -260,7 +265,7 @@ ColumnLayout {
             Layout.alignment: Qt.AlignTop
             iconName: "system-users"
             title: "Account protection"
-            level: sec.v("password") === "none" ? 2 : (sec.v("screenlock") === "false" ? 1 : 0)
+            level: sec.lvAcc
             details: "Password: " + (sec.v("password") === "set" ? "set" : sec.v("password") === "none" ? "none — anyone can use this PC" : "unknown")
                      + " · Screen lock: " + (sec.v("screenlock") === "false" ? "off" : "on, after " + sec.v("autolock_min", "5") + " minutes")
                      + "\nAdmin tasks always ask for your password."

@@ -43,7 +43,8 @@ dir() { # xdg key, fallback name
   [[ -n $d && $d != "$HOME" ]] && echo "$d" || echo "$HOME/$2"
 }
 esc() { local s=${1//&/"&amp;"}; s=${s//</"&lt;"}; echo "${s//>/"&gt;"}"; } # quoted: bash 5.2+ treats & in replacements as the match
-url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$1"; }
+# real paths: /home is a link on the read-only system disk, so places under it showed "0 B free" in File Explorer
+url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$(realpath -m -- "$1")"; }
 n=0; places=
 add() { # href title icon
   places+=" <bookmark href=\"$(esc "$1")\">
