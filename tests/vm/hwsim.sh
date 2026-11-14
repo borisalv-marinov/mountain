@@ -183,24 +183,32 @@ pad-press) # press A on the pad, read it back from evdev (and from /dev/input/js
   EV=$(cat $D/pad.event 2>/dev/null) || skip "pad-press: no pad-up"
   python3 - "$EV" <<'PY' || fail "pad-press: no BTN_SOUTH press read back"
 import os, select, struct, sys, time
-ev = os.open('/dev/input/' + sys.argv[1], os.O_RDONLY | os.O_NONBLOCK)
-js = None
+# any X-Box pad node: Bazzite's controller service may grab the source pad and re-expose it as its own virtual pad
+def name(n):
+    try: return open('/sys/class/input/%s/device/name' % n).read().strip().lower()
+    except OSError: return ''
+fds = {}
 for n in sorted(os.listdir('/dev/input')):
-    if n.startswith('js') and open('/sys/class/input/%s/device/name' % n).read().strip() == 'Microsoft X-Box 360 pad':
-        js = os.open('/dev/input/' + n, os.O_RDONLY | os.O_NONBLOCK)
+    if (n.startswith('event') or n.startswith('js')) and ('x-box' in name(n) or 'xbox' in name(n)):
+        fds[os.open('/dev/input/' + n, os.O_RDONLY | os.O_NONBLOCK)] = n
 os.write(os.open('/run/hwsim/pad.fifo', os.O_WRONLY), b'press\n')
-got_ev = got_js = False; end = time.time() + 5
-while time.time() < end and not (got_ev and (got_js or js is None)):
-    r, _, _ = select.select([f for f in (ev, js) if f is not None], [], [], 0.5)
-    if ev in r:
-        for i in range(0, len(d := os.read(ev, 24 * 16)), 24):
-            _, _, t, c, v = struct.unpack('llHHi', d[i:i + 24]); got_ev |= (t, c, v) == (1, 0x130, 1)
-    if js is not None and js in r:
-        for i in range(0, len(d := os.read(js, 8 * 16)), 8):
-            _, v, t, n = struct.unpack('IhBB', d[i:i + 8]); got_js |= (t, n, v) == (1, 0, 1)  # 0x81 init events are not 1
-sys.exit(0 if got_ev and (got_js or js is None) else 1)
+got = None; end = time.time() + 5
+while time.time() < end and not got:
+    r, _, _ = select.select(list(fds), [], [], 0.5)
+    for f in r:
+        d = os.read(f, 24 * 16)
+        if fds[f].startswith('js'):
+            for i in range(0, len(d) - len(d) % 8, 8):
+                _, v, t, n = struct.unpack('IhBB', d[i:i + 8])
+                if (t, n, v) == (1, 0, 1): got = fds[f]  # 0x81 init events are not 1
+        else:
+            for i in range(0, len(d) - len(d) % 24, 24):
+                _, _, t, c, v = struct.unpack('llHHi', d[i:i + 24])
+                if (t, c, v) == (1, 0x130, 1): got = fds[f]
+print('read back from', got or 'none of ' + ' '.join(fds.values()), file=sys.stderr)
+sys.exit(0 if got else 1)
 PY
-  ok "pad-press BTN_SOUTH=1 read back from $EV$([ -n "$(ls /dev/input/js* 2>/dev/null)" ] && echo ' and js')" ;;
+  ok "pad-press BTN_SOUTH=1 read back from an X-Box pad node" ;;
 
 brightness) # cannot be faked: sysfs backlight devices are made only by drivers; report what the DDC path has
   modprobe i2c-dev 2>/dev/null
