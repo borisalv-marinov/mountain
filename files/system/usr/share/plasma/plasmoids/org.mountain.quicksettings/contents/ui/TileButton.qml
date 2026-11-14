@@ -16,12 +16,13 @@ QQC2.AbstractButton {
     Keys.onEnterPressed: clicked()
 
     background: Rectangle {
-        radius: 8
-        // on = accent, off = white 7 %, hover adds 8 %
-        color: button.on ? (button.hovered ? "#76BEFF" : "#5AB0FF")
-                         : Qt.rgba(1, 1, 1, button.hovered ? 0.15 : 0.07)
+        radius: 6 // tiles 6 px; cards and flyouts 8 px (audit radii tokens)
+
+        // on = accent, off = raised surface, hover = hover tile (wave/theme.md palette)
+        color: button.on ? (button.hovered ? "#1A86D9" : "#0078D4")
+                         : (button.hovered && button.enabled ? "#2A2A2A" : "#1E1E1E")
         border.width: button.visualFocus ? 2 : 1
-        border.color: button.visualFocus ? (button.on ? "#F2F3F5" : "#5AB0FF") : Qt.rgba(1, 1, 1, 0.14)
+        border.color: button.visualFocus ? (button.on ? "#FFFFFF" : "#5AB0FF") : Qt.rgba(1, 1, 1, 0.08)
 
         // chrome highlight on the top edge, fading to 0 at the corners
         Rectangle {
@@ -30,7 +31,7 @@ QQC2.AbstractButton {
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.38) }
+                GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.14) }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }
@@ -43,7 +44,7 @@ QQC2.AbstractButton {
             height: width
             source: button.iconSource
             isMask: true
-            color: button.on ? "#07080A" : "#F2F3F5"
+            color: button.on ? "#FFFFFF" : button.enabled ? "#FFFFFF" : "#8A8A8A" // disabled glyph 4.8:1
         }
     }
 }

@@ -25,7 +25,7 @@ Tile {
 
     available: active !== ""
     checked: active === "power-saver"
-    text: available ? i18n("Energy saver") : i18n("Energy saver unavailable")
+    text: i18n("Energy saver")
     iconName: "battery-profile-powersave-symbolic"
     onToggled: exec.connectSource("dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Set string:net.hadess.PowerProfiles string:ActiveProfile variant:string:" + (checked ? "balanced" : "power-saver"))
 }

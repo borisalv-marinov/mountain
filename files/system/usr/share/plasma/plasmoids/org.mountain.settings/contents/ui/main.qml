@@ -1,6 +1,6 @@
 /*
     Mountain Settings: Windows 11 structure, black glass look.
-    Run with `plasmawindowed org.mountain.settings`. Every page opens the real KDE module.
+    Run with `plasmawindowed org.mountain.settings`. Most rows open the matching system page.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -19,10 +19,11 @@ PlasmoidItem {
     property string wallpaper: "file:///usr/share/wallpapers/mountain-silk/contents/images/1920x1080.png"
 
     // Design tokens (docs/superpowers/plans/2026-11-12-mountain-v5-black-glass.md)
-    readonly property color glassTop: "#1B1D22"
-    readonly property color glassBottom: "#07080A"
-    readonly property color pageColor: "#050607"
-    readonly property color rim: Qt.rgba(1, 1, 1, 0.14)
+    // cards >= 1.3:1 against the page (Windows 11 dark is ~1.15:1), dim text >= 5:1 on cards
+    readonly property color glassTop: "#303238"
+    readonly property color glassBottom: "#28292E"
+    readonly property color pageColor: "#0B0C0F"
+    readonly property color rim: Qt.rgba(1, 1, 1, 0.23) // card edge at 3:1 against the page (WCAG 1.4.11)
     readonly property color rimTop: Qt.rgba(1, 1, 1, 0.38)
     readonly property color innerShadow: Qt.rgba(0, 0, 0, 0.60)
     readonly property color textColor: "#F2F3F5"
@@ -32,12 +33,17 @@ PlasmoidItem {
     readonly property color hover: Qt.rgba(1, 1, 1, 0.08)
 
     property string page: "home"
+    // pages without their own nav entry light up their category
+    readonly property string navPage: page === "background" ? "personalization" : page === "protection" ? "privacy" : page
     property string query: ""
+    property bool netFailed: false // no plasma-nm QML module: Network shows the plain rows
     property string modelName: ""
     property string colorMode: "Dark"
 
     readonly property string modelCmd: "cat /sys/devices/virtual/dmi/id/product_name"
     readonly property string colorCmd: "kreadconfig6 --file kdeglobals --group General --key ColorScheme"
+    // a launcher can ask for a start page (mountain-settings-open PAGE), e.g. the Security start-menu entry
+    readonly property string pageCmd: "f=\"$XDG_RUNTIME_DIR/mountain-settings-page\"; cat \"$f\" 2>/dev/null; rm -f \"$f\""
 
     // Windows 11 categories and their sub-pages. kcm = System Settings module id,
     // info = Info Center module id, cmd = shell command, k = extra search keywords.
@@ -52,6 +58,7 @@ PlasmoidItem {
             { t: "Multitasking", d: "Virtual desktops", i: "preferences-desktop-virtual", kcm: "kcm_kwin_virtualdesktops", k: "workspaces desktops" },
             { t: "Screen edges", d: "Hot corners and edge actions", i: "preferences-system-windows", kcm: "kcm_kwinscreenedges", k: "corners snap" },
             { t: "Window switching", d: "Alt+Tab appearance", i: "preferences-system-windows", kcm: "kcm_kwintabbox", k: "alt tab task switcher" },
+            { t: "Recovery", d: "Go back to the previous version, reset this PC", i: "document-revert", page: "updates", k: "recovery reset go back rollback restore" },
             { t: "About", d: "Device specifications, PC name", i: "help-about", kcm: "kcm_about-distro", k: "pc name hostname rename specs version" }
         ] },
         { id: "devices", name: "Bluetooth & devices", icon: "preferences-system-bluetooth", items: [
@@ -59,21 +66,34 @@ PlasmoidItem {
             { t: "Mouse", d: "Pointer speed, buttons, scrolling", i: "input-mouse", kcm: "kcm_mouse", k: "pointer cursor speed" },
             { t: "Touchpad", d: "Taps, gestures, scrolling", i: "input-touchpad", kcm: "kcm_touchpad", k: "trackpad gestures" },
             { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", kcm: "kcm_keyboard", k: "layout typing keys" },
-            { t: "Printers & scanners", d: "Add and manage printers", i: "printer", kcm: "kcm_printer_manager", k: "print" },
+            { t: "Printers & scanners", d: "Add and manage printers (most work without drivers)", i: "printer", kcm: "kcm_printer_manager", k: "print" },
+            { t: "Scanner", d: "Scan a document or photo", i: "scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
+            { t: "Phone Link", d: "Your phone's messages, files and notifications on this PC", i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad joystick controller" }
         ] },
         { id: "network", name: "Network & internet", icon: "preferences-system-network", items: [
-            { t: "Wi-Fi & network", d: "Wi-Fi, Ethernet, VPN, hotspot", i: "network-wireless", kcm: "kcm_networkmanagement", k: "wifi wireless ethernet vpn internet" },
-            { t: "Proxy", d: "Proxy server for apps", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
+            { t: "Wi-Fi", d: "Connect, manage known networks", i: "network-wireless", kcm: "kcm_networkmanagement", net: "wifi", k: "wifi wireless internet" },
+            { t: "Ethernet", d: "Authentication, IP and DNS settings", i: "network-wired", kcm: "kcm_networkmanagement", net: "ethernet", k: "ethernet wired cable lan ip dns internet" },
+            { t: "VPN", d: "Add, connect, manage", i: "network-vpn", kcm: "kcm_networkmanagement", net: "vpn", k: "vpn wireguard openvpn" },
+            { t: "Mobile hotspot", d: "Share your internet connection", i: "network-wireless-hotspot", kcm: "kcm_networkmanagement", net: "hotspot", k: "hotspot tethering share" },
+            { t: "Airplane mode", d: "Stop all wireless communication", i: "network-flightmode-on", kcm: "kcm_networkmanagement", net: "airplane", k: "airplane flight mode radio" },
+            { t: "Proxy", d: "Proxy server for Wi-Fi and Ethernet connections", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
+            { t: "Advanced network settings", d: "All network adapters, network reset", i: "preferences-system-network", kcm: "kcm_networkmanagement", k: "adapters advanced network reset dns" }
         ] },
         { id: "personalization", name: "Personalization", icon: "preferences-desktop-theme", items: [
-            { t: "Background", d: "Pictures, slideshow, solid colour", i: "preferences-desktop-wallpaper", kcm: "kcm_wallpaper", k: "wallpaper background picture" },
-            { t: "Colors", d: "Dark and light mode, accent colour", i: "preferences-desktop-color", kcm: "kcm_colors", k: "dark light accent color colour" },
-            { t: "Themes", d: "Global theme for the whole desktop", i: "preferences-desktop-theme-global", kcm: "kcm_lookandfeel", k: "theme look" },
+            { t: "Background", d: "Picture, solid color, slideshow", i: "preferences-desktop-wallpaper", page: "background", k: "wallpaper background picture" },
+            { t: "Colors", d: "Dark and light mode, accent color", i: "preferences-desktop-color", kcm: "kcm_colors", k: "dark light accent color colour" },
+            { t: "Themes", d: "Colors, icons and pointers in one set", i: "preferences-desktop-theme-global", kcm: "kcm_lookandfeel", k: "theme look" },
             { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock wallpaper" },
             { t: "Fonts", d: "Font family and size", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text font" },
             { t: "Icons", d: "Icon theme", i: "preferences-desktop-icons", kcm: "kcm_icons", k: "icons" },
-            { t: "Cursors", d: "Mouse pointer style and size", i: "preferences-desktop-cursors", kcm: "kcm_cursortheme", k: "pointer cursor" }
+            { t: "Cursors", d: "Mouse pointer style and size", i: "preferences-desktop-cursors", kcm: "kcm_cursortheme", k: "pointer cursor" },
+            { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "preferences-desktop-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
+            { t: "Taskbar alignment", d: "Click to switch between center and left", i: "preferences-desktop", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
+            { t: "Start menu: more pins", d: "Four rows of pinned apps, fewer recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
+            { t: "Start menu: default", d: "Three rows of pins and recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu default", k: "start menu layout default" },
+            { t: "Start menu: more recommendations", d: "Two rows of pins, more recent files", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu recommended", k: "start menu layout recommended recent" },
+            { t: "Top bar", d: "Click to add or remove a top bar with CPU and memory", i: "view-split-top-bottom", cmd: "/usr/libexec/mountain-topbar toggle", k: "top bar panel" }
         ] },
         { id: "apps", name: "Apps", icon: "applications-all", items: [
             { t: "Default apps", d: "Browser, mail, music, video", i: "preferences-desktop-default-applications", kcm: "kcm_componentchooser", k: "default browser" },
@@ -89,26 +109,34 @@ PlasmoidItem {
         { id: "time", name: "Time & language", icon: "preferences-system-time", items: [
             { t: "Date & time", d: "Time zone, clock", i: "preferences-system-time", kcm: "kcm_clock", k: "clock time zone date" },
             { t: "Language & region", d: "Language, formats, region", i: "preferences-desktop-locale", kcm: "kcm_regionandlang", k: "language region locale format" },
-            { t: "Typing", d: "Keyboard layouts and input", i: "preferences-desktop-keyboard", kcm: "kcm_keyboard", k: "input method layout" }
+            { t: "Typing", d: "Keyboard layouts (English, Bulgarian phonetic and BDS): Alt+Shift or Win+Space switches", i: "preferences-desktop-keyboard", kcm: "kcm_keyboard", k: "input method layout bulgarian cyrillic български" }
         ] },
         { id: "gaming", name: "Gaming", icon: "applications-games", items: [
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad controller joystick" },
-            { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" }
+            { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
+            { t: "GTA Online and FiveM", d: "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming", i: "dialog-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
+            { t: "Check game support", d: "See if a game runs on Mountain (opens two game-support websites)", i: "help-browser", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
+            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
+            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", kcm: "kcm_kscreen", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: "Accessibility", icon: "preferences-desktop-accessibility", items: [
-            { t: "Accessibility", d: "Bell, modifier keys, screen reader", i: "preferences-desktop-accessibility", kcm: "kcm_access", k: "screen reader sticky keys" },
+            { t: "Keyboard, mouse and hearing", d: "Sticky keys, sound alerts, screen reader", i: "preferences-desktop-accessibility", kcm: "kcm_access", k: "screen reader sticky keys" },
             { t: "Text size", d: "Make text bigger", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text size font bigger" },
             { t: "Visual effects", d: "Desktop effects and animations", i: "preferences-desktop-effects", kcm: "kcm_kwin_effects", k: "effects animations transparency" },
-            { t: "Night light", d: "Warmer colours at night", i: "preferences-desktop-display-color", kcm: "kcm_nightlight", k: "night light blue light" }
+            { t: "Night light", d: "Warmer colors at night", i: "preferences-desktop-display-color", kcm: "kcm_nightlight", k: "night light blue light" }
         ] },
         { id: "privacy", name: "Privacy & security", icon: "preferences-security", items: [
             { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock password security" },
             { t: "Recent files", d: "Remember recently used files", i: "document-open-recent", kcm: "kcm_recentFiles", k: "history recent activity" },
-            { t: "App permissions", d: "What Flatpak apps may access", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" }
+            { t: "App permissions", d: "What apps may access: camera, microphone, files", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" },
+            { t: "Virus & threat protection", d: "Scan now, quarantine, Previous versions", i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
         ] },
         { id: "updates", name: "Updates", icon: "system-software-update", items: [
             { t: "Check for updates", d: "Updates are manual: open the Updates app and run it when you choose", i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
-            { t: "All settings (advanced)", d: "Every KDE setting in System Settings", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
+            { t: "Go back to the previous version", d: "Undo the last update: Mountain restarts into the version you had before", i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
+            { t: "Reset this PC (keep my files)", d: "Removes system changes made on this PC and restarts into plain Mountain; files and apps stay", i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
+            { t: "Update virus definitions", d: "Download the newest definitions now (they never download in the background)", i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" },
+            { t: "All settings (advanced)", d: "Every setting, for advanced users", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
         ] }
     ]
 
@@ -147,12 +175,16 @@ PlasmoidItem {
             KCMUtils.KCMLauncher.openInfoCenter(it.info);
         } else if (it.cmd) {
             run(it.cmd);
+        } else if (it.page) {
+            page = it.page; // the search box clears itself on a page change
         }
     }
 
-    function setWallpaper(url) {
+    function setWallpaper(url) { // a Mountain picture: apply its package so the right size and dark variant are used
         wallpaper = url;
-        run("plasma-apply-wallpaperimage '" + url.replace("file://", "") + "'");
+        const f = url.replace("file://", ""), i = f.indexOf("/contents/");
+        const p = i > 0 ? f.slice(0, i + 1) : f; // shell-quoted: a ' in a file name can't end the argument and run a command
+        run("/usr/libexec/mountain-background picture '" + p.split("'").join("'\\''") + "'");
     }
 
     function setColorMode(mode) {
@@ -174,6 +206,10 @@ PlasmoidItem {
             const out = (data["stdout"] || "").trim();
             if (sourceName === app.modelCmd) {
                 app.modelName = out;
+            } else if (sourceName === app.pageCmd) {
+                if (out === "protection" || out === "background" || app.categories.some(c => c.id === out)) {
+                    app.page = out;
+                }
             } else if (sourceName === app.colorCmd) {
                 app.colorMode = out.indexOf("Light") >= 0 ? "Light" : "Dark";
             }
@@ -184,11 +220,16 @@ PlasmoidItem {
     Component.onCompleted: {
         exec.connectSource(modelCmd);
         exec.connectSource(colorCmd);
+        exec.connectSource(pageCmd);
     }
 
     // plasmawindowed only honours the minimum size; open at the preferred size the first time
     // (a saved window geometry is restored by plasmawindowed after this and wins).
     readonly property var hostWindow: Window.window
+    Connections { // plasmawindowed is single-instance: a second launch only raises us, so check for a page request again
+        target: app.hostWindow
+        function onActiveChanged() { if (app.hostWindow.active) exec.connectSource(app.pageCmd); }
+    }
     onHostWindowChanged: {
         if (hostWindow && hostWindow.width < 1000) {
             hostWindow.width = 1100;
@@ -221,7 +262,7 @@ PlasmoidItem {
                 anchors.centerIn: parent
                 width: Math.min(520, parent.width - 360)
                 height: 34
-                radius: 8
+                radius: 4
                 gradient: Gradient {
                     GradientStop { position: 0; color: app.glassTop }
                     GradientStop { position: 1; color: app.glassBottom }
@@ -259,6 +300,10 @@ PlasmoidItem {
                         }
                     }
                     Keys.onEscapePressed: text = ""
+                    Connections {
+                        target: app
+                        function onPageChanged() { searchInput.text = ""; }
+                    }
 
                     GText {
                         anchors.verticalCenter: parent.verticalCenter
@@ -323,7 +368,7 @@ PlasmoidItem {
                 delegate: QQC2.AbstractButton {
                     id: navButton
                     required property var modelData
-                    readonly property bool current: app.page === modelData.id && app.query === ""
+                    readonly property bool current: app.navPage === modelData.id && app.query === ""
                     Layout.fillWidth: true
                     implicitHeight: 34
                     hoverEnabled: true
@@ -337,10 +382,10 @@ PlasmoidItem {
                     Keys.onReturnPressed: clicked()
 
                     background: Rectangle {
-                        radius: 6
-                        color: navButton.current ? Qt.rgba(1, 1, 1, 0.08) : (navButton.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
-                        border.width: navButton.activeFocus ? 1 : 0
-                        border.color: app.accent
+                        radius: 4
+                        color: navButton.current ? Qt.rgba(1, 1, 1, 0.09) : (navButton.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent")
+                        border.width: navButton.visualFocus ? 2 : 0 // white ring only for keyboard focus; selection is the fill + accent pill
+                        border.color: "#FFFFFF"
                         Rectangle {
                             visible: navButton.current
                             anchors { left: parent.left; verticalCenter: parent.verticalCenter }
@@ -383,8 +428,9 @@ PlasmoidItem {
                 id: pageLoader
                 width: Math.min(flick.width - 32, 1000)
                 height: item ? item.implicitHeight : 0
-                source: app.query !== "" || app.page !== "home" ? "ListPage.qml" : "HomePage.qml"
+                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "network" && !app.netFailed ? "NetworkPage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : app.page === "background" ? "BackgroundPage.qml" : "ListPage.qml"
                 onSourceChanged: flick.contentY = 0
+                onStatusChanged: if (status === Loader.Error && app.page === "network") app.netFailed = true
             }
         }
     }

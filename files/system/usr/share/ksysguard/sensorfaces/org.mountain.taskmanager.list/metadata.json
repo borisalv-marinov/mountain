@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "KSysguard/SensorFace",
+    "KPlugin": {
+        "Authors": [{ "Name": "Mountain" }],
+        "Description": "Startup apps, Users, Services and device names for Mountain's Task Manager",
+        "Icon": "view-list-details",
+        "Id": "org.mountain.taskmanager.list",
+        "License": "GPL-3.0-or-later",
+        "Name": "Mountain list",
+        "Version": "1.0"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell"
+}

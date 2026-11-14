@@ -6,13 +6,10 @@ on:
         description: "Image tag to test (empty: newest build of this branch)"
         default: ""
         type: string
-  push: # lets the branch run it before the file exists on main
-    branches: [mountain-phases]
-    paths: ['.github/workflows/vm-test.yml']
-  workflow_run:
+  workflow_run: # every successful image build of main (nightlies too) and of the release branch
     workflows: [bluebuild]
     types: [completed]
-    branches: [mountain-phases]
+    branches: [main, mountain-v6]
 
 jobs:
   vm:
@@ -57,8 +54,10 @@ jobs:
 
       - name: Find image tag
         id: tag
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          [ -n "${{ inputs.tag }}" ] && { echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"; echo "Using tag: ${{ inputs.tag }}"; exit 0; }
+          [ -n "$TAG" ] && { echo "tag=$TAG" >> "$GITHUB_OUTPUT"; echo "Using tag: $TAG"; exit 0; }
           SAFE="${BRANCH//\//-}"
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
           TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
@@ -121,7 +120,7 @@ jobs:
             [ -e "$D/${p%:*}" ] && [ -e "$D/${p##*:}" ] && { CODE="$D/${p%:*}"; cp "$D/${p##*:}" /vm/vars.fd; break; }
           done
           [ -n "$CODE" ] || { ls -R /usr/share/edk2 >>/vm/dnf.log; exit 1; }
-          exec qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35             -drive if=pflash,format=raw,readonly=on,file="$CODE"             -drive if=pflash,format=raw,file=/vm/vars.fd             -drive file=/vm/disk.qcow2,if=virtio             -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22             -device virtio-vga,xres=1280,yres=800 -display none             -device qemu-xhci -device usb-tablet             -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0             -monitor unix:/tmp/qmon,server,nowait -qmp unix:/tmp/qmp,server,nowait -serial file:/vm/serial.log
+          exec qemu-system-x86_64 -enable-kvm -cpu host -m 6144 -smp 4 -machine q35             -drive if=pflash,format=raw,readonly=on,file="$CODE"             -drive if=pflash,format=raw,file=/vm/vars.fd             -drive file=/vm/disk.qcow2,if=virtio             -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22,hostfwd=tcp:127.0.0.1:8765-:8765             -device virtio-vga,xres=1280,yres=800 -display none             -device qemu-xhci -device usb-tablet             -audiodev none,id=a0 -device intel-hda -device hda-duplex,audiodev=a0             -monitor unix:/tmp/qmon,server,nowait -qmp unix:/tmp/qmp,server,nowait -serial file:/vm/serial.log
           QS
           date +%s > boot_start
           sudo podman run -d --name qemu --privileged --network host --device /dev/kvm -v "$HOME/vm:/vm" -v /tmp:/tmp quay.io/fedora/fedora:latest bash /vm/qemu.sh
@@ -165,6 +164,8 @@ jobs:
           echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
           # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
+          # the installer makes /var/home a Btrfs subvolume (Previous versions need it); bootc-image-builder does not, so do it here
+          R "btrfs subvolume show /var/home >/dev/null 2>&1 || { mv /var/home /var/home.old && btrfs subvolume create /var/home && cp -a /var/home.old/. /var/home/ && rm -rf /var/home.old && restorecon -R /var/home; }; stat -c %i /var/home"
 
           chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
           chk "hostname" 0 "hostname" '^mountain$'
@@ -177,7 +178,9 @@ jobs:
           chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
           chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
           chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
-          chk "uupd.timer (effective)" 0 "systemctl show uupd.timer -p TimersCalendar" 'TimersCalendar=.*OnCalendar='
+          chk "uupd.timer off (no background updates)" 0 "systemctl is-enabled uupd.timer 2>&1; true" 'disabled|masked|not-found|No such file'
+          chk "no fetching timers" 0 "systemctl list-timers --no-legend | grep -Ec 'uupd|dnf-makecache|countme|freshclam|flatpak-(system|user)-update|ublue|bazzite' || true" '^0$'
+          chk "gpu-check no bootc at boot" 0 "pgrep -f '[b]ootc switch' || echo none" '^none$'
           chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
           chk "Kvantum BlackGlass" 0 "$(TU 'grep -rh BlackGlass /etc/xdg/Kvantum ~/.config/Kvantum 2>/dev/null')" 'theme=BlackGlass'
@@ -229,14 +232,20 @@ jobs:
           def move(x, y):
               ev({'type': 'abs', 'data': {'axis': 'x', 'value': int(x * 32767 / W)}}, {'type': 'abs', 'data': {'axis': 'y', 'value': int(y * 32767 / H)}})
           def btn(d): ev({'type': 'btn', 'data': {'down': d, 'button': 'left'}})
+          def frame(ign=0):  # md5 of a screendump without the bottom IGN rows (taskbar: clock, launch feedback)
+              import hashlib
+              cmd('screendump', {'filename': '/tmp/qm.ppm'}); d = open('/tmp/qm.ppm', 'rb').read()
+              h = d.split(b'\n', 3); w = int(h[1].split()[0]); body = h[3]
+              return hashlib.md5(body[:len(body) - ign * w * 3]).digest()
           def click(x, y): move(x, y); time.sleep(0.1); btn(True); time.sleep(0.05); btn(False)
           cmd('qmp_capabilities')
           a = sys.argv[1:]
           if a[0] == 'key': press(a[1:])
           elif a[0] == 'type':
-              names = {' ': 'spc', '.': 'dot', '-': 'minus'}
+              names = {' ': 'spc', '.': 'dot', '-': 'minus', '/': 'slash', '~': ['shift', 'grave_accent'], '_': ['shift', 'minus']}
               for c in ' '.join(a[1:]):
-                  press([names.get(c, c.lower())]); time.sleep(0.05)
+                  k = names.get(c, ['shift', c.lower()] if c.isupper() else c.lower())
+                  press(k if isinstance(k, list) else [k]); time.sleep(0.05)
           elif a[0] == 'click': click(int(a[1]), int(a[2]))
           elif a[0] == 'dclick': click(int(a[1]), int(a[2])); time.sleep(0.12); click(int(a[1]), int(a[2]))
           elif a[0] == 'drag':
@@ -247,9 +256,32 @@ jobs:
               x1, y1, x2, y2 = map(int, a[1:5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
               for i in range(1, 11): move(x1 + (x2 - x1) * i / 10, y1 + (y2 - y1) * i / 10); time.sleep(0.1)
           elif a[0] == 'up': btn(False)
+          elif a[0] == 'move': move(int(a[1]), int(a[2]))  # X Y: hover (tooltips, previews)
+          elif a[0] == 'rclick':  # X Y: right click (context menus)
+              move(int(a[1]), int(a[2])); time.sleep(0.1); ev({'type': 'btn', 'data': {'down': True, 'button': 'right'}}); time.sleep(0.05); ev({'type': 'btn', 'data': {'down': False, 'button': 'right'}})
+          elif a[0] == 'keyhold':  # SECS K..: press keys, keep them down SECS, release (Alt+Tab switcher stays open for a shot)
+              ks = a[2:]; ev(*[key(k, True) for k in ks]); time.sleep(float(a[1])); ev(*[key(k, False) for k in reversed(ks)])
           elif a[0] == 'fdrag':  # select an icon, then drag it at once (no pause) and keep the button down
               x1, y1, x2, y2 = map(int, a[1:5]); click(x1, y1); time.sleep(0.05); btn(True)
               for i in range(1, 6): move(x1 + (x2 - x1) * i / 5, y1 + (y2 - y1) * i / 5); time.sleep(0.03)
+          elif a[0] == 'measure':  # IGNORE_BOTTOM_PX TIMEOUT_MS key K.. | dclick X Y: ms from the input to the first changed frame, and until frames settle
+              ign, tmo, act = int(a[1]), int(a[2]) / 1000, a[3:]
+              if act[0] == 'dclick': move(int(act[1]), int(act[2])); time.sleep(0.4)
+              prev = frame(ign); t0 = time.monotonic(); first = last = None
+              if act[0] == 'key': press(act[1:])
+              else: btn(True); btn(False); time.sleep(0.1); btn(True); btn(False)
+              while time.monotonic() - t0 < tmo:
+                  fr = frame(ign); t = time.monotonic() - t0
+                  if fr != prev: last = t; first = first or t; prev = fr
+                  elif first and t - last > 0.4: break
+              print('first=%d settle=%d' % (first * 1000 if first else -1, last * 1000 if last else -1))
+          elif a[0] == 'dragfps':  # X1 Y1 X2 Y2 SECONDS: drag a title bar, count distinct frames seen per second (limited by screendump speed)
+              x1, y1, x2, y2 = map(int, a[1:5]); dur = float(a[5]); move(x1, y1); time.sleep(0.2); btn(True); time.sleep(0.2)
+              n = seen = 0; prev = None; t0 = time.monotonic()
+              while time.monotonic() - t0 < dur:
+                  k = (time.monotonic() - t0) / dur; move(x1 + (x2 - x1) * k, y1 + (y2 - y1) * k)
+                  fr = frame(); seen += 1; n += fr != prev; prev = fr
+              btn(False); print('frames=%d samples=%d fps=%.1f' % (n, seen, n / dur))
           PY
           QM() { sudo env W=$W H=$H python3 "$HOME/vm/qmp.py" "$@"; }
           waitproc() { # NAME SECS (PGF=-f for a pattern): seconds taken or fail
@@ -261,8 +293,8 @@ jobs:
             return 1
           }
           wchk() { # name core proc secs
-            local t; t=$(waitproc "$3" "$4") && { echo "| $1 | PASS | $3 up in $t |" >> report.md; echo "PASS $1"; } \
-              || { echo "| $1 | FAIL | $3 not running after $4 s |" >> report.md; echo "FAIL $1"; [ "$2" = 1 ] && CORE_FAIL=1; }
+            local t r; t=$(waitproc "$3" "$4") && { echo "| $1 | PASS | $3 up in $t |" >> report.md; echo "PASS $1"; } \
+              || { r=FAIL; [ "$2" = 2 ] && r=INFO; echo "| $1 | $r | $3 not running after $4 s |" >> report.md; echo "$r $1"; [ "$2" = 1 ] && CORE_FAIL=1; }
           }
           L() { R "$LT systemd-run --user --quiet --collect $*"; } # start like the app menu does: with the full session environment
           K() { R "pkill -u looktest $*" || true; sleep 1; }
@@ -282,7 +314,7 @@ jobs:
 
           # 1. lock screen at start: no autologin, like the shipped image and Try Mountain
           LPW=glasstest2026
-          R "userdel tester; useradd -m -c 'Look Test' looktest; echo looktest:$LPW | chpasswd; systemctl restart display-manager" # one account on the sign-in screen, like a fresh PC
+          R "userdel tester; useradd -m -c 'Look Test' looktest; echo looktest:$LPW | chpasswd; install -d -o looktest -g looktest ~looktest/.config ~looktest/.config/autostart ~looktest/.local ~looktest/.local/bin; cp /usr/bin/sleep ~looktest/.local/bin/mtm-autostart-test; printf '[Desktop Entry]\nType=Application\nName=Startup test\nExec=/home/looktest/.local/bin/mtm-autostart-test 99999\n' > ~looktest/.config/autostart/mtm-autostart-test.desktop; chown -R looktest: ~looktest/.config ~looktest/.local; systemctl restart display-manager" # one account on the sign-in screen, like a fresh PC
           sleep 30; W=1280; H=800; shot login-lock # clock and date only
           QM click 640 200; sleep 2; shot login-hello # "Hello, <name>", picture, password box
           QM type wrongpass; QM key ret; sleep 5; shot login-wrong
@@ -307,7 +339,13 @@ jobs:
           SS="$LT dbus-send --session --print-reply --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.GetActive"
           QM key meta_l l; sleep 6; shot lock-screen
           chk "Win+L locks the screen" 1 "$SS" 'boolean true'
+          chk "lock screen greeter runs" 0 "pgrep -u looktest -f kscreenlocker_greet" '^[0-9]+'
+          chk "greeter QML has no errors" 0 "journalctl -b --no-pager | grep -E 'kscreenlocker_greet|plasmalogin' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError' || true" '^0$'
           QM click $((W/2)) $((H/4)); sleep 3; shot lock-hello
+          QM type wrongpass; QM key ret; sleep 4; shot lock-wrong-password # one wrong try (5 lock the account)
+          chk "greeter QML has no errors after a wrong password" 0 "journalctl -b --no-pager | grep -E 'kscreenlocker_greet|plasmalogin' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError|mtOk|mtLocale' || true" '^0$'
+          chk "a wrong password keeps the screen locked" 1 "$SS" 'boolean true'
+          QM click $((W/2)) $((H/4)); sleep 2
           QM type $LPW; QM key ret; sleep 6; shot unlocked
           chk "password unlocks" 1 "$SS" 'boolean false'
           # the long steps below must not lock the screen when idle
@@ -316,6 +354,19 @@ jobs:
 
           # 2. start menu -> settings
           QM key meta_l; sleep 3; shot start-menu
+          QM type firewall; sleep 3; shot start-search-firewall; QM key esc; sleep 1 # Mountain's Security, no KDE or firewalld pages
+          QM move $((1180*W/1280)) $((780*H/800)); sleep 3; shot taskbar-hover-clock; QM move $((640*W/1280)) $((400*H/800))
+          QM rclick $((1000*W/1280)) $((780*H/800)); sleep 2; shot taskbar-context-menu; QM key esc; sleep 1
+          QM key meta_l; sleep 3; QM move $((915*W/1280)) $((194*H/800)); sleep 1; shot start-all-pill-hover
+          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-all-apps
+          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
+          QM key meta_l; sleep 3; QM type calc; sleep 3; shot start-search-best-match; QM key esc; QM key esc; sleep 1
+          chk "start search has Best match" 0 "grep -c 'i18n(\"Best match\")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemMultiGridView.qml" '^1$'
+          QM key meta_l; sleep 3 # the start menu open again for the steps below
+          chk "menu.11.enhanced no QML errors" 0 "journalctl -b --no-pager -t plasmashell | grep -E 'menu\.11\.enhanced|org\.mountain' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError|Error loading' || true" '^0$'
+          chk "start launcher applet in appletsrc" 0 "grep -c '^plugin=menu.11.enhanced$' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^1$'
+          chk "start menu uses the glass background" 0 "grep -c 'StandardBackground' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml" '^1$'
+          chk "start menu pin labels wrap to 2 lines" 0 "grep -c 'maximumLineCount: 2' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemGridDelegate.qml" '^1$'
           QM type settings; sleep 3; shot search-settings
           QM key ret
           PGF=-f wchk "start menu opens Settings" 1 org.mountain.settings 20; sleep 6; shot settings
@@ -325,37 +376,191 @@ jobs:
           for c in system bluetooth network personalization apps accounts time gaming accessibility privacy updates; do
             i=$((i+1)); QM click $((150*W/1280)) $(( (167 + 36*i) * H/800 )); sleep 2; shot "settings-$c"
           done
-          for q in bluetooth wallpaper; do
+          QM click $((150*W/1280)) $(( (167 + 36*3) * H/800 )); sleep 3; shot settings-network-page
+          chk "Settings Network page loads (no QML errors)" 0 "journalctl -b --no-pager | grep -E 'NetworkPage.qml' | grep -ciE 'is not a type|is not installed|ReferenceError|TypeError|Error loading' || true" '^0$'
+          QM key tab; sleep 1; shot settings-nav-focus # white focus ring vs the selected pill
+          for q in bluetooth wallpaper display; do
             QM click $((640*W/1280)) $((60*H/800)); QM key ctrl a; QM type $q; sleep 2; shot "settings-search-$q"
           done
           QM key ret; sleep 6; shot settings-search-open # Enter opens the first result (a KDE page)
           PGF=-f wchk "search result opens a KDE page" 0 systemsettings 15
           K -f org.mountain.settings; K -x systemsettings; K -x kdebugsettings
+          # Settings > Personalization > Background: native page, applying a picture and a solid color changes the desktop
+          L "/usr/libexec/mountain-settings-open background"; PGF=-f wchk "Settings opens on Background" 0 org.mountain.settings 20; sleep 8; shot settings-background
+          R "$LT /usr/libexec/mountain-background picture /usr/share/wallpapers/mountain-peaks/ 2" > bg-apply.txt 2>&1; sleep 15
+          chk "Background: a picture is applied to the desktop" 0 "grep '^Image=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort -u | paste -sd' '" 'Image=file:///usr/share/wallpapers/mountain-peaks/'
+          shot settings-background-peaks
+          R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 15; shot settings-background-color
+          chk "Background: solid color" 0 "grep -E '^(wallpaperplugin=org.kde.color|Color=)' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort -u | paste -sd' '" 'org.kde.color'
+          chk "Background: status" 2 "$LT /usr/libexec/mountain-background status | paste -sd' '" 'plugin=org.kde.color'
+          R "$LT /usr/libexec/mountain-background picture /usr/share/wallpapers/mountain-silk/ 2" >> bg-apply.txt 2>&1; sleep 3 # back to the default for the later shots
+          K -f org.mountain.settings
           # quick settings flyout (Win+A), and the tiles this VM can toggle
-          QM click $((1133*W/1280)) $((768*H/800)); sleep 2; shot quick-settings # the network/volume icons next to the clock
+          QM key meta_l a; sleep 2; shot quick-settings
           R "$LT dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile" > qs-profile-before.txt 2>&1
           chk "airplane mode before" 2 "nmcli radio all" '.'
           PP="dbus-send --system --print-reply --dest=net.hadess.PowerProfiles /net/hadess/PowerProfiles org.freedesktop.DBus.Properties.Get string:net.hadess.PowerProfiles string:ActiveProfile | grep -o '\"[a-z-]*\"'"
           VOL="$LT wpctl get-volume @DEFAULT_AUDIO_SINK@"
           P0=$(R "$PP"); V0=$(R "$VOL"); A0=$(R "nmcli -t -f WIFI,WWAN radio")
-          QM click $((965*W/1280)) $((572*H/800)); sleep 3 # Energy saver
-          QM click $((1209*W/1280)) $((485*H/800)); sleep 3 # Airplane mode
-          QM click $((1180*W/1280)) $((663*H/800)); sleep 2; shot quick-settings-toggled # volume slider
-          chk "quick settings: Energy saver switches the power profile" 0 "echo before=$P0; $PP" 'power-saver'
-          chk "quick settings: Airplane mode turns radios off" 0 "echo before=$A0; nmcli -t -f WIFI,WWAN radio" 'disabled'
-          chk "quick settings: volume slider changes the volume" 0 "echo before=$V0; $VOL" 'Volume: 0\.(8|9)'
-          QM click $((965*W/1280)) $((572*H/800)); QM click $((1209*W/1280)) $((485*H/800)); sleep 2 # back off
+          QM click $((957*W/1280)) $((515*H/800)); sleep 3 # Energy saver
+          QM click $((1201*W/1280)) $((408*H/800)); sleep 3 # Airplane mode
+          QM click $((1177*W/1280)) $((668*H/800)); sleep 2; shot quick-settings-toggled # volume slider
+          chk "quick settings: Energy saver switches the power profile" 0 "$PP" 'power-saver'
+          chk "quick settings: Airplane mode turns radios off" 0 "nmcli -t -f WIFI,WWAN radio" '^disabled:disabled$'
+          chk "quick settings: volume slider changes the volume" 0 "$VOL" 'Volume: 0\.(8|9)'
+          QM click $((957*W/1280)) $((515*H/800)); QM click $((1201*W/1280)) $((408*H/800)); sleep 2 # back off
           R "journalctl -b --no-pager | grep -E 'org.mountain|\.qml:' | tail -40" > qml-log.txt 2>&1
+          chk "quick settings: brightness slider (disabled here: a VM has no backlight)" 0 "journalctl -b --no-pager | grep -c 'BrightnessRow.qml' | xargs test 0 -eq && grep -c 'Not available on this display' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui/BrightnessRow.qml" '^[1-9]' 
+          chk "brightness service (why the row is on/off)" 2 "$LT busctl --user get-property org.kde.ScreenBrightness /org/kde/ScreenBrightness org.kde.ScreenBrightness DisplaysDBusNames 2>&1 | head -2" '.'
+          chk "quick settings labels not cut (no 'unavailable' names)" 0 "grep -rc 'unavailable\")' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui | awk -F: '{s+=\$2} END {print s+0}'" '^0$'
           chk "QML errors (Mountain panels)" 2 "journalctl -b --no-pager | grep -E 'org.mountain|qrc:|\.qml:' | grep -viE 'debug' | tail -6 | cut -c1-220" '.'
           QM key esc
+          sleep 1; shot taskbar-tray # review crop: x 880-1280, y 744-800 (^ ENG | net vol | time / date | bell | sliver)
+          QM move $((1086*W/1280)) $((776*H/800)); sleep 2; shot taskbar-quicksettings-hover; QM move $((640*W/1280)) $((400*H/800)) # 40 px hover tile
+          chk "clock shows a 4-digit year" 0 "grep -h '^customDateFormat=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" 'M/d/yyyy'
+          QM click $((1276*W/1280)) $((776*H/800)); sleep 2; shot show-desktop-sliver; QM click $((1276*W/1280)) $((776*H/800)); sleep 1
+          chk "desktop label shadow strengthened" 0 "grep -c 'spread: 0.55' \$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -path '*org/kde/plasma/extras/ShadowedLabel.qml' 2>/dev/null | head -1)" '^1$'
 
+          # v6: Windows shortcuts. PASS = the screen reacts within 3 s (QMP clock) or the app starts
+          MS() { QM measure 60 "$@" | tail -1; } # -> first=MS settle=MS
+          num() { sed -n 's/.*first=\([0-9-]*\).*/\1/p' <<<"$1"; }
+          scut() { # name keys...
+            local n=$1 r rr; shift; r=$(MS 3000 key "$@"); sleep 1; shot "shortcut-$(tr ' +.A-Z' '---a-z' <<<"$n")"
+            [ "$(num "$r")" -ge 0 ] 2>/dev/null && rr=PASS || rr=FAIL; echo "| shortcut $n | $rr | $r |" >> report.md; echo "$rr $n"; QM key esc; sleep 1
+          }
+          for _ in $(seq 30); do R "grep -q 'global=Meta+N' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" && break; sleep 2; done
+          chk "Win+A and Win+N set on the applets" 0 "grep -h '^global=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort | paste -sd' '" 'Meta\+A.*Meta\+N'
+          A='~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc' # quoted: the ~ expands on the VM
+          chk "one bell, on the taskbar (none in the tray)" 0 "grep -c '^plugin=org.kde.plasma.notifications\$' $A" '^1$'
+          chk "tray: bell not enabled" 0 "grep -h '^extraItems=' $A | grep -c 'org.kde.plasma.notifications' || true" '^0$'
+          chk "tray: ^ expander first" 0 "grep -c '^reverseIconOrder=true' $A" '^1$'
+          chk "show-desktop sliver on the taskbar" 0 "grep -c '^plugin=org.mountain.showdesktop\$' $A" '^1$'
+          chk "toasts bottom right, 5 s" 0 "grep -h '^PopupPosition=\|^PopupTimeout=' /etc/xdg/plasmanotifyrc | paste -sd' '" 'BottomRight PopupTimeout=5000'
+          chk "applet shortcut helper" 2 "cat ~looktest/.local/state/mountain/applet-shortcuts.log 2>/dev/null || echo ok" '.'
+          R "cat ~looktest/.local/state/mountain/applet-shortcuts.log" > applet-shortcuts.txt 2>&1
+          chk "shortcuts helper finishes" 0 "$(TL 'timeout 30 /usr/libexec/mountain-shortcuts && echo done')" 'done'
+          chk "lite mode marker" 2 "ls /home/looktest/.local/state/mountain/" 'lite-mode'
+          R "cat ~looktest/.config/kglobalshortcutsrc; ls -l /usr/share/kglobalaccel" > kglobalshortcutsrc.txt 2>&1
+          scut "Win+A (quick settings)" meta_l a
+          scut "Win+N (notifications)" meta_l n
+          QM key meta_l n; sleep 2; shot notification-center; QM key esc; sleep 1
+          for i in 1 2 3 4 5; do R "$LT notify-send -a 'Test app' -i dialog-information 'Test notification $i' 'This is toast $i of 5.'"; sleep 0.4; done
+          sleep 1; shot notification-stack
+          sleep 6; shot notification-stack-expired # all gone after 5 s
+          QM key meta_l n; sleep 2; shot notification-center-filled; QM key esc; sleep 1
+          scut "Win+Tab (task view)" meta_l tab
+          scut "Win+R (run)" meta_l r
+          scut "Win+X (power-user menu)" meta_l x
+          QM key meta_l e; wchk "shortcut Win+E (File Explorer)" 0 dolphin 15; sleep 4
+          KS="$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.isScriptLoaded"
+          chk "snap layouts script loaded" 0 "$KS string:org.mountain.snaplayouts" 'boolean true'
+          chk "clipboard script loaded" 0 "$KS string:org.mountain.clipboard" 'boolean true'
+          QM key meta_l z; sleep 2; shot flyout-snap; QM key ret; sleep 2; shot flyout-snap-left # first zone: File Explorer on the left half
+          KC="$LT dbus-send --session --print-reply --dest=org.kde.klipper /klipper org.kde.klipper.klipper"
+          R "$KC.setClipboardContents string:Mountain-clip-1; $KC.setClipboardContents string:Mountain-clip-2" >/dev/null 2>&1
+          QM key meta_l v; sleep 2; shot flyout-clipboard
+          QM key down; QM key ret; sleep 1
+          chk "Win+V Enter copies the chosen item" 0 "$KC.getClipboardContents" 'Mountain-clip-1'
+          R "$LT dbus-send --session --print-reply --dest=org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.invokeShortcut string:MountainClipboard" > flyouts-log.txt 2>&1; sleep 2; shot flyout-clipboard-dbus; QM key esc; sleep 1
+          R "$LT dbus-send --session --print-reply --dest=org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.shortcutNames; journalctl -b --no-pager | grep -E 'mountain-flyout|org.mountain.(clipboard|snaplayouts)'" >> flyouts-log.txt 2>&1
+          QM key meta_l v; sleep 2; QM key esc; sleep 1; shot flyout-clipboard-closed
+          scut "Win+Left (snap)" meta_l left
+          scut "Win+D (show desktop)" meta_l d
+          K -x dolphin
+          QM key meta_l i; PGF=-f wchk "shortcut Win+I (Settings)" 0 org.mountain.settings 20; sleep 4; shot shortcut-win-i; K -f org.mountain.settings
+          QM key meta_l dot; PGF=-f wchk "shortcut Win+. (emoji)" 0 emojier 15; sleep 3; shot flyout-emoji; QM key esc; sleep 1; K -f emojier
+          R "rm -f ~looktest/Pictures/Screenshots/*"
+          QM key meta_l shift s; wchk "shortcut Win+Shift+S (Snipping Tool)" 0 spectacle 15; sleep 3; shot snip
+          QM drag $((300*W/1280)) $((200*H/800)) $((700*W/1280)) $((500*H/800)); sleep 4; shot snip-toast
+          chk "Win+Shift+S snip saved" 0 "ls ~looktest/Pictures/Screenshots 2>/dev/null | wc -l" '^[1-9]'
+          chk "Win+Shift+S snip copied" 2 "$LT wl-paste --list-types 2>/dev/null || echo none" 'image/'
+          K -x spectacle
+          R "rm -f ~looktest/Pictures/Screenshots/*"; QM key print; sleep 4
+          chk "shortcut PrtSc (screenshot)" 0 "ls ~looktest/Pictures/Screenshots 2>/dev/null | wc -l" '^[1-9]'; K -x spectacle
+          chk "screenshots saved" 2 "ls ~looktest/Pictures/Screenshots 2>/dev/null | wc -l" '.'
+          KL="$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayout"
+          QM key meta_l spc; sleep 2; chk "shortcut Win+Space switches to Bulgarian" 0 "$KL | awk '/uint32/{print \$2}'" '^1$'
+          QM key alt shift_r; sleep 1; QM key meta_l spc; sleep 1; chk "layouts cycle back to English" 2 "$KL | awk '/uint32/{print \$2}'" '.'
+          chk "keyboard layouts" 2 "$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayoutsList | grep -o 'string \"[^\"]*\"' | paste -sd' '" '.'
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true
+          # Cyrillic names in File Explorer
+          R "$(TL 'mkdir -p ~/Документи-тест; cp /usr/share/mountain/wallpaper.png ~/Документи-тест/снимка.png; echo здравей > ~/Документи-тест/бележка.txt')"
+          L 'dolphin /home/looktest/Документи-тест'; sleep 7; shot cyrillic-names; K -x dolphin
+          chk "Bulgarian translations installed" 2 "ls /usr/share/locale/bg/LC_MESSAGES 2>/dev/null | wc -l" '.'
+          # everyday apps with Windows names
+          for t in "Calculator:kcalc" "Clock:kclock" "Paint:kolourpaint" "Camera:kamoso" "Sound Recorder:krecorder" "Scanner:skanlite" "Notepad:kwrite"; do
+            IFS=: read n app <<<"$t"; L "$app"; wchk "app $n ($app) opens" 0 "$app" 20; sleep 5; shot "app-$(tr ' A-Z' '-a-z' <<<"$n")"; K -x "$app"
+          done
+          L /usr/libexec/mountain-phonelink; wchk "Phone Link opens" 0 kdeconnect-app 25; sleep 5; shot app-phone-link; K -x kdeconnect-app; sleep 3
+          chk "Phone Link's background service stops when it closes" 0 "pgrep -u looktest -x kdeconnectd || echo stopped" '^stopped$'; K -x kdeconnectd
+          # title bars use the Windows names (en@mountain catalogs)
+          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"CAP|\" + w.caption + \"|\" + w.desktopFileName);' > /tmp/caps.js; chmod 644 /tmp/caps.js"
+          caps() { local s; s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; }
+          for t in "Calculator:kcalc:org.kde.kcalc" "Paint:kolourpaint:org.kde.kolourpaint" "Notepad:kwrite:org.kde.kwrite" "Terminal:konsole:org.kde.konsole" "Task Manager:plasma-systemmonitor:org.kde.plasma-systemmonitor" "Camera:kamoso:org.kde.kamoso" "Scanner:skanlite:org.kde.skanlite" "Phone Link:kdeconnect-app:org.kde.kdeconnect.app"; do
+            IFS=: read n app id <<<"$t"; L "$app"; PGF=-f wchk "title $n ($app) opens" 2 "$app" 25; sleep 5
+            caps "$app"; shot "app-title-$app"
+            chk "title bar says $n ($app)" 0 "journalctl -b --no-pager | grep -o 'CAP|[^|]*|$id' | tail -1" "$n"
+            chk "no KDE name in $app title" 0 "journalctl -b --no-pager | grep -o 'CAP|[^|]*|$id' | tail -1 | grep -E 'KCalc|KolourPaint|KWrite|Konsole|System Monitor|Kamoso|Skanlite|KDE Connect' || echo clean" '^clean$'
+            K -f "$app"
+          done
+          K -x kdeconnectd
+          R "$LT notify-send -a Security -i security-high -h string:desktop-entry:org.mountain.security 'Mountain Security' 'Toast name test'"; sleep 2; shot toast-app-name
+          L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
+          chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
+          # Win+R: Run dialog (plasmawindowed org.mountain.run), Esc closes, typing a folder opens File Explorer
+          K -x spectacle; QM key meta_l r; PGF=-f wchk "shortcut Win+R (Run dialog)" 0 'plasmawindowed org.mountain.run' 15; sleep 2; shot dialog-run
+          chk "Win+R is not KRunner (krunner may idle as a daemon)" 2 "pgrep -u looktest -x krunner >/dev/null && echo krunner || echo ok" '^ok$'
+          QM key esc; sleep 2
+          chk "Run dialog: Esc closes" 0 "pgrep -u looktest -f 'plasmawindowed org.mountain.run' >/dev/null && echo open || echo closed" '^closed$'
+          QM key meta_l r; sleep 3; QM type '~/Documents'; QM key ret; wchk "Run dialog opens a folder" 0 dolphin 15; sleep 2; K -x dolphin
+          chk "Run history saved" 0 "cat ~looktest/.local/state/mountain/run-history" 'Documents'
+          QM key meta_l r; sleep 3; QM type 'no-such-app-xyz'; QM key ret; sleep 2; shot dialog-run-error; QM key esc; sleep 1
+          # Win+X: Quick Link menu above Start, Esc closes, T opens Task Manager
+          QM key meta_l x; PGF=-f wchk "shortcut Win+X (Quick Link menu)" 0 'plasmawindowed org.mountain.winx' 15; sleep 2; shot dialog-winx
+          QM key u; sleep 1; shot dialog-winx-power; QM key esc; QM key esc; sleep 2
+          chk "Win+X: Esc closes" 0 "pgrep -u looktest -f 'plasmawindowed org.mountain.winx' >/dev/null && echo open || echo closed" '^closed$'
+          QM key meta_l x; sleep 3; QM key t; PGF=-f wchk "Win+X: T opens Task Manager" 0 plasma-systemmonitor 20; sleep 2; K -f plasma-systemmonitor
+          # Alt+F4 on the desktop: Shut Down Mountain (not the KDE logout screen), Esc closes without shutting down
+          QM key meta_l d; sleep 2; QM key alt f4; PGF=-f wchk "shortcut Alt+F4 on the desktop asks to shut down" 0 'plasmawindowed org.mountain.shutdown' 15; sleep 2; shot dialog-shutdown
+          chk "Alt+F4 on the desktop is not the KDE logout screen" 0 "pgrep -u looktest -f logout-greeter >/dev/null && echo greeter || echo ok" '^ok$'
+          QM key esc; sleep 2
+          chk "Shut Down dialog: Esc closes" 0 "pgrep -u looktest -f 'plasmawindowed org.mountain.shutdown' >/dev/null && echo open || echo closed" '^closed$'
+          chk "dialogs placed by KWin (no errors)" 2 "journalctl --user -M looktest@ -b --no-pager 2>/dev/null | grep -i 'mountain-altf4\|org.mountain.\(run\|winx\|shutdown\)' | tail -5" '.'
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align left"; sleep 3; shot taskbar-left
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align center"; sleep 3
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass off"; sleep 3; QM key meta_l; sleep 3; shot start-menu-glass-off; QM key esc
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass on"; sleep 2
+          QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot menu-context; QM key esc; sleep 1
+          L dolphin; sleep 5; L systemsettings; sleep 5
+          QM keyhold 4 alt tab & sleep 2; shot alt-tab; wait; QM key esc; K -x dolphin; K -x systemsettings
+          chk "personalize: glass back on" 0 "$(TL 'kreadconfig6 --file kwinrc --group Plugins --key blurEnabled')" '^true$'
+          
           # 3. double-click the first desktop icon (folder AI)
           QM dclick $((58*W/1280)) $((75*H/800))
           wchk "desktop folder opens (dolphin)" 0 dolphin 15; sleep 3; shot folder-open
+          chk "a desktop folder opens through desktop:/ (labels without .desktop)" 0 "pgrep -a -u looktest -x dolphin | head -1" 'desktop:/'
+          # the labels File Explorer draws, read over AT-SPI from a File Explorer opened on ~/Desktop/Coding by path (the wrapper turns it into desktop:/)
+          K -x dolphin
+          R "echo IyBQcmludHMgdGhlIGl0ZW0gbGFiZWxzIEZpbGUgRXhwbG9yZXIgKERvbHBoaW4pIHNob3dzLCByZWFkIHRocm91Z2ggQVQtU1BJOiAib2sgPGxhYmVscz4iIG9yICJiYWQgPHdoeT4iCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKZGVmIHdhbGsoYSwgZCwgb3V0KToKICAgIGlmIGQgPiAzMDoKICAgICAgICByZXR1cm4KICAgIHRyeToKICAgICAgICBuID0gYS5nZXRfbmFtZSgpCiAgICAgICAgayA9IGEuZ2V0X2NoaWxkX2NvdW50KCkKICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgcmV0dXJuCiAgICBpZiBuOgogICAgICAgIG91dC5hcHBlbmQobikKICAgIGZvciBpIGluIHJhbmdlKG1pbihrLCA0MDApKToKICAgICAgICB0cnk6CiAgICAgICAgICAgIGMgPSBhLmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgaWYgYzoKICAgICAgICAgICAgd2FsayhjLCBkICsgMSwgb3V0KQoKZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIG5vdCBhcHAgb3IgKGFwcC5nZXRfbmFtZSgpIG9yICcnKS5sb3dlcigpIG5vdCBpbiAoJ2RvbHBoaW4nLCAnZmlsZSBleHBsb3JlcicpOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIG5hbWVzID0gW10KICAgICAgICB3YWxrKGFwcCwgMCwgbmFtZXMpCiAgICAgICAgaGl0ID0gc29ydGVkKHtuIGZvciBuIGluIG5hbWVzIGlmIG4uc3RhcnRzd2l0aCgoJ1Rlcm1pbmFsJywgJ05vZGUuanMnKSl9KQogICAgICAgIGlmIGhpdDoKICAgICAgICAgICAgYmFkID0gW24gZm9yIG4gaW4gaGl0IGlmICcuZGVza3RvcCcgaW4gbl0KICAgICAgICAgICAgcHJpbnQoKCdiYWQgJyBpZiBiYWQgZWxzZSAnb2sgJykgKyAnIHwgJy5qb2luKGhpdCkpCiAgICAgICAgICAgIHN5cy5leGl0KDEgaWYgYmFkIGVsc2UgMCkKICAgIHRpbWUuc2xlZXAoMSkKcHJpbnQoJ2JhZCBubyBGaWxlIEV4cGxvcmVyIGxhYmVscyBvdmVyIEFULVNQSScpCnN5cy5leGl0KDEpCg== | base64 -d > /tmp/labels.py && chmod 644 /tmp/labels.py"
+          L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 /usr/libexec/mountain-explorer /home/looktest/Desktop/Coding; wchk "File Explorer opens Desktop/Coding" 0 dolphin 15; sleep 3; shot explorer-coding-labels
+          chk "File Explorer label of a launcher has no .desktop" 0 "$LT python3 /tmp/labels.py 2>&1 | tail -1" '^ok .*Terminal'
+          K -x dolphin
           K -x dolphin
 
           # 4. file explorer
           L dolphin; sleep 8; shot file-explorer
+          chk "sidebar has This PC and Network" 0 "grep -cE '<title>(This PC|Network)</title>' ~looktest/.local/share/user-places.xbel" '^2$'
+          chk "status bar without free space" 0 "grep -h '^ShowStatusBar=' /etc/xdg/dolphinrc ~looktest/.config/dolphinrc 2>/dev/null | tail -1" '^ShowStatusBar=Small$'
+          shot explorer-home
+          QM key ctrl f; sleep 2; QM type notes; sleep 3; shot explorer-search; QM key esc; sleep 1
+          QM rclick $((700*W/1280)) $((500*H/800)); sleep 2; shot explorer-context-menu; QM key esc; sleep 1 # "New", "Sort"
+          chk "File Explorer uses the Windows labels (en@mountain first)" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep '^LANGUAGE='" 'en@mountain' 
+          K -x dolphin; L 'dolphin /'; sleep 7; shot explorer-thispc; K -x dolphin
+          # a folder launcher opened the way File Explorer opens it starts its app
+          L 'dolphin "/home/looktest/Desktop/Coding"'; sleep 6; shot explorer-launchers; K -x dolphin
+          L 'kioclient exec "/home/looktest/Desktop/Coding/Terminal.desktop"'; wchk "a folder launcher opens its app" 0 konsole 20; sleep 2; K -x konsole
+          L 'dolphin remote:/'; sleep 7; shot explorer-network; K -x dolphin
+          L dolphin; sleep 6
           if ! R "test -e /etc/skel/.local/state/dolphinstaterc"; then # record the window state with the Details pane on (F11) for the skel default
             QM key f11; sleep 3; shot file-explorer-details; QM key ctrl q; sleep 4
             R "cat ~looktest/.local/state/dolphinstaterc" > dolphinstaterc.txt 2>&1 || true
@@ -367,10 +572,15 @@ jobs:
 
           # 5. open files with the default apps
           R "$(TL 'mkdir -p ~/Pictures ~/Documents ~/Desktop; cp /usr/share/mountain/wallpaper.png ~/Pictures/photo.png; rsvg-convert -f pdf -o ~/Documents/letter.pdf /usr/share/mountain/wallpaper.svg; echo hello mountain > ~/Documents/notes.txt')"
-          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:code"; do
+          for t in "photo:/home/looktest/Pictures/photo.png:gwenview" "pdf:/home/looktest/Documents/letter.pdf:okular" "text:/home/looktest/Documents/notes.txt:kwrite"; do
             IFS=: read n f app <<<"$t"
             L xdg-open "$f"; wchk "open $n ($app)" 1 "$app" 20; sleep 5; shot "open-$n"; K -x "$app"
           done
+          QM key meta_l; sleep 3; shot start-menu-after-files; QM key esc; sleep 1
+          L xdg-open /home/looktest/Documents/letter.pdf; wchk "PDF Reader opens" 2 okular 20; sleep 5; caps okular; shot app-title-okular
+          chk "title bar says PDF Reader" 0 "journalctl -b --no-pager | grep -o 'CAP|[^|]*|org.kde.okular' | tail -1" 'PDF Reader'
+          K -x okular
+          chk "mime text/plain -> Notepad" 0 "$(TL 'xdg-mime query default text/plain')" 'org.kde.kwrite.desktop'
           chk "mime video/mp4" 0 "$(TL 'xdg-mime query default video/mp4')" 'org.kde.haruna.desktop'
           chk "mime audio/mpeg" 0 "$(TL 'xdg-mime query default audio/mpeg')" 'org.kde.haruna.desktop'
           chk "mime docx" 0 "$(TL 'xdg-mime query default application/vnd.openxmlformats-officedocument.wordprocessingml.document')" 'org.onlyoffice.desktopeditors.desktop'
@@ -387,10 +597,13 @@ jobs:
 
           # 6. drag a file between two Dolphin panes (best effort)
           R "$(TL 'echo drag > ~/Desktop/drag-me.txt')"
-          L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
-          # drag notes.txt (right pane) onto the Browsers folder (left pane), then click "Move Here"
-          QM drag $((730*W/1280)) $((380*H/800)) $((474*W/1280)) $((385*H/800)); sleep 2; shot drag-menu; QM click $(((474+57)*W/1280)) $(((385+16)*H/800)); sleep 2; shot drag-after
-          chk "drag file into a folder" 0 "test -e /home/looktest/Desktop/Browsers/notes.txt && echo moved" '^moved$'
+          R "$(TL 'kwriteconfig6 --file kwinrulesrc --group mountain-explorer-size --key sizerule 1; dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure')"
+          K -x systemsettings; L 'dolphin --split /home/looktest/Desktop /home/looktest/Documents'; sleep 10; shot drag-before
+          # drag notes.txt (right pane) onto the Browsers folder (left pane): same drive, so it moves with no menu (Windows)
+          QM drag $((853*W/1280)) $((185*H/800)) $((527*W/1280)) $((192*H/800)); sleep 2; shot drag-menu; sleep 1; shot drag-after
+          chk "drag file into a folder (no menu)" 0 "test -e /home/looktest/Desktop/Browsers/notes.txt && test ! -e /home/looktest/Documents/notes.txt && echo moved" '^moved$'
+          chk "drop behavior is move on the same drive" 0 "grep -h '^DndBehavior=' /etc/xdg/kdeglobals" 'MoveIfSameDevice'
+          R "$(TL 'kwriteconfig6 --file kwinrulesrc --group mountain-explorer-size --key sizerule --delete; dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure')"
           K -x dolphin
 
           # 6b. drag an icon on the desktop (icons fill columns from the top left): slow drag, then a fast drag right after selecting
@@ -408,13 +621,14 @@ jobs:
           L dolphin /home/looktest; sleep 5
           PGF=-f wchk "geforcenow opens Edge" 0 msedge 60; sleep 20; shot geforce-now
           # window classes as KWin sees them (to match launchers to windows)
-          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined));' > /tmp/wins.js; chmod 644 /tmp/wins.js"
+          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"WIN|\" + w.caption + \"|\" + w.resourceClass + \"|\" + w.resourceName + \"|\" + w.desktopFileName + \"|x11=\" + (w.windowId !== undefined) + \"|w=\" + w.frameGeometry.width);' > /tmp/wins.js; chmod 644 /tmp/wins.js"
           SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wins.js string:wins" | awk '/int32/{print $2}')
           R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 2
           chk "window classes" 2 "journalctl -b --no-pager | grep -o 'WIN|.*' | tail -8 | paste -sd';'" '.'
           chk "GeForce NOW has its own taskbar entry" 0 "journalctl -b --no-pager | grep -o 'WIN|GeForce NOW[^|]*|[^|]*' | tail -1" '[|]mountain-geforcenow'
           chk "language seen by apps" 2 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep -E '^(LANG|LANGUAGE)='; tr '\0' '\n' < /proc/\$(pgrep -u looktest -x plasmashell | head -1)/environ | grep -E '^(LANG|LANGUAGE)=' | sed 's/^/shell:/'" '.'
           chk "title bar says File Explorer" 0 "journalctl -b --no-pager | grep -o 'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin' | tail -1" 'File Explorer'
+          chk "File Explorer opens 1100 px wide" 0 "journalctl -b --no-pager | grep -o 'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin|[^|]*|w=[0-9]*' | tail -1" 'w=1[01][0-9][0-9]'
           R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge; K -x dolphin
           chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '.'
 
@@ -429,6 +643,10 @@ jobs:
           # top bar switch
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 3; shot topbar-off
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar on"; sleep 3; shot topbar-on
+          for _ in $(seq 15); do R "grep -q '^chartFace=org.kde.ksysguard.textonly' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" && break; sleep 2; done
+          chk "top bar: CPU and RAM as text" 0 "grep -c '^chartFace=org.kde.ksysguard.textonly' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^2$'
+          chk "top bar: labels" 0 "grep -hE '^(cpu/all/usage|memory/physical/usedPercent)=' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort | paste -sd' '" 'cpu/all/usage=CPU memory/physical/usedPercent=RAM'
+          R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-topbar off"; sleep 2
 
           # 10. latency
           LATS=""; for _ in 1 2 3; do LATS="$LATS $(latency)"; sleep 2; done
@@ -475,13 +693,90 @@ jobs:
           opent "Settings" "plasmawindowed org.mountain.settings" org.mountain.settings
           opent "Terminal" konsole konsole
           opent "VS Code" code '/usr/share/code/code'
-          # Alt+Tab between two windows
-          L dolphin; sleep 6; L konsole; sleep 6
-          echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm); t0=$(date +%s%N); QM key alt tab
-          while :; do t=$(( ( $(date +%s%N) - t0 ) / 1000000 )); echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm); [ "$m" != "$m0" ] && break; [ $t -ge 5000 ] && break; sleep 0.05; done
-          echo "| Alt+Tab | INFO | ${t} ms |" >> report.md; ALTTAB=$t
+          opent "Task Manager" plasma-systemmonitor plasma-systemmonitor
+          # v5.1 speed: ms from the input (QEMU's clock, no harness start-up counted) to the first changed frame; taskbar rows ignored
+          MS() { QM measure 60 "$@" | tail -1; } # -> first=MS settle=MS
+          num() { sed -n 's/.*first=\([0-9-]*\).*/\1/p' <<<"$1"; }
+          R "$(TL 'mkdir -p ~/Speed/Folder; cp /usr/share/mountain/wallpaper.png ~/Speed/photo.png; rsvg-convert -f pdf -o ~/Speed/letter.pdf /usr/share/mountain/wallpaper.svg; echo speed > ~/Speed/notes.txt; seq 6 | xargs -I{} cp ~/Speed/photo.png ~/Speed/Folder/picture-{}.png')"
+          L dolphin /home/looktest/Speed; sleep 8; shot speed-folder
+          SPEED=""
+          for t in "photo:photo:gwenview" "pdf:letter:okular" "text:notes:kwrite"; do
+            IFS=: read n sel app <<<"$t"
+            for w in cold warm; do
+              QM type $sel; sleep 2 # File Explorer's type-ahead selects the file; Enter opens it like a double-click
+              r=$(MS 20000 key ret); sleep 4; [ $w = warm ] && shot "speed-open-$n"; K -x "$app"; sleep 3
+              echo "| open $n from File Explorer ($w) | INFO | $r |" >> report.md; SPEED="$SPEED $n-$w=$(num "$r")"
+            done
+          done
+          for w in cold warm; do
+            QM type folder; sleep 2
+            r=$(MS 5000 key ret); echo "| open a folder in File Explorer ($w) | INFO | $r |" >> report.md; SPEED="$SPEED folder-$w=$(num "$r")"
+            sleep 2; r=$(MS 5000 key alt left); echo "| back to the parent folder ($w) | INFO | $r |" >> report.md; SPEED="$SPEED back-$w=$(num "$r")"; sleep 2
+          done
+          L konsole; sleep 6
+          r=$(MS 3000 key alt tab); ALTTAB=$(num "$r"); echo "| Alt+Tab | INFO | $r |" >> report.md
+          sleep 1; r=$(MS 3000 key meta_l pgup); echo "| maximize animation | INFO | $r |" >> report.md; SPEED="$SPEED maximize=$(num "$r")"
+          sleep 1; r=$(MS 3000 key meta_l pgdn); echo "| minimize animation | INFO | $r |" >> report.md; SPEED="$SPEED minimize=$(num "$r")"
+          # frame pacing while dragging a window (KWin's FPS overlay in the screenshot)
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect string:showfps" >/dev/null 2>&1
+          QM key meta_l pgup; sleep 2; r=$(QM dragfps $((640*W/1280)) 12 $((500*W/1280)) $((300*H/800)) 3 | tail -1)
+          echo "| frames seen while dragging a window | INFO | $r |" >> report.md; sleep 1; shot drag-showfps
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect string:showfps" >/dev/null 2>&1
           K -x dolphin; K -x konsole
+          echo "| speed numbers | INFO |$SPEED alttab=$ALTTAB |" >> report.md
+          # real-PC budgets for reference (this VM renders in software): open <= 500 ms warm, folder <= 150 ms, Alt+Tab <= 100 ms
+          for kv in $SPEED alttab=$ALTTAB; do
+            k=${kv%%=*}; v=${kv#*=}; case $k in folder-*|back-*) b=150 ;; *-warm) b=500 ;; alttab) b=100 ;; *) continue ;; esac
+            [ "${v:--1}" -ge 0 ] && [ "$v" -le $b ] && r=met || r=over
+            echo "| real-PC budget $k <= $b ms | INFO | $v ms ($r) |" >> report.md
+          done
+          
+          # Task Manager: Ctrl+Shift+Esc, every tab, End task, Startup apps
+          R "$(TL 'cp /usr/bin/sleep ~/.local/bin/endtasktest')"; L /home/looktest/.local/bin/endtasktest 99999
+          K -f plasma-systemmonitor; QM key ctrl shift esc; PGF=-f wchk "Ctrl+Shift+Esc opens Task Manager" 0 plasma-systemmonitor 15; sleep 6; shot taskmanager
+          chk "Task Manager RAM" 2 "ps -o rss= -p \$(pgrep -u looktest -f plasma-systemmonitor | head -1) | awk '{print int(\$1/1024)\" MB\"}'" '.'
+          for pg in 1-processes 2-performance 3-apphistory 4-startup 5-users 6-details 7-services; do
+            K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-$pg.page"; sleep 8; shot "taskmanager-${pg#*-}"
+          done
+          # End task: Mountain's Background processes list (Windows names, own processes only)
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 10; shot taskmanager-background
+          chk "Background processes: Windows names" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'Desktop Window Manager'
+          chk "Background processes: shell named like Windows" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'Windows Explorer'
+          chk "Background processes: CPU at most 100 %" 0 "$(TL '/usr/libexec/mountain-taskmanager processes') | awk -F'\t' 'NR>1 && \$3+0>100 {b=1} END {print b ? \"over\" : \"ok\"}'" '^ok$'
+          chk "Background processes: memory in MB/GB" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | sed -n 2p | cut -f4')" '^[0-9.]+ (MB|GB)$'
+          chk "Background processes lists the test process" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'endtasktest'
+          chk "End task refuses a root process" 0 "$(TL '/usr/libexec/mountain-taskmanager end 1 || echo refused')" 'refused'
+          chk "End task refuses the session core" 0 "$(TL '/usr/libexec/mountain-taskmanager end $(pgrep -u looktest -x kwin_wayland | head -1) || echo refused')" 'refused'
+          R "$(TL '/usr/libexec/mountain-taskmanager end $(pgrep -u looktest -x endtasktest | head -1)')"; sleep 1
+          chk "Task Manager: End task ends the process" 0 "pgrep -u looktest -x endtasktest || echo ended" '^ended$'
+          chk "Phone Link app strings renamed" 0 "python3 -c 'import gettext; print(gettext.GNUTranslations(open(\"/usr/share/locale/en@mountain/LC_MESSAGES/kdeconnect-app.mo\",\"rb\"))._catalog.get(\"About KDE Connect\"))'" '^About Phone Link$'
+          K -x endtasktest
+          chk "startup test app ran at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' >/dev/null && echo running" '^running$'
+          chk "Startup apps tab lists it" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'mtm-autostart-test.desktop'
+          R "$(TL '/usr/libexec/mountain-taskmanager startup-set mtm-autostart-test.desktop off')"
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-4-startup.page"; sleep 8; shot taskmanager-startup-disabled
+          chk "Task Manager services list" 2 "$(TL '/usr/libexec/mountain-taskmanager services | head -4 | tr "\t" " "')" 'Running'
+          chk "Task Manager device names" 2 "$(TL '/usr/libexec/mountain-taskmanager device | tr "\t" " " | paste -sd";"')" 'Processor'
+          chk "Task Manager pages: no Edit Page in header (actionsFace on every page)" 0 "grep -L '^actionsFace=Face-' /usr/share/plasma-systemmonitor/mountain-*.page | wc -l" '^0$'
+          chk "Task Manager CPU column scaled to 0-100 % of all cores" 0 "grep -c '\"usage\":\"textScaled\"' /usr/share/plasma-systemmonitor/mountain-1-processes.page" '^1$'
+          chk "Users tab CPU at most 100 %" 0 "$(TL '/usr/libexec/mountain-taskmanager users') | awk -F'\t' 'NR>1 && \$4+0>100 {b=1} END {print b ? \"over\" : \"ok\"}'" '^ok$'
+          R "$(TL 'printf "[Desktop Entry]\nType=Application\nName=Тест App\nExec=true\n" > ~/.config/autostart/"Тест App.desktop"')"
+          chk "Startup apps: name with a space and Cyrillic is listed" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'Тест App\.desktop'
+          chk "Startup apps: turn off a name with a space and Cyrillic" 0 "$(TL '/usr/libexec/mountain-taskmanager startup-set "Тест App.desktop" off && /usr/libexec/mountain-taskmanager startup | grep -F "Тест App.desktop"')" 'Disabled'
+          chk "Startup apps: turn it back on" 0 "$(TL '/usr/libexec/mountain-taskmanager startup-set "Тест App.desktop" on && /usr/libexec/mountain-taskmanager startup | grep -F "Тест App.desktop"')" 'Enabled'
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-2-performance.page"; sleep 8; shot taskmanager-performance-nobanner
+          R "$(TL 'rm -f ~/.config/autostart/"Тест App.desktop"')"
+          K -f plasma-systemmonitor
+          # sharpness at 1920x1080 (screenshots only)
+          KS="$LT WAYLAND_DISPLAY=wayland-0 kscreen-doctor"
+          OUT=$(R "$KS -o" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
+          R "$KS output.$OUT.mode.1920x1080@60" >/dev/null 2>&1; sleep 6; shot fhd-desktop
+          L dolphin; sleep 7; shot fhd-file-explorer; K -x dolphin
+          QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1
+          QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot fhd-menu-context; QM key esc
+          R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
 
+          QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu; QM key esc; QM key esc
           # perf data (non-fatal) while the session is still up
           mkdir -p perf
           P() { R "$1" > "perf/$2.txt" 2>&1 || true; } # cmd, filename
@@ -501,6 +796,190 @@ jobs:
           P "flatpak list --app; flatpak ps; rpm -q kdeconnect plasma-discover baloo input-remapper geoclue2 2>&1; balooctl6 status 2>&1" misc
           P "ps -eo pid,rss,pcpu,user,args --sort=-rss | head -25 | cut -c1-200" ps-args
           P "$LT systemctl --user list-unit-files --state=enabled --no-pager" user-unit-files
+          
+          # Security page, on-demand virus scan, firewall, Flatpak sandbox, snapshots, accounts
+          U() { R "timeout 600 $LT systemd-run --user --wait --pipe --quiet --collect $*"; } # like an app started from the desktop
+          L "/usr/libexec/mountain-settings-open privacy"; PGF=-f wchk "Security entry opens Settings on Privacy & security" 0 org.mountain.settings 20; sleep 8; shot security-page
+          chk "security status" 2 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | paste -sd' '" '.'
+          chk "Security: firewall on, SELinux enforcing" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep -E '^(fw|selinux)=' | paste -sd' '" 'fw=on selinux=Enforcing'
+          K -f org.mountain.settings
+          R "$LT systemctl --user stop mountain-protect.service" # on-demand scans must not race the watcher
+          R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
+          SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" > scan-log.txt
+          chk "virus definitions service log" 2 "journalctl -u mountain-virus-definitions -b --no-pager | tail -4 | cut -c1-160; journalctl -b --no-pager | grep -i 'polkit.*mountain-virus' | tail -2" '.'
+          chk "virus definitions downloaded on Scan now (no password)" 2 "ls /var/lib/clamav | paste -sd' '" '.'
+          if ! grep -q 'av_result=found' <<<"$SCAN"; then # the definitions server may refuse CI machines: test the pipeline with one test signature
+            echo "| virus scan with downloaded definitions | INFO | $(grep -m1 -E 'av_result|note' <<<"$SCAN") - retrying with a test signature |" >> report.md
+            R "printf '44d88612fea8a8f36de82e1278abb02f:68:Eicar-Test-Signature\n' > /var/lib/clamav/mountain-test.hdb"
+            SCAN=$(U /usr/libexec/mountain-security scan /home/looktest/Downloads 2>&1); echo "$SCAN" >> scan-log.txt
+          fi
+          chk "virus scan finds the test file and quarantines it" 0 "test ! -e ~looktest/Downloads/eicar.com && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo quarantined" '^quarantined$'
+          chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
+          chk "nothing scans or downloads in the background" 0 "pgrep -l -x 'clamd|freshclam|clamscan|clamonacc' || echo none" '^none$'
+          R "$LT systemctl --user start mountain-protect.service"; sleep 3 # the next checks need the watcher
+          chk "Active Protection is on" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/new-download.com')"
+          for _ in $(seq 40); do R "test -e ~looktest/Downloads/new-download.com" || break; sleep 3; done
+          chk "a new download with a threat is quarantined automatically" 0 "test ! -e ~looktest/Downloads/new-download.com && ls ~looktest/.local/share/mountain/quarantine | grep -q new-download && echo quarantined" '^quarantined$'
+          R "$LT systemctl --user stop mountain-protect.service"
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Documents/right-click.com')"
+          chk "right-click Scan with Mountain Security" 0 "timeout 600 $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security scan-notify /home/looktest/Documents/right-click.com" 'av_result=found'
+          chk "quarantine restore" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore eicar.com && test -e ~looktest/Downloads/eicar.com && echo restored" '^restored$'
+          R "rm -f ~looktest/Downloads/eicar.com"
+          R "rm -f ~looktest/.local/share/mountain/protect/allowed" # the restore allowed the test file's content; the next checks reuse it
+          chk "scan history" 2 "tail -3 ~looktest/.local/share/mountain/scan-history | paste -sd';'" 'scan'
+          R "$LT systemctl --user start mountain-protect.service"; sleep 3
+          # Active Protection: /tmp, a USB drive, an attachment-like path; unverified scripts and autostart entries; its cost
+          apwait() { for _ in $(seq 40); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /tmp/apa-tmp.com')"; apwait /tmp/apa-tmp.com
+          chk "Active Protection: a threat in /tmp is caught" 0 "test ! -e /tmp/apa-tmp.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-tmp && echo caught" '^caught$'
+          R "truncate -s 64M /root/usb.img && mkfs.vfat -n USBTEST /root/usb.img >/dev/null && mkdir -p /run/media/looktest/USBTEST && mount -o loop,uid=\$(id -u looktest) /root/usb.img /run/media/looktest/USBTEST"
+          R "mount | grep -q USBTEST || mount -o loop,uid=\$(id -u looktest) /root/usb.img /run/media/looktest/USBTEST"; sleep 3
+          for _ in $(seq 15); do R "$LT journalctl --user -u mountain-protect --no-pager | grep -q 'drive: /run/media/looktest/USBTEST'" && break; sleep 2; done
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /run/media/looktest/USBTEST/game-crack.com')"; apwait /run/media/looktest/USBTEST/game-crack.com
+          chk "Active Protection: a threat on a USB drive is caught" 0 "test ! -e /run/media/looktest/USBTEST/game-crack.com && ls ~looktest/.local/share/mountain/quarantine | grep -q game-crack && echo caught" '^caught$'
+          R "$LT journalctl --user -u mountain-protect -n 40 --no-pager; findmnt /run/media/looktest/USBTEST; ls -la /run/media/looktest/USBTEST" > protect-usb-log.txt 2>&1
+          R "umount /run/media/looktest/USBTEST; rm -f /root/usb.img"
+          R "$(TL 'mkdir -p ~/Downloads/attachments; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/attachments/invoice.pdf.com')"; apwait /home/looktest/Downloads/attachments/invoice.pdf.com
+          chk "Active Protection: an email-attachment-like threat is caught" 0 "test ! -e ~looktest/Downloads/attachments/invoice.pdf.com && ls ~looktest/.local/share/mountain/quarantine | grep -q invoice && echo caught" '^caught$'
+          R "$(TL 'printf "#!/bin/sh\necho installing\n" > ~/Downloads/install.sh; printf "[Desktop Entry]\nType=Application\nName=Updater\nExec=sh -c true\n" > ~/.config/autostart/updater.desktop')"; sleep 15
+          AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
+          chk "Active Protection: an unsigned script is flagged unverified" 0 "echo '$(grep -c 'ap_unverified=.*install.sh|program or script' <<<"$AP")'" '^1$'
+          chk "Active Protection: a new autostart entry is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*updater.desktop|starts at sign-in' <<<"$AP")'" '^1$'
+          chk "Active Protection status" 2 "echo '$(grep -E '^ap_(checked|threats)' <<<"$AP" | paste -sd' ')'" '.'
+          L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
+          # the Active Protection page polls only while it is on screen: none at all with the window hidden (Win+D)
+          L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot settings-protection
+          n=0; for _ in $(seq 20); do R "pgrep -u looktest -f 'mountain-protect status'" >/dev/null && n=$((n+1)); sleep 1; done
+          chk "Active Protection polls while shown (seconds seen of 20)" 2 "echo $n" '.'
+          QM key meta_l d; sleep 4
+          n=0; for _ in $(seq 20); do R "pgrep -u looktest -f 'mountain-(protect|security) status'" >/dev/null && n=$((n+1)); sleep 1; done
+          chk "Active Protection stops polling when hidden" 0 "echo $n" '^0$'
+          QM key meta_l d; sleep 2; K -f org.mountain.settings
+          R "$(TL '/usr/libexec/mountain-protect allow /home/looktest/Downloads/install.sh; /usr/libexec/mountain-protect delete /home/looktest/.config/autostart/updater.desktop')"
+          chk "Active Protection: Allow and Delete work" 0 "test -e ~looktest/Downloads/install.sh && test ! -e ~looktest/.config/autostart/updater.desktop && $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status | grep -c 'install.sh' | xargs test 0 -eq && echo ok" '^ok$'
+          # a crafted file name must never run as a command (old sed `e` injection); auto path (threat) and click path (Delete)
+          R "$(TL 'cd ~/Downloads && echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > "x|e touch pwned-ap #.sh"; printf "#!/bin/sh\n" > "y|e touch pwned-ap2 #.sh"')"
+          apwait '/home/looktest/Downloads/x|e touch pwned-ap #.sh'; sleep 5
+          R "$(TL '/usr/libexec/mountain-protect delete "/home/looktest/Downloads/y|e touch pwned-ap2 #.sh"')"
+          chk "Active Protection: a crafted file name never runs a command" 0 "ls -d ~looktest/pwned-ap* ~looktest/Downloads/pwned-ap* /tmp/pwned-ap* 2>/dev/null | grep -q . && echo RAN || echo safe" '^safe$'
+          chk "Active Protection: the crafted names were handled" 0 "test ! -e '/home/looktest/Downloads/x|e touch pwned-ap #.sh' && test ! -e '/home/looktest/Downloads/y|e touch pwned-ap2 #.sh' && echo ok" '^ok$'
+          chk "Active Protection: the scan runs sandboxed" 0 "$LT journalctl --user -n 400 --no-pager -o cat | grep -m1 -E 'Failed to set up mount namespacing|NAMESPACE|status=226' || echo ok" '^ok$'
+          # restored files stay restored (mountain-security restore records the hash with allow-hash)
+          R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore new-download.com"; sleep 20
+          chk "Active Protection: a restored file is not quarantined again" 0 "test -e ~looktest/Downloads/new-download.com && echo kept" '^kept$'
+          R "rm -f ~looktest/Downloads/new-download.com"
+          # light: 50 ordinary saves in Documents start no scan
+          N0=$(R "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c '^checking '")
+          R "$(TL 'cd ~/Documents && seq 50 | xargs -I@ sh -c "echo note > note-@.txt"')"; sleep 20
+          N1=$(R "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c '^checking '")
+          chk "Active Protection: 50 text saves in Documents start no scan" 0 "echo $((N1-N0))" '^0$'
+          R "rm -f ~looktest/Documents/note-*.txt"
+          chk "Active Protection: no scanner left running at idle" 0 "pgrep -u looktest -x clamscan || echo none" '^none$'
+          APM=$(R "$LT systemctl --user show mountain-protect.service -p MemoryCurrent --value")
+          [[ $APM =~ ^[0-9]+$ ]] || APM=
+          A0=$(R "$LT systemctl --user show mountain-protect.service -p CPUUsageNSec --value"); sleep 30; A1=$(R "$LT systemctl --user show mountain-protect.service -p CPUUsageNSec --value")
+          if [[ $A0 =~ ^[0-9]+$ && $A1 =~ ^[0-9]+$ ]]; then APC=$(awk -v a="$A0" -v b="$A1" 'BEGIN{printf "%.2f", (b-a)/30e9*100}'); else APC=n/a; fi
+          [ "${APM:-999999999}" -le 157286400 ] && r=PASS || r=FAIL; echo "| Active Protection idle RAM <= 150 MB | $r | $((${APM:-0}/1048576)) MB |" >> report.md
+          [[ $APC =~ ^[0-9.]+$ ]] && awk -v c="$APC" 'BEGIN{exit !(c < 1)}' && r=PASS || r=FAIL; echo "| Active Protection idle CPU ~0 % | $r | ${APC} % over 30 s |" >> report.md
+          R "$LT systemctl --user stop mountain-protect.service"; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
+          R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
+          L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans; K -f org.mountain.settings
+          R "rm -f /var/lib/clamav/mountain-test.hdb"
+          # firewall: a service listening on 8765 answers inside the VM but not from outside
+          L "python3 -m http.server 8765 --directory /tmp"; sleep 3
+          chk "test service answers inside the VM" 0 "curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:8765/" '^200$'
+          FWR=$(curl -s -o /dev/null -w '%{http_code}' -m 8 http://127.0.0.1:8765/ 2>/dev/null)
+          [ "$FWR" = 000 ] && r=PASS || r=FAIL; echo "| firewall blocks an incoming port (8765 from outside) | $r | http ${FWR:-none} |" >> report.md; echo "$r firewall"
+          K -f 'http.server.8765'
+          R "ls -ld /etc/firewalld/zones; $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^fw'" > firewall-status.txt 2>&1
+          chk "Allow an app: Steam Remote Play listed" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^fw_app=steam-streaming'" 'fw_app=steam-streaming:yes'
+          chk "Allow an app: block and allow again" 0 "{ /usr/libexec/mountain-security allow rdp on >/dev/null 2>&1; firewall-cmd --zone=mountain-home --query-service=rdp; /usr/libexec/mountain-security allow rdp off >/dev/null 2>&1; firewall-cmd --zone=mountain-home --query-service=rdp || echo blocked-again; } | paste -sd' '" '^yes no blocked-again$'
+          chk "Allow an app: Public stays closed" 0 "{ /usr/libexec/mountain-security allow rdp on >/dev/null 2>&1; firewall-cmd --zone=mountain --query-service=rdp; /usr/libexec/mountain-security allow rdp off >/dev/null 2>&1; } | paste -sd' '" '^no$'
+          chk "Phone Link open only on Home networks" 0 "{ firewall-cmd --zone=mountain --query-service=kdeconnect; firewall-cmd --zone=mountain-home --query-service=kdeconnect; } | paste -sd' '" '^no yes$'
+          chk "network profile Home, then Public" 0 "/usr/libexec/mountain-security profile home >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1; /usr/libexec/mountain-security profile public >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1" 'mountain-home'
+          chk "USB protection on keeps the plugged-in mouse, then off" 0 "{ /usr/libexec/mountain-usbguard on >/dev/null; systemctl is-active usbguard; usbguard list-devices | grep -c allow; /usr/libexec/mountain-usbguard off >/dev/null; systemctl is-active usbguard; } | paste -sd' '" '^active.*inactive$'
+          chk "core dumps off" 0 "systemd-analyze cat-config systemd/coredump.conf | grep -E '^Storage='" 'Storage=none'
+          # Restart into Windows: hidden without a Windows boot entry; with a fake one it sets a one-time boot
+          chk "Restart into Windows hidden without Windows" 0 "/usr/libexec/mountain-windows-boot check || echo hidden" '^hidden$'
+          R "efibootmgr --create --disk /dev/vda --part 1 --label 'Windows Boot Manager' --loader '\\EFI\\Microsoft\\Boot\\bootmgfw.efi' >/dev/null"
+          WINE=$(R "/usr/libexec/mountain-windows-boot check")
+          chk "Restart into Windows shown with a Windows entry" 0 "echo entry=$WINE" '^entry=[0-9A-F]{4}$'
+          QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu-windows; QM key esc; QM key esc
+          chk "Restart into Windows sets a one-time boot" 0 "/usr/libexec/mountain-windows-boot go --no-restart; efibootmgr | grep BootNext" "BootNext: $WINE"
+          R "efibootmgr --delete-bootnext >/dev/null; efibootmgr --bootnum $WINE --delete-bootnum >/dev/null" || true
+          # Flatpak sandbox: a chat app can't read Documents; a game launcher keeps its access
+          R "$(TL 'mkdir -p ~/Documents; echo secret > ~/Documents/private.txt')"
+          chk "Flatpak sandbox: Discord can't read Documents" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/Documents/private.txt 2>&1 | tail -1" 'No such file'
+          chk "Flatpak overrides (Discord)" 2 "cat /var/lib/flatpak/overrides/com.discordapp.Discord | paste -sd' '" '.'
+          for app in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
+            chk "Flatpak sandbox: no home folder ($app)" 0 "grep -h '^filesystems=' /var/lib/flatpak/overrides/$app" '!home'
+          done
+          chk "Heroic (games) keeps its access" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.heroicgameslauncher.hgl /home/looktest/Documents/private.txt 2>&1 | tail -1" '^secret$'
+          # snapshots: delete a file, copy it back from Previous versions
+          R "$(TL 'echo precious > ~/Documents/precious.txt')"
+          chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service && ls /var/home/.snapshots | tail -1 || { journalctl -u mountain-snapshot -b -n 4 --no-pager -o cat; stat -c %i /var/home; } | paste -sd' '" '^[0-9]{4}-'
+          SNAP=$(R "ls /var/home/.snapshots | tail -1")
+          R "$(TL 'rm ~/Documents/precious.txt')"
+          chk "deleted file restored from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP/looktest/Documents/precious.txt ~/Documents/ && cat ~/Documents/precious.txt")" '^precious$'
+          chk "snapshots are read-only for programs" 0 "$(TL "touch /var/home/.snapshots/$SNAP/looktest/x 2>/dev/null && echo writable || echo blocked")" '^blocked$'
+          L "dolphin /var/home/.snapshots/$SNAP/looktest/Documents"; sleep 7; shot previous-versions; K -x dolphin
+          chk "sudo always asks for a password" 0 "grep -rsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d || echo none" '^none$'
+          chk "polkit rules that skip the password" 2 "grep -ls 'Result.YES' /etc/polkit-1/rules.d/* /usr/share/polkit-1/rules.d/* 2>/dev/null | paste -sd' '" '.'
+          chk "kernel lockdown (off by default: game drivers)" 2 "cat /sys/kernel/security/lockdown" '.'
+          
+          # Part H: attack test (red team) inside this test VM only. The attacker sits in a network namespace on a veth,
+          # so its traffic reaches the PC through firewalld's default zone, like another computer on the same network.
+          R "ip netns add attacker && ip link add vatk type veth peer name vatk0 && ip link set vatk0 netns attacker && ip addr add 10.99.0.1/24 dev vatk && ip link set vatk up && ip netns exec attacker ip addr add 10.99.0.2/24 dev vatk0 && ip netns exec attacker ip link set vatk0 up"
+          chk "attack: the attacker's network lands in zone" 2 "firewall-cmd --get-zone-of-interface=vatk 2>/dev/null || firewall-cmd --get-default-zone" '.'
+          OPEN=$(R "ip netns exec attacker bash -c 'for p in \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
+          [ "$OPEN" = 22 ] && r=PASS || r=FAIL; echo "| attack: port scan from the network (22 is this test's own SSH) | $r | open: ${OPEN:-none} |" >> report.md; echo "$r port scan"
+          RTPW=$(openssl rand -hex 12); echo "::add-mask::$RTPW"
+          R "useradd -G wheel rtadmin && echo rtadmin:$RTPW | chpasswd"
+          R "printf '#!/bin/sh\necho wrongpass\n' > /tmp/rt-wrong.sh; printf '#!/bin/sh\necho $LPW\n' > /tmp/rt-right.sh; printf '#!/bin/sh\necho $RTPW\n' > /tmp/rt-admin.sh; chmod 755 /tmp/rt-wrong.sh /tmp/rt-right.sh /tmp/rt-admin.sh"
+          SSHA="ip netns exec attacker env SSH_ASKPASS_REQUIRE=force DISPLAY=:0 setsid -w ssh -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=1 -o ConnectTimeout=5"
+          chk "attack: a correct password for another account logs in (control)" 0 "SSH_ASKPASS=/tmp/rt-admin.sh $SSHA rtadmin@10.99.0.1 echo GOT-IN </dev/null 2>/dev/null || echo refused" 'GOT-IN'
+          R "for i in 1 2 3 4 5 6; do SSH_ASKPASS=/tmp/rt-wrong.sh $SSHA looktest@10.99.0.1 true </dev/null >/dev/null 2>&1; done; true"
+          chk "attack: password brute force locks the account" 0 "SSH_ASKPASS=/tmp/rt-right.sh $SSHA looktest@10.99.0.1 echo GOT-IN </dev/null 2>/dev/null || echo locked-out" '^locked-out$'
+          chk "attack: lockout recorded" 2 "faillock --user looktest | tail -3 | paste -sd' '" '.'
+          R "faillock --user looktest --reset; rm -f /tmp/rt-wrong.sh /tmp/rt-right.sh /tmp/rt-admin.sh"
+          chk "attack: admin (wheel) sudo without a password is refused" 0 "sudo -u rtadmin sudo -n true 2>&1 || echo refused" 'refused|password is required'
+          chk "attack: polkit admin action without a password is refused" 0 "sudo -u rtadmin pkexec true 2>&1 || echo refused" 'refused|Not authorized|authentication agent'
+          chk "attack: writing the system (/usr) is impossible, even as root" 0 "touch /usr/bin/rt-test 2>&1 || echo read-only" 'read-only|Read-only'
+          chk "attack: no SUID programs where users can write" 0 "find /var/home /tmp /var/tmp -xdev -perm -4000 -type f 2>/dev/null | wc -l" '^0$'
+          chk "attack: SUID programs in the system (audit)" 2 "find /usr -xdev -perm -4000 -type f 2>/dev/null | sort | xargs -n1 basename | paste -sd' '" '.'
+          chk "attack: SELinux stays enforcing" 0 "getenforce" '^Enforcing$'
+          chk "attack: SELinux denials this boot" 2 "journalctl -b --no-pager | grep -c 'avc:  denied'" '.'
+          R "userdel -r rtadmin" 2>/dev/null || true
+          # a web download of the EICAR test file (best effort: needs the internet)
+          R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"
+          echo "| attack: web download of a threat | INFO | $r |" >> report.md
+          # a Flatpak app tries to read SSH keys
+          R "$(TL 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo fake-key > ~/.ssh/id_test')"
+          chk "attack: a Flatpak can't read ~/.ssh" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/.ssh/id_test 2>&1 | tail -1" 'No such file'
+          # fake ransomware: encrypt a folder, then restore it from Previous versions
+          R "$(TL 'mkdir -p ~/Documents/rt && echo precious-1 > ~/Documents/rt/f1.txt && echo precious-2 > ~/Documents/rt/f2.txt && echo precious-3 > ~/Documents/rt/f3.txt')"; sleep 61
+          R "systemctl start mountain-snapshot.service"; SNAP2=$(R "ls /var/home/.snapshots | tail -1")
+          R "$(TL 'cd ~/Documents/rt && openssl enc -aes-256-cbc -pbkdf2 -k ransom -in f1.txt -out f1.txt.locked && openssl enc -aes-256-cbc -pbkdf2 -k ransom -in f2.txt -out f2.txt.locked && openssl enc -aes-256-cbc -pbkdf2 -k ransom -in f3.txt -out f3.txt.locked && rm f1.txt f2.txt f3.txt')"
+          chk "attack: ransomware encrypted the test folder" 2 "ls ~looktest/Documents/rt | paste -sd' '" 'locked'
+          chk "attack: ransomware recovery from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP2/looktest/Documents/rt/*.txt ~/Documents/rt/ && rm ~/Documents/rt/*.locked && cat ~/Documents/rt/f2.txt")" '^precious-2$'
+          # attack (H1): fill the disk to under 10 % free as the user, start the snapshot unit again and again: the clean snapshot stays
+          R "printf '%s\n' 'import os, shutil' 'h = os.path.expanduser(\"~\")' 's = shutil.disk_usage(h)' 'fd = os.open(h + \"/rt-fill\", os.O_CREAT | os.O_WRONLY, 0o600)' 'os.posix_fallocate(fd, 0, s.free - s.total // 20)' > /tmp/rt-fill.py && chmod 644 /tmp/rt-fill.py"
+          R "$(TL 'python3 /tmp/rt-fill.py')" || true
+          chk "attack: disk filled to under 10 % free" 2 "df --output=pcent /var/home | tail -1" '9[0-9]%'
+          for i in 1 2 3; do R "$LT systemctl start --no-ask-password mountain-snapshot.service 2>/dev/null && echo polkit || { systemctl start mountain-snapshot.service; echo root; }" >> perf/snapshot-attack.txt; sleep 61; done
+          R "systemctl restart mountain-snapshot.timer"; sleep 20
+          chk "attack: snapshot runs while the disk is full" 2 "journalctl -u mountain-snapshot -b -n 6 --no-pager -o cat | paste -sd' '" '.'
+          chk "attack: a full disk can't push out the clean snapshot" 0 "cat /var/home/.snapshots/$SNAP2/looktest/Documents/rt/f2.txt" '^precious-2$'
+          chk "attack: no new snapshot while the disk is full" 0 "ls /var/home/.snapshots | tail -1" "^$SNAP2$"
+          R "rm -f /var/home/looktest/rt-fill /tmp/rt-fill.py"
+          chk "attack: space back after the fill file is deleted" 2 "df --output=pcent /var/home | tail -1" '.'
+          chk "game library kept out of snapshots (own subvolume)" 2 "stat -c %i /var/home/looktest/Games" '^256$'
+          # broken system file (/etc) and deleted user settings, then recover
+          R "cp -a /etc/xdg/kdeglobals /tmp/kdeglobals.ok; echo garbage > /etc/xdg/kdeglobals"
+          chk "attack: a broken system file is repaired" 0 "/usr/libexec/mountain-security repair-etc xdg/kdeglobals && cmp /etc/xdg/kdeglobals /usr/etc/xdg/kdeglobals && echo repaired" 'repaired$'
+          R "cp -a /tmp/kdeglobals.ok /etc/xdg/kdeglobals"
+          chk "attack: deleted desktop settings come back from Previous versions" 0 "$(TL "rm ~/.config/plasma-org.kde.plasma.desktop-appletsrc && cp /var/home/.snapshots/$SNAP2/looktest/.config/plasma-org.kde.plasma.desktop-appletsrc ~/.config/ && grep -c '^\[Containments\]' ~/.config/plasma-org.kde.plasma.desktop-appletsrc")" '^[1-9]'
 
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
@@ -514,14 +993,31 @@ jobs:
           done
           if [ $LO = ok ]; then echo "| logout | PASS | session ended |" >> report.md; else echo "| logout | FAIL | looktest session still there |" >> report.md; fi
           shot after-logout
+          # Startup apps: the switched-off test app must not start at the next sign-in
+          sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
+          for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20; shot relogin-desktop
+          chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
+          # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
+          chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
+          chk "attack: fill the disk" 2 "fallocate -l \$(( \$(df --output=avail -B1 /var | tail -1) - 64*1024*1024 )) /var/rt-fill; df -h /var | tail -1" '.'
           BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
           printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
+          newboot() { local b; for _ in $(seq 18); do b=$(R "cat /proc/sys/kernel/random/boot_id" 2>/dev/null); [ -n "$b" ] && [ "$b" != "$1" ] && return 0; sleep 10; done; return 1; }
           for n in 1 2; do
+            BID=$(R "cat /proc/sys/kernel/random/boot_id")
             R "systemctl reboot" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null # drop the shared connection
             sleep 30
-            if wait_ssh 600; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+            if wait_ssh 600 && newboot "$BID"; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
+              if [ $n = 1 ]; then
+                chk "rollback test: new version booted, previous kept" 0 "grep -o mountain.rollbacktest=1 /proc/cmdline; rpm-ostree status --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"deployments\"]), \"deployments\")'" 'mountain.rollbacktest=1'
+                chk "attack: a full disk still boots" 0 "test -e /var/rt-fill && rm -f /var/rt-fill && echo booted-full" '^booted-full$'
+                chk "Go back to the previous version" 0 "/usr/libexec/mountain-security rollback 2>&1 | tail -1" 'rollback=staged'
+              else
+                chk "rollback works: the previous version booted" 0 "grep -q mountain.rollbacktest /proc/cmdline && echo still-new || echo previous" '^previous$'
+              fi
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
           # clean shutdown: the VM must power itself off
@@ -531,6 +1027,7 @@ jobs:
 
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$CORE_FAIL" = 1 ]; then echo "::error::core check failed"; exit 1; fi
+          if grep -q '| FAIL |' report.md; then echo "::error::$(grep -c '| FAIL |' report.md) check(s) failed"; exit 1; fi
       - name: Fix ownership
         if: always()
         run: sudo chown -R "$USER" "$HOME/vm" || true

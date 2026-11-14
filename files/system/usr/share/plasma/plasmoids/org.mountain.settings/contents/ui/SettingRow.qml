@@ -10,6 +10,7 @@ QQC2.AbstractButton {
     property string description: ""
     property bool chevron: true
     property bool divider: false
+    property alias trailing: slot.data // controls before the chevron, e.g. a PillSwitch
     Layout.fillWidth: true
     implicitHeight: description !== "" ? 64 : 52
     hoverEnabled: true
@@ -20,10 +21,10 @@ QQC2.AbstractButton {
     Keys.onEnterPressed: clicked()
 
     background: Rectangle {
-        radius: 10
+        radius: 8
         color: row.pressed ? Qt.rgba(1, 1, 1, 0.05) : (row.hovered ? app.hover : "transparent")
-        border.width: row.activeFocus ? 1 : 0
-        border.color: app.accent
+        border.width: row.visualFocus ? 2 : 0
+        border.color: "#FFFFFF"
         Rectangle {
             visible: row.divider
             anchors { top: parent.top; left: parent.left; right: parent.right }
@@ -53,6 +54,7 @@ QQC2.AbstractButton {
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
             }
         }
+        RowLayout { id: slot; spacing: 10 }
         Kirigami.Icon {
             visible: row.chevron
             Layout.preferredWidth: 16

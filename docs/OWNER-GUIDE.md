@@ -9,6 +9,9 @@
 - **Lock screen**: Mountain starts on a lock screen with the clock and date. Click or press a key: it says **Hello, <your name>**; type your password. **Win+L** locks it again.
 - **Settings**: start menu → Settings (Windows 11 layout: Home, System, Bluetooth & devices, … Updates; search at the top). Each page opens the real KDE page. **All Settings** in the start menu is the full KDE app.
 - **Quick settings**: click the network/volume/battery icons next to the clock, or press **Win+A**: Wi-Fi, Bluetooth, Airplane mode, Energy saver, Accessibility, Night light, brightness and volume; the gear opens Settings. The old separate icons are under the **^** arrow.
+- **Task Manager**: press **Ctrl+Shift+Esc**, or right-click the Start button, or find it in the start menu. Tabs like Windows 11: Processes (apps and background processes, CPU/memory/disk/network/GPU, **End task**), Performance (graphs and your CPU, graphics and disk names), App history, Startup apps (**Disable**/**Enable**, takes effect at the next sign-in), Users, Details, Services (Start/Stop asks for your password).
+- **Security**: start menu → **Security** (or Settings → Privacy & security). Green/yellow/red cards for virus scan, ransomware protection (Previous versions), firewall, app protection, device security, updates and your account, each with a one-click fix.
+- **Brightness**: in quick settings. On a laptop it moves the real backlight; on a desktop it works with monitors that support DDC/CI; otherwise the slider is greyed out with "Not available on this display".
 - **Top Bar On/Off** (start menu) adds or removes a bar at the top with CPU and memory.
 - **Your own wallpaper** (one step): right-click the desktop → **Desktop and Wallpaper** (Change wallpaper) → **Add…** and pick your picture file. Mountain ships its own look-alike, *Mountain Silk*, because the picture on your Windows PC is a downloaded image we may not publish; *Mountain Peaks* is the other built-in choice.
 - **Cloud gaming**: desktop folder *Cloud Gaming* (GeForce NOW, Xbox Cloud Gaming, Boosteroid). Each opens in its own window with its own taskbar icon; you sign in once per service.
@@ -18,7 +21,12 @@
 
 Mountain does not update in the background (it would use your internet and CPU while you play).
 To update: start menu → **Updates** → follow the window. Or in Terminal: `ujust update`.
-Every update is a whole new system image; if anything is wrong, restart and pick the previous entry in the boot menu (or `sudo bootc rollback`).
+Every update is a whole new system image, checked against Mountain's signature before it is used, and the previous version is always kept. If anything is wrong:
+- **Settings → Updates → Go back to the previous version** (or Security → Updates & recovery), then restart; or
+- restart and pick the previous entry in the boot menu (hold **Shift** or press **Esc** while the PC starts if the menu is hidden); or
+- in Terminal: `sudo bootc rollback`.
+
+Undo going back: do it again (it swaps the two versions).
 
 ## Security: what is hardened, and how to undo it
 
@@ -31,13 +39,28 @@ Every update is a whole new system image; if anything is wrong, restart and pick
 | Passwords: the shipped image never allows admin without a password. Your account picture is the Mountain logo (new accounts; change it in Settings → Users). Accounts that sign in automatically get no "KDE Wallet" pop-ups (the wallet is off for them); accounts with a password keep the encrypted wallet. | Saved passwords stay encrypted when the account has a password. | To use the wallet with automatic sign-in: delete `~/.config/kwalletrc` and turn off automatic sign-in. |
 | Fewer background services: no SSH server, no printer server until you need it, no mobile-modem service, no KDE Connect, no input remapper, no update timers, no usage-count ping. | Less to attack, less memory used. | `sudo systemctl enable --now <name>` (e.g. `ModemManager`, `input-remapper`, `sshd`). |
 
-Not used on purpose (they break games or everyday apps): the hardened memory allocator (breaks Electron apps like VS Code and Discord, and Steam), USB device blocking (new controllers and headsets would not work), turning off io_uring, ignoring ping.
+| **Virus scan** (ClamAV) on demand: Security → Virus & threat protection → **Scan now**. Definitions download only then; nothing scans or downloads in the background; Steam, Proton and game folders are skipped. Found files move to `~/.local/share/mountain/quarantine` and can't run. | Catches known malware in downloads without costing games anything. | Restore a quarantined file (only if you are sure): copy it out of the quarantine folder and `chmod u+rw` it. |
+| **Previous versions**: every hour a read-only snapshot of all home folders (newest 24 plus one per day for 7 days; when the disk is almost full: no new snapshots, and only the last 3 days are kept). Programs, including ransomware, can't change or delete them. | Undo mistakes and ransomware. | Restore: File Explorer → **Previous versions** → pick the time → your user folder → copy the file back. A deleted file stays in Previous versions for up to 7 days (3 when the disk is almost full); Steam, Heroic and ~/Games are not kept in snapshots; free it now: `sudo btrfs subvolume delete /var/home/.snapshots/<time>`. Turn off: `sudo systemctl disable --now mountain-snapshot.timer`. Needs the installer's standard Btrfs layout (`/var/home` as its own subvolume). |
+| **Flatpak sandbox** for Discord, Vesktop, Edge, Firefox and OnlyOffice: no access to your home folder; Downloads allowed (OnlyOffice also Documents and Desktop). Files from elsewhere go through the normal Open dialog. Game launchers (Heroic and anything you install) keep their own access. | A bad link or download in a chat or browser can't read your files. | Allow one folder: `sudo flatpak override --system --filesystem=~/Pictures com.discordapp.Discord`. Undo for one app: `sudo flatpak override --system --reset <app id>` (the policy is applied once per app, so an undo or a Flatseal change stays). |
+| **Active Protection** (start menu → Active Protection): real-time, on this PC only. A tiny watcher notices new files in Downloads, Desktop, Documents, your home folder, `/tmp` and USB drives, and only then starts a low-priority scan; threats go to quarantine with a notification. New programs, scripts and autostart entries show as "unverified" for you to Allow, Quarantine or Delete. Under 150 MB of memory while idle; games are never watched. | Catches threats the moment they land. | Turn off: Active Protection → Turn off (or `systemctl --user disable --now mountain-protect`). |
+| **Sign-in lockout**: 5 wrong passwords lock the account for 5 minutes. | Stops password guessing. | Unlock now: `sudo faillock --user <name> --reset`. Change it in `/etc/security/faillock.conf`. |
+| **Broken system file**: `mountain-security repair-etc <path>` (e.g. `xdg/kdeglobals`) puts back the image's copy and keeps yours as `.broken`. Go back does not undo edits in `/etc`. | Recover from a bad edit. | The `.broken` copy is next to it. |
+| Only two actions skip the admin password: "download virus definitions" and "take a snapshot now" (`/usr/share/polkit-1/rules.d/60-mountain.rules`). Everything else that needs admin, including `sudo`, asks for your password. | Scan now works with one click. | Disable the rule: create an empty `/etc/polkit-1/rules.d/60-mountain.rules`. |
+
+### Secure Boot and disk encryption
+
+- **Disk encryption (recommended for laptops)**: in the installer, on the disk screen, tick **Encrypt my data** and choose a strong passphrase. You type it at every start. It protects your files if the PC is stolen. It can only be turned on when installing; undo = reinstall without it.
+- **Secure Boot**: Mountain is based on Bazzite, which signs its kernel and drivers with its own key. After installing with Secure Boot on, the first start shows a blue **MOK** screen: choose **Enroll MOK**, then enter the password `universalblue` (Bazzite's published key password, not a secret). Undo: turn Secure Boot off in the PC's firmware settings. The Security page shows whether it is on.
+- **Kernel lockdown** is off by default: it would stop unsigned graphics and game-controller drivers from loading when Secure Boot is off. Turn it on (only with Secure Boot on): `sudo rpm-ostree kargs --append=lockdown=integrity`, restart. Undo: `sudo rpm-ostree kargs --delete=lockdown=integrity`.
+
+Not used on purpose (they break games or everyday apps): the hardened memory allocator (breaks Electron apps like VS Code and Discord, and Steam), USB device blocking (new controllers and headsets would not work), turning off io_uring, ignoring ping, always-on virus scanning (memory and game stutter), rootkit scanners (false alarms on an image-based system), fail2ban (nothing listens for logins).
 
 ## Speed
 
 - The **LAVD** CPU scheduler runs from boot; it favours what you are interacting with (desktop, games). Undo: `sudo systemctl disable --now scx_loader`.
 - **Lite mode**: on PCs without a working graphics driver or with less than 4 GB RAM, Mountain turns off blur and animations at login, and Edge runs without GPU acceleration.
-- Animations run at half the normal length.
+- Animations run at half the normal length; minimizing uses a quick Windows-like squash.
+- App windows are solid black (nothing shows through), which is sharper and saves graphics work; the taskbar, start menu, quick settings and menus keep the glass.
 
 ## Try Mountain (browser desktop)
 

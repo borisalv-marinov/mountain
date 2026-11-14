@@ -1,0 +1,6 @@
+[Notifications]
+# Windows 11 toasts: bottom right above the clock, gone after 5 s (into the notification center); low-priority ones go straight there
+PopupPosition=BottomRight
+PopupTimeout=5000
+LowPriorityPopups=false
+LowPriorityHistory=true

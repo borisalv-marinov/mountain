@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Active Protection
+GenericName=Real-time threat protection
+Comment=Watches new files for threats, lists unverified programs and scripts to review
+Exec=/usr/libexec/mountain-settings-open protection
+Icon=security-high
+Categories=Settings;System;Security;
+Keywords=virus;antivirus;real-time;realtime;protection;malware;defender;apa;

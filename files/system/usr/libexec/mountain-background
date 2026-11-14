@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Settings > Personalization > Background, applied live to every desktop through plasmashell:
+#   mountain-background status                     plugin= image= fill= color= lock= and one pic=PACKAGE|PREVIEW per Mountain picture
+#   mountain-background picture PATH [FILL]        a picture (file or wallpaper package folder); FILL = org.kde.image FillMode
+#   mountain-background browse [FILL]              pick a photo in a file dialog, then as picture
+#   mountain-background fit FILL                   0 Stretch, 1 Fit, 2 Fill, 3 Tile, 6 Center
+#   mountain-background color '#RRGGBB'            solid color
+#   mountain-background slideshow [FOLDER|browse]  slideshow (default: the Mountain pictures), a new picture every 30 minutes
+#   mountain-background lock PATH                  the same picture on the lock screen
+set -euo pipefail
+W=/usr/share/wallpapers
+js() { dbus-send --session --print-reply=literal --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:$1" | sed '1s/^ *//'; }
+str() { local s=${1//\\/\\\\}; printf '"%s"' "${s//\"/\\\"}"; } # a JS string literal
+each() { js "for (const d of desktops()) { $1 }" >/dev/null; } # every screen and activity
+pics() { local p; for p in "$W"/mountain-*/; do [[ -f $p/metadata.json ]] || continue
+  for f in "$p"contents/images/1920x1080.png "$p"contents/images_dark/1920x1080.png; do [[ -f $f ]] && { echo "$p|$f"; break; }; done; done; }
+fill() { [[ ${1:-2} =~ ^[0-6]$ ]] || { echo "bad fit: $1" >&2; exit 2; }; echo "${1:-2}"; }
+picture() { # $1 path (validated), $2 fill
+  local p=${1#file://}
+  [[ $p != *$'\n'* && ( -f $p || -f $p/metadata.json ) ]] || { echo "not a picture: $p" >&2; exit 2; }
+  each "d.wallpaperPlugin = 'org.kde.image'; d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
+        d.writeConfig('Image', $(str "file://$p")); d.writeConfig('FillMode', $2); d.reloadConfig();"
+  echo "image=file://$p"
+}
+case ${1:-} in
+  status)
+    js "const d = desktops()[0]; let o = 'plugin=' + d.wallpaperPlugin;
+        d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General']; o += '\nimage=' + d.readConfig('Image', '') + '\nfill=' + d.readConfig('FillMode', 2);
+        d.currentConfigGroup = ['Wallpaper', 'org.kde.color', 'General']; o += '\ncolor=' + String(d.readConfig('Color', '#000000'));
+        print(o);" || echo "plugin=unknown"
+    echo "lock=$(kreadconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General --key Image)"
+    pics | sed 's/^/pic=/' ;;
+  picture) f=$(fill "${3:-2}"); picture "${2:?path}" "$f" ;;
+  browse)
+    m=$(fill "${2:-2}")
+    f=$(kdialog --title "Browse photos" --getopenfilename "$HOME/Pictures" "image/png image/jpeg image/webp image/bmp image/gif") || exit 1
+    picture "$f" "$m" ;;
+  fit)
+    f=$(fill "${2:?fill}")
+    each "for (const p of ['org.kde.image', 'org.kde.slideshow']) { d.currentConfigGroup = ['Wallpaper', p, 'General']; d.writeConfig('FillMode', $f); } d.reloadConfig();"
+    echo "fill=$f" ;;
+  color)
+    [[ ${2:-} =~ ^#[0-9a-fA-F]{6}$ ]] || { echo "bad color: ${2:-}" >&2; exit 2; }
+    each "d.wallpaperPlugin = 'org.kde.color'; d.currentConfigGroup = ['Wallpaper', 'org.kde.color', 'General']; d.writeConfig('Color', '$2'); d.reloadConfig();"
+    echo "color=$2" ;;
+  slideshow)
+    dir=${2:-}
+    if [[ $dir == browse ]]; then dir=$(kdialog --title "Choose a picture album" --getexistingdirectory "$HOME/Pictures") || exit 1; fi
+    if [[ -z $dir ]]; then # the Mountain pictures, linked into one folder (the slideshow takes folders)
+      dir=$HOME/.local/share/mountain/slideshow; mkdir -p "$dir"
+      pics | while IFS='|' read -r p f; do ln -sfn "$f" "$dir/$(basename "$p").png"; done
+    fi
+    [[ -d $dir && $dir != *$'\n'* ]] || { echo "not a folder: $dir" >&2; exit 2; }
+    each "d.wallpaperPlugin = 'org.kde.slideshow'; d.currentConfigGroup = ['Wallpaper', 'org.kde.slideshow', 'General'];
+          d.writeConfig('SlidePaths', [$(str "$dir")]); d.writeConfig('SlideInterval', 1800); d.reloadConfig();"
+    echo "slideshow=$dir" ;;
+  lock)
+    p=${2:?path}; p=${p#file://}
+    [[ -f $p || -f $p/metadata.json ]] || { echo "not a picture: $p" >&2; exit 2; }
+    kwriteconfig6 --file kscreenlockerrc --group Greeter --key WallpaperPlugin org.kde.image
+    kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General --key Image "file://$p"
+    echo "lock=file://$p" ;;
+  *) echo "usage: mountain-background status | picture PATH [FILL] | browse [FILL] | fit FILL | color '#RRGGBB' | slideshow [FOLDER|browse] | lock PATH" >&2; exit 2 ;;
+esac

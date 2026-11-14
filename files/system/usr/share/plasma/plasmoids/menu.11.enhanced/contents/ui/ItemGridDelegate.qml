@@ -91,8 +91,8 @@ Item {
 
         horizontalAlignment: Text.AlignHCenter
 
-        maximumLineCount: 1
-        elide: Text.ElideMiddle
+        maximumLineCount: 2
+        elide: Text.ElideRight
         wrapMode: Text.Wrap
 
         color: Kirigami.Theme.textColor

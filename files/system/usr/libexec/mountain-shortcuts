@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Once per account, after Plasma starts: Win+A opens Quick settings, Win+N the notification center (the tray bell).
+# Applet shortcuts are stored with the account's own applet ids, so they can't ship as a file.
+set -uo pipefail
+mark=${XDG_STATE_HOME:-$HOME/.local/state}/mountain/applet-shortcuts
+[[ -e $mark ]] && exit 0
+js='var n = 0, seen = [], keys = { "org.mountain.quicksettings": "Meta+A", "org.kde.plasma.notifications": "Meta+N" };
+[panels(), desktops()].forEach(function (list) { list.forEach(function (c) { // the tray keeps its icons in a containment of its own
+  seen.push(c.type + "#" + c.id + ":" + c.widgets().map(function (w) { return w.type + "#" + w.id; }).join("+"));
+  c.widgets().forEach(function (w) { if (keys[w.type]) { if (!w.globalShortcut) w.globalShortcut = keys[w.type]; n++; } });
+}); });
+print("set=" + n + " in " + seen.join(" "));'
+timeout 60 gdbus wait --session org.kde.plasmashell 2>/dev/null # no polling until Plasma is on the bus
+for _ in $(seq 60); do # the tray loads its applets a little after the panel (much later on a slow first sign-in)
+  out=$(dbus-send --session --print-reply --type=method_call --dest=org.kde.plasmashell /PlasmaShell         org.kde.PlasmaShell.evaluateScript "string:$js" 2>/dev/null) && [[ $out == *quicksettings* && $out == *notifications* ]] && break
+  sleep 2
+done
+mkdir -p "${mark%/*}"; echo "${out:-plasmashell not reachable}" > "$mark.log"
+# done only once both applets were found and set; otherwise (tray still loading, an applet removed) try again at the next login
+[[ $out == *quicksettings* && $out == *notifications* && $out == *set=[2-9]* ]] && touch "$mark"
+exit 0

@@ -1,0 +1,19 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "Windows and Tasks",
+    "Description": "A thin strip at the far right of the taskbar: click it to show the desktop",
+    "EnabledByDefault": false,
+    "Icon": "user-desktop-symbolic",
+    "Id": "org.mountain.showdesktop",
+    "License": "GPL-2.0-or-later",
+    "Name": "Show desktop",
+    "Version": "1.0"
+  },
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

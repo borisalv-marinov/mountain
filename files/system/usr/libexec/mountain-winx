@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Win+X: the Quick Link menu (Windows' power-user menu), above Start. KWin's mountain-altf4 script frames and places it.
+exec plasmawindowed org.mountain.winx

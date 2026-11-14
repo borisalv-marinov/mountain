@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Open Settings on one page: mountain-settings-open privacy (used by the "Security" start-menu entry).
+[[ -n ${XDG_RUNTIME_DIR:-} ]] || { echo "no XDG_RUNTIME_DIR: run this from your own session" >&2; exit 1; }
+printf '%s' "${1:-home}" > "$XDG_RUNTIME_DIR/mountain-settings-page"
+exec plasmawindowed org.mountain.settings

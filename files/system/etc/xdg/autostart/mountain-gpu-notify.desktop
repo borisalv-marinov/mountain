@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Graphics Check
+Exec=/usr/libexec/mountain-gpu-check --notify
+X-KDE-autostart-phase=2
+NoDisplay=true

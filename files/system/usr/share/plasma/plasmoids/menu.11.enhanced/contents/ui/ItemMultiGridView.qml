@@ -36,6 +36,8 @@ PlasmaComponents.ScrollView {
     property alias flickableItem: flickable
 
     property int itemColumns
+    // Mountain: KRunner group names as Windows 11 search names them (English only; other languages keep KDE's)
+    readonly property var windowsNames: ({ "Applications": i18n("Apps"), "Desktop Search": i18n("Documents"), "File Search": i18n("Documents"), "Web Search Keywords": i18n("Search the web"), "Locations": i18n("Folders") })
     property int cellWidth
     property int cellHeight
 
@@ -99,6 +101,14 @@ PlasmaComponents.ScrollView {
                     visible: gridView.count > 0
 
                     property Item itemGrid: gridView
+                    readonly property string runnerName: repeater.model.modelForRow(index).description
+                    // Mountain: like Windows 11, the first group with results is the "Best match"
+                    readonly property bool best: {
+                        for (var j = 0; j < index; j++) {
+                            if (repeater.model.modelForRow(j).count > 0) return false;
+                        }
+                        return gridView.count > 0;
+                    }
 
                     Kirigami.Heading {
                         id: gridViewLabel
@@ -114,7 +124,7 @@ PlasmaComponents.ScrollView {
                         level: 3
                         font.bold: true
                         font.weight: Font.DemiBold
-                        text: repeater.model.modelForRow(index).description
+                        text: itemTest.best ? i18n("Best match") : (itemMultiGrid.windowsNames[itemTest.runnerName] || itemTest.runnerName)
                         textFormat: Text.PlainText
                     }
 

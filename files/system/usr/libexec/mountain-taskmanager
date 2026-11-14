@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# Data and actions behind Task Manager's Startup apps, Users, Services and device-name lists
+# (face org.mountain.taskmanager.list). Output: tab-separated, a header line, then rows whose first field is an id.
+#   mountain-taskmanager startup | startup-set FILE on|off | users | services | service start|stop|restart UNIT | device
+#   | processes | end PID
+set -uo pipefail
+sys_dir=${MOUNTAIN_AUTOSTART_SYSTEM:-/etc/xdg/autostart}
+usr_dir=${XDG_CONFIG_HOME:-$HOME/.config}/autostart
+# desktop parts that must always run (turning them off breaks sign-in, the taskbar or admin prompts)
+core=" at-spi-dbus-bus gmenudbusmenuproxy kaccess org.kde.plasmashell org.kde.plasma-fallback-session-restore pam_kwallet_init
+ polkit-kde-authentication-agent-1 powerdevil xembedsniproxy xapp-sn-watcher xdg-user-dirs mountain-user-setup spice-vdagent
+ vboxclient vmware-user org.kde.foreground-booster geoclue-demo-agent "
+core=${core//$'\n'/ } # one line, so every name is matched as " name "
+
+key() { sed -n "/^\[Desktop Entry\]/,/^\[/{s/^$1=//p}" "$2" 2>/dev/null | head -1; }
+
+startup() {
+  printf 'id\tName\tStatus\tCommand\n'
+  local f b src name
+  for f in "$usr_dir"/*.desktop "$sys_dir"/*.desktop; do
+    [[ -e $f ]] || continue
+    b=$(basename "$f")
+    [[ $core == *" ${b%.desktop} "* ]] && continue
+    [[ $f == "$sys_dir"/* && -e $usr_dir/$b ]] && continue # the user's copy overrides the system one
+    if [[ -e $sys_dir/$b ]]; then # name and command from the system entry; skip ones the system itself switched off
+      src=$sys_dir/$b; [[ $(key Hidden "$src") == true ]] && continue
+    else src=$f; fi
+    name=$(key OnlyShowIn "$src"); [[ -n $name && ";$name" != *";KDE;"* ]] && continue
+    name=$(key NotShowIn "$src"); [[ ";$name" == *";KDE;"* ]] && continue
+    name=$(key Name "$src"); [[ -n $name ]] || name=${b%.desktop}
+    if [[ $(key Hidden "$f") == true || $(key X-GNOME-Autostart-enabled "$f") == false ]]; then s=Disabled; else s=Enabled; fi
+    printf '%s\t%s\t%s\t%s\n' "$b" "$name" "$s" "$(key Exec "$src")"
+  done
+}
+
+startup_set() { # FILE on|off: a user override with Hidden=true is the XDG way to switch an autostart entry off
+  local b=${1:-} want=${2:-} u
+  # any file name the startup list shows (spaces, Cyrillic...), but never a path out of the two folders
+  [[ $b == ?*.desktop && $b != */* && $b != .* ]] || { echo "bad entry: $b" >&2; return 2; }
+  [[ $want == on || $want == off ]] || { echo "say on or off" >&2; return 2; }
+  u=$usr_dir/$b; mkdir -p "$usr_dir"
+  if [[ $want == off ]]; then
+    if [[ -e $u ]]; then
+      sed -i '/^Hidden=/d' "$u"; sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nHidden=true/' "$u"
+    elif [[ -e $sys_dir/$b ]]; then
+      printf '[Desktop Entry]\nHidden=true\nX-Mountain-Override=true\n' > "$u"
+    else echo "no such startup app: $b" >&2; return 1; fi
+  else
+    if [[ $(key X-Mountain-Override "$u") == true ]]; then rm -f "$u"
+    elif [[ -e $u ]]; then sed -i '/^Hidden=true/d; /^X-GNOME-Autostart-enabled=false/d' "$u"
+    else echo "no such startup app: $b" >&2; return 1; fi
+  fi
+}
+
+users() {
+  printf 'id\tUser\tSessions\tCPU\tMemory\n'
+  local stats a b
+  # CPU now (not ps's lifetime average) as a share of all cores, like Windows: CPU ticks over half a second
+  ticks() { cat /proc/[0-9]*/stat 2>/dev/null | awk '{p=$1; sub(/^.*\) /, ""); print p, $12+$13}'; }
+  a=$(ticks); sleep 0.5; b=$(ticks)
+  stats=$({ sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; ps -eo pid=,user:64=,rss= | sed 's/^/U /'; } |
+    awk -v hz="$(getconf CLK_TCK)" -v n="$(nproc)" '$1=="A" {a[$2]=$3} $1=="B" {b[$2]=$3} $1=="U" {u[$2]=$3; r[$2]=$4}
+      END {for (p in u) {if ((p in a) && (p in b)) c[u[p]]+=b[p]-a[p]; m[u[p]]+=r[p]}
+           for (x in m) {v=c[x]*100/(hz*0.5*n); printf "%s %.1f %d\n", x, (v>100?100:v), m[x]/1024}}')
+  loginctl list-users --no-legend 2>/dev/null | while read -r uid name _; do
+    [[ -n ${name:-} ]] || continue
+    local n line
+    n=$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$name" '$3==u' | wc -l)
+    line=$(awk -v u="$name" '$1==u' <<<"$stats")
+    printf '%s\t%s\t%s\t%s %%\t%s MB\n' "$uid" "$name" "$n" "$(awk '{print $2}' <<<"${line:-x 0 0}")" "$(awk '{print $3}' <<<"${line:-x 0 0}")"
+  done
+}
+
+services() {
+  printf 'id\tName\tDescription\tStatus\n'
+  systemctl list-units --type=service --all --no-legend --plain --no-pager 2>/dev/null |
+    awk '$2!="not-found" {d=""; for (i=5; i<=NF; i++) d=d (i>5?" ":"") $i;
+         s=($4=="running") ? "Running" : ($3=="failed" ? "Failed" : "Stopped");
+         n=$1; sub(/\.service$/, "", n); printf "%s\t%s\t%s\t%s\n", $1, n, d, s}' |
+    sort -t$'\t' -k4,4r -k2,2
+}
+
+service() { # start|stop|restart UNIT; systemctl asks polkit, which shows the admin password prompt
+  local verb=${1:-} unit=${2:-}
+  [[ $verb =~ ^(start|stop|restart)$ ]] || { echo "bad action: $verb" >&2; return 2; }
+  [[ $unit =~ ^[A-Za-z0-9:_.@\\-]+\.service$ ]] || { echo "bad unit: $unit" >&2; return 2; }
+  systemctl "$verb" "$unit"
+}
+
+device() {
+  printf 'id\tPart\tModel\n'
+  local cpu ram
+  cpu=$(awk -F': *' '/^model name/ {print $2; exit}' /proc/cpuinfo)
+  printf 'cpu\tProcessor\t%s (%s threads)\n' "${cpu:-unknown}" "$(nproc)"
+  ram=$(awk '/^MemTotal:/ {printf "%.1f GB", $2/1048576}' /proc/meminfo)
+  printf 'ram\tMemory\t%s\n' "$ram"
+  lspci 2>/dev/null | grep -E 'VGA|3D controller|Display controller' | sed -E 's/^[^ ]+ [^:]+: //' | while read -r g; do printf 'gpu\tGraphics\t%s\n' "$g"; done
+  lsblk -d -n -o MODEL,SIZE,TYPE 2>/dev/null | awk '$NF=="disk" {NF--; print}' | while read -r d; do printf 'disk\tDisk\t%s\n' "$d"; done
+  for n in /sys/class/net/*; do
+    [[ -e $n/device ]] || continue
+    printf 'net\tNetwork\t%s\n' "$(basename "$n")"
+  done
+}
+
+# Background processes as Windows names them: the user's processes outside app scopes (apps are in the Apps table)
+proc=${MOUNTAIN_PROC:-/proc}
+# comm (first 15 chars of the program name) -> name; session core can not be ended (it would sign you out)
+names='kwin_wayland=Desktop Window Manager|kwin_wayland_wrapper=Desktop Window Manager|kwin_x11=Desktop Window Manager
+plasmashell=Windows Explorer|ksmserver=Windows Logon Application|startplasma-wayland=Windows Logon Application
+plasma_session=Windows Logon Application|systemd=Service Host: User services|dbus-broker=Service Host: Messages
+dbus-broker-launch=Service Host: Messages|dbus-daemon=Service Host: Messages|kded6=Service Host: Desktop services
+Xwayland=Desktop Window Manager (older apps)|pipewire=Windows Audio|pipewire-pulse=Windows Audio
+wireplumber=Windows Audio Device Graph|xdg-desktop-portal=Runtime Broker|xdg-desktop-portal-kde=Runtime Broker
+xdg-desktop-portal-gtk=Runtime Broker|xdg-document-portal=Runtime Broker|xdg-permission-store=Runtime Broker
+polkit-kde-authentication-agent-1=Consent UI for administrative apps|kwalletd6=Credential Manager
+baloo_file=Search Indexer|baloo_file_extractor=Search Indexer|kdeconnectd=Phone Link|ksystemstats=Performance counters
+kactivitymanagerd=Activity history|org_kde_powerdevil=Power service|at-spi-bus-launcher=Accessibility
+at-spi2-registryd=Accessibility|kaccess=Accessibility|xembedsniproxy=Notification area|gmenudbusmenuproxy=Menu bar helper
+ibus-daemon=Text Input Host|plasma-browser-integration-host=Browser integration|kglobalacceld=Keyboard shortcuts
+ksecretd=Credential Manager|kiod6=File transfers|kioworker=File transfers|gvfsd=File transfers'
+nokill=' plasmashell kwin_wayland kwin_wayland_wr kwin_x11 ksmserver startplasma-way plasma_session systemd dbus-broker dbus-broker-lau dbus-daemon Xwayland '
+
+processes() {
+  printf 'id\tName\tCPU\tMemory\n'
+  local d own=() a b cg
+  for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
+  ((${#own[@]})) || return 0
+  a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
+  cg=$(grep -l '/app-.*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null | sed -E 's|.*/([0-9]+)/cgroup$|\1|')
+  { sed 's/^/C /' <<<"$cg"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
+    names=$names awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
+    BEGIN {k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
+    $1 == "C" {app[$2] = 1; next}
+    {pid = $2; c = $0; sub(/^[A-Z] [0-9]+ \(/, "", c); r = c; sub(/\) [^)]*$/, "", c); sub(/^.*\) /, "", r); split(r, f, " ")
+     if ($1 == "A") {t[pid] = f[12] + f[13]; next}
+     if (f[1] == "Z" || pid in app) next
+     v = (pid in t) ? (f[12] + f[13] - t[pid]) * 100 / (hz * 0.5 * n) : 0; mb = f[22] * pg / 1048576
+     printf "%s\t%s\t%.1f %%\t%s\n", pid, (c in nm ? nm[c] : c), (v > 100 ? 100 : v), (mb >= 1024 ? sprintf("%.1f GB", mb / 1024) : sprintf("%.1f MB", mb))}' |
+    sort -t$'\t' -k2,2 -k1,1n
+}
+
+end_task() { # PID: only a process of this user, never the session core; TERM, then KILL after 3 s like Windows
+  local pid=${1:-} c
+  [[ $pid =~ ^[1-9][0-9]{0,9}$ ]] || { echo "bad process id: $pid" >&2; return 2; }
+  ((EUID != 0)) && [[ -O /proc/$pid ]] || { echo "not your process: $pid" >&2; return 1; }
+  c=$(cat "/proc/$pid/comm" 2>/dev/null)
+  [[ $nokill == *" $c "* ]] && { echo "Ending $c would sign you out." >&2; return 1; }
+  kill -TERM -- "$pid" || return 1
+  for _ in 1 2 3 4 5 6; do kill -0 -- "$pid" 2>/dev/null || return 0; sleep 0.5; done
+  kill -KILL -- "$pid" 2>/dev/null; return 0
+}
+
+case ${1:-} in
+  startup) startup ;;
+  startup-set) startup_set "${2:-}" "${3:-}" ;;
+  users) users ;;
+  services) services ;;
+  service) service "${2:-}" "${3:-}" ;;
+  device) device ;;
+  processes) processes ;;
+  end) end_task "${2:-}" ;;
+  *) echo "usage: mountain-taskmanager startup|startup-set FILE on|off|users|services|service VERB UNIT|device|processes|end PID" >&2; exit 2 ;;
+esac

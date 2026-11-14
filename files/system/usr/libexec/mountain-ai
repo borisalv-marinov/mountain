@@ -2,6 +2,8 @@
 # Launch an AI agent CLI, installing it per-user on first use.
 # Test overrides: MOUNTAIN_AI_DRYRUN=1 prints the install command; MOUNTAIN_AI_OFFLINE=1 fakes no network.
 export PATH="$HOME/.local/bin:$PATH"
+# no background self-updates or update checks (updates only when the user reinstalls or presses Update)
+export DISABLE_AUTOUPDATER=1 DISABLE_UPDATE_CHECK=1 CODEX_DISABLE_UPDATE_CHECK=1 NO_UPDATE_NOTIFIER=1 COPILOT_AUTO_UPDATE=false
 npm_i() { echo "npm install -g --prefix \"\$HOME/.local\" $1"; }
 case "${1:-}" in
   claude)  name="Claude Code"; cmd='curl -fsSL https://claude.ai/install.sh | bash' ;;
@@ -11,7 +13,7 @@ case "${1:-}" in
   *) echo "usage: mountain-ai <claude|codex|gemini|copilot>" >&2; exit 2 ;;
 esac
 # a real install, not a stub another app puts on PATH (VS Code ships a "copilot" that only says "not found")
-installed() { local p; for p in $(type -aP "$1"); do [[ $(readlink -f "$p") == /usr/share/code/* ]] || return 0; done; return 1; }
+installed() { local p; while IFS= read -r p; do [[ $(readlink -f "$p") == /usr/share/code/* ]] || return 0; done < <(type -aP "$1"); return 1; }
 installed "$1" && exec "$1"
 if [[ -n ${MOUNTAIN_AI_OFFLINE:-} ]] || { [[ -z ${MOUNTAIN_AI_DRYRUN:-} ]] && ! curl -sfI --max-time 5 https://registry.npmjs.org >/dev/null; }; then
   echo "No internet — connect and click again"; exit 1

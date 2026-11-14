@@ -1,13 +1,22 @@
 [Plugins]
+mountain-altf4Enabled=true
+org.mountain.snaplayoutsEnabled=true
+org.mountain.clipboardEnabled=true
 blurEnabled=true
 contrastEnabled=true
 wobblywindowsEnabled=false
-magiclampEnabled=true
-squashEnabled=false
+magiclampEnabled=false
+squashEnabled=true
 
 [Effect-blur]
 BlurStrength=10
 NoiseStrength=3
+
+[Effect-overview]
+# Windows 11 Task view: no hot corner (9 = ElectricNone), windows in an organized grid, minimized ones shown
+BorderActivate=9
+OrganizedGrid=true
+IgnoreMinimized=false
 
 [Compositing]
 Enabled=true

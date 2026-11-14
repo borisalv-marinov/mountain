@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<zone>
+  <short>Mountain (home network)</short>
+  <description>The Home profile: like Mountain's Public profile, plus finding other PCs on the network. Still blocks unsolicited connections.</description>
+  <service name="dhcpv6-client"/>
+  <service name="mdns"/>
+  <service name="llmnr"/>
+  <service name="samba-client"/>
+  <service name="steam-streaming"/>
+  <service name="steam-lan-transfer"/>
+  <service name="kdeconnect"/>
+  <forward/>
+</zone>

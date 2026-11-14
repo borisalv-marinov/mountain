@@ -1,0 +1,22 @@
+// Mountain: two narrow actions a signed-in user may start without the admin password:
+// download virus definitions (Scan now) and take a snapshot of the home folders.
+// Everything else that needs admin rights still asks for the password.
+polkit.addRule(function (action, subject) {
+    // read-only firewall status for the Security page ("Allow an app" list); changes still need the password.
+    // The page runs from a systemd --user service, which is in no login session (subject.active is false there), so also
+    // allow a real account (uid 1000-59999) by uid; system services (uid < 1000) and nobody are refused.
+    if (action.id === "org.fedoraproject.FirewallD1.info" || action.id === "org.fedoraproject.FirewallD1.config.info") {
+        if (subject.local && subject.active) return polkit.Result.YES;
+        try {
+            var uid = parseInt(polkit.spawn(["/usr/bin/id", "-u", subject.user]), 10);
+            if (uid >= 1000 && uid < 60000) return polkit.Result.YES;
+        } catch (e) {}
+        return polkit.Result.NOT_HANDLED;
+    }
+    if (action.id === "org.freedesktop.systemd1.manage-units" && subject.local && subject.active &&
+        action.lookup("verb") === "start" &&
+        (action.lookup("unit") === "mountain-virus-definitions.service" ||
+         action.lookup("unit") === "mountain-snapshot.service")) {
+        return polkit.Result.YES;
+    }
+});

@@ -149,8 +149,7 @@ PlasmoidItem {
          favoritesModel: globalFavorites
 
          runners: {
-             const results = ["krunner_services",
-                              "krunner_systemsettings",
+             const results = ["krunner_services", // no KDE settings-pages runner: those pages are not our Settings
                               "krunner_sessions",
                               "krunner_powerdevil",
                               "calculator",
@@ -242,6 +241,11 @@ PlasmoidItem {
     }
 
     Plasmoid.contextualActions: [
+        PlasmaCore.Action { // Mountain: like right-clicking Start on Windows 11
+            text: i18n("Task Manager")
+            icon.name: "utilities-system-monitor"
+            onTriggered: executable.exec("plasma-systemmonitor >/dev/null 2>&1 &")
+        },
         PlasmaCore.Action {
             text: i18n("Edit Applications…")
             icon.name: "kmenuedit"

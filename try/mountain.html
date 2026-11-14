@@ -22,7 +22,8 @@ import { charToKeysym } from "./keysym.mjs";
 const $ = (id) => document.getElementById(id);
 const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/websockify";
 const rfb = new RFB($("screen"), url);
-rfb.scaleViewport = true; rfb.qualityLevel = 6; rfb.compressionLevel = 2;
+// sharp view: ask the VM to match this window (no scaling blur); scale only if the VM can't follow
+rfb.resizeSession = true; rfb.scaleViewport = true; rfb.qualityLevel = 9; rfb.compressionLevel = 2;
 rfb.addEventListener("credentialsrequired", () => { $("msg").style.display = "flex"; $("pw").focus(); });
 $("msg").onsubmit = (e) => { e.preventDefault(); $("msg").style.display = "none"; rfb.sendCredentials({ password: $("pw").value }); };
 rfb.addEventListener("securityfailure", () => alert("Wrong password. Use the browser password (first 8 characters of your notes file), not 123."));

@@ -1,0 +1,5 @@
+[General]
+# Task Manager tabs in Windows 11 order; Plasma's own pages stay installed but hidden
+pageOrder=mountain-1-processes.page,mountain-2-performance.page,mountain-3-apphistory.page,mountain-4-startup.page,mountain-5-users.page,mountain-6-details.page,mountain-7-services.page
+hiddenPages=overview.page,applications.page,history.page,processes.page
+startPage=mountain-1-processes.page

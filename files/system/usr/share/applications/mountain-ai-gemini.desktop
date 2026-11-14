@@ -2,5 +2,5 @@
 Type=Application
 Name=Gemini CLI
 Exec=konsole --hold -e /usr/libexec/mountain-ai gemini
-Icon=mountain-folder-ai
+Icon=utilities-terminal
 Categories=Development;

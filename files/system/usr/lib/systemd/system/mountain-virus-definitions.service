@@ -1,0 +1,13 @@
+[Unit]
+Description=Mountain: download virus definitions (only when you click Scan now or Update definitions)
+# no network-online ordering: offline, Scan now skips the update itself (nm-online), and freshclam fails fast on its own
+# Scan now may start this without a password: at most 3 downloads an hour, so a loop can't get the PC blocked by the ClamAV CDN
+StartLimitIntervalSec=1h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/install -d -o clamupdate -g clamupdate -m 0755 /var/lib/clamav
+ExecStart=/usr/bin/freshclam --stdout
+TimeoutStartSec=20min
+Nice=10

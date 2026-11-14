@@ -1,0 +1,5 @@
+module org.kde.kwin
+singleton Workspace 3.0 Workspace.qml
+ShortcutHandler 3.0 ShortcutHandler.qml
+DBusCall 3.0 DBusCall.qml
+Window 3.0 Window.qml

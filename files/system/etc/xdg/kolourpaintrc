@@ -1,0 +1,3 @@
+# Windows 11 apps have no classic menubar/status bar (Ctrl+M brings the menubar back)
+[MainWindow]
+StatusBar=Disabled

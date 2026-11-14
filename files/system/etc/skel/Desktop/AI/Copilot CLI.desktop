@@ -2,5 +2,5 @@
 Type=Application
 Name=Copilot CLI
 Exec=konsole --hold -e /usr/libexec/mountain-ai copilot
-Icon=mountain-folder-ai
+Icon=utilities-terminal
 Categories=Development;

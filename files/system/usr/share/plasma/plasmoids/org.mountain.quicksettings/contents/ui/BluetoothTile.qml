@@ -7,7 +7,7 @@ Tile {
     split: true
     available: BluezQt.Manager.bluetoothBlocked || BluezQt.Manager.adapters.length > 0
     checked: BluezQt.Manager.bluetoothOperational
-    text: available ? i18n("Bluetooth") : i18n("Bluetooth unavailable")
+    text: i18n("Bluetooth")
     iconName: "preferences-system-bluetooth-symbolic"
     onToggled: {
         const enable = !checked;

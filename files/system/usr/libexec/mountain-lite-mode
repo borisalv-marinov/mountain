@@ -2,6 +2,9 @@
 # Turn off blur/animations on weak PCs (software rendering or < 4 GB RAM).
 # Usage: mountain-lite-mode [--dry-run]. Only writes to the user's ~/.config. Never fails the login.
 DRY=0; [[ ${1:-} == --dry-run ]] && DRY=1
+# once per account: later logins keep whatever the user chose in Settings (the test hook skips this)
+mark=${XDG_STATE_HOME:-$HOME/.local/state}/mountain/lite-mode
+if [[ $DRY == 0 && ! -v MOUNTAIN_RENDERER && -e $mark ]]; then exit 0; fi
 
 if [[ -v MOUNTAIN_RENDERER ]]; then renderer=$MOUNTAIN_RENDERER
 else renderer=$(eglinfo -B 2>/dev/null | grep -m1 'OpenGL renderer string'); fi
@@ -11,9 +14,10 @@ reason=
 if grep -qiE 'llvmpipe|softpipe|swrast' <<<"$renderer"; then reason="software rendering"
 elif [[ ${mem_kb:-} =~ ^[0-9]+$ ]] && (( mem_kb < 4194304 )); then reason="low memory"; fi
 
-if [[ -z $reason ]]; then echo "lite: off"; exit 0; fi
+if [[ -z $reason ]]; then echo "lite: off"; [[ $DRY == 1 ]] || { mkdir -p "${mark%/*}"; touch "$mark"; }; exit 0; fi
 echo "lite: on ($reason)"
 [[ $DRY == 1 ]] && exit 0
+mkdir -p "${mark%/*}"; touch "$mark"
 
 kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false
 kwriteconfig6 --file kwinrc --group Plugins --key contrastEnabled false

@@ -33,6 +33,24 @@ jobs:
         run: bash tests/test-mountain-ai.sh
       - name: Test Try Mountain keysyms
         run: node try/keysym.test.mjs
+      - name: Test Task Manager helper
+        run: bash tests/test-taskmanager.sh
+      - name: Test Restart into Windows detection
+        run: bash tests/test-windows-boot.sh
+      - name: Test Active Protection rules
+        run: bash tests/test-protect.sh
+      - name: Test snapshot keep rule
+        run: bash tests/test-snapshot-prune.sh
+      - name: File Explorer opens Desktop folders through desktop:/
+        run: bash tests/test-explorer.sh
+      - name: Firewall profile picks the default-route connection
+        run: bash tests/test-security-conn.sh
+      - name: KWin flyout scripts load and open on their shortcuts (Win+V, Win+Z)
+        run: | # Qt needs the EGL/GL and xkb client libraries even offscreen (Ubuntu's runner image lacks libEGL)
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 >/dev/null
+          pip install -q pyside6==6.11.1 && QT_QPA_PLATFORM=offscreen python tests/test-kwin-qml.py
+      - name: Run dialog (Win+R) test
+        run: bash tests/test-run-dialog.sh
       - name: Check Flathub IDs
         run: bash tests/check-flathub-ids.sh
 
@@ -52,10 +70,16 @@ jobs:
           - recipe.yml
           - recipe-nvidia.yml
     steps:
-      # the build is fully handled by the reusable github action
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Publish gate: check-image.sh is the last recipe module, so a failing check fails the build before the push.
+      # The generated copy is not committed (.gitignore: files/scripts/check-image.sh).
+      - name: Add the image checker as the last recipe step
+        run: cp tests/check-image.sh files/scripts/check-image.sh
       - name: Build Custom Image
         uses: blue-build/github-action@v1.13
         with:
+          skip_checkout: true
           recipe: ${{ matrix.recipe }}
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ github.token }}
@@ -71,8 +95,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
-    env:
-      MOUNTAIN_PHASE: 28
     strategy:
       fail-fast: false
       matrix:
@@ -106,4 +128,4 @@ jobs:
       - name: Run image tests
         env:
           TAG: ${{ steps.tag.outputs.tag }}
-        run: podman run --rm --no-hostname -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh "$MOUNTAIN_PHASE"
+        run: podman run --rm --no-hostname -v "$PWD/tests:/tests:ro" "ghcr.io/borisalv-marinov/${{ matrix.image }}:$TAG" bash /tests/check-image.sh

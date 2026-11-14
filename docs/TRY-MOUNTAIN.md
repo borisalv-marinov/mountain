@@ -22,6 +22,16 @@ Or just ask Claude to start it for you.
 - No graphics card (games and 3D will be slow or not run).
 - Nothing is saved. When the time is up, everything is wiped. Copy out anything you want to keep first.
 - The link changes every time and only works while the run is going.
+- Sharpness: the page asks Mountain to use your browser window's exact size, so nothing is stretched, and the picture is sent without lossy compression. What can still look softer than a real PC is only the remote view: if Mountain can't match your window (very small windows, or while you resize), the browser scales the picture, which blurs text. Use the browser full screen (F11) for the sharpest picture.
+
+## New in v5.1 — what to try
+
+1. Quick settings (click the network/volume icons next to the clock): the **brightness** slider is there (greyed out in this VM, which has no screen backlight).
+2. Open photos, PDFs and folders in File Explorer: it should feel quick. The sidebar and status bar no longer cut words, and the tab bar only shows with two or more tabs (Ctrl+T).
+3. **Ctrl+Shift+Esc** opens **Task Manager**: Processes, Performance, App history, Startup apps, Users, Details, Services.
+4. Start menu → **Security**: the status cards. Click **Scan now** (it downloads virus definitions first, a few minutes).
+5. File Explorer → **Previous versions**: hourly copies of your files (the first appears 10 minutes after start).
+6. Settings → Updates → **Go back to the previous version** (this fresh VM has no older version to go back to).
 
 ## New in v3 — what to try
 

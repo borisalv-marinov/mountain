@@ -50,11 +50,12 @@ PlasmoidItem {
     compactRepresentation: MouseArea {
         id: compact
         readonly property bool inTray: (Plasmoid.containmentDisplayHints & PlasmaCore.Types.ContainmentForcesSquarePlasmoids) !== 0
-        readonly property int iconSize: inTray ? Math.min(width, height) : Kirigami.Units.iconSizes.small
+        // 22 px cells: We10X's symbolic glyphs fill ~2/3 of the cell, so this draws them near Windows' 16 px (16 px cells drew ~10 px)
+        readonly property int iconSize: inTray ? Math.min(width, height) : Kirigami.Units.iconSizes.smallMedium
         property bool wasExpanded: false
 
-        Layout.minimumWidth: root.vertical ? 0 : inTray ? height : icons.implicitWidth + 2 * Kirigami.Units.smallSpacing
-        Layout.minimumHeight: !root.vertical ? 0 : inTray ? width : icons.implicitHeight + 2 * Kirigami.Units.smallSpacing
+        Layout.minimumWidth: root.vertical ? 0 : inTray ? height : icons.implicitWidth + 4 * Kirigami.Units.smallSpacing
+        Layout.minimumHeight: !root.vertical ? 0 : inTray ? width : icons.implicitHeight + 4 * Kirigami.Units.smallSpacing
         Layout.preferredWidth: Layout.minimumWidth
         Layout.preferredHeight: Layout.minimumHeight
         hoverEnabled: true
@@ -66,11 +67,25 @@ PlasmoidItem {
         Keys.onSpacePressed: root.expanded = !root.expanded
         onPressed: wasExpanded = root.expanded
         onClicked: root.expanded = !wasExpanded
+        // Windows shows the open flyout with the tile below, not Plasma's blue "expanded" bar (CompactApplet.qml expandedFeedback)
+        // (the host reparents this item after creation, so look again on every parent change)
+        function hideExpandedBar() {
+            for (let p = parent; p; p = p.parent) {
+                if (p.expandedFeedback !== undefined) { if (p.expandedFeedback) p.expandedFeedback.visible = false; return; }
+            }
+        }
+        onParentChanged: hideExpandedBar()
+        Component.onCompleted: hideExpandedBar()
 
-        Rectangle {
+
+        Rectangle { // Windows' taskbar hover tile: 40 px tall in the 48 px bar, 4 px radius
             anchors.fill: parent
-            radius: 6
-            color: Qt.rgba(1, 1, 1, compact.containsMouse || root.expanded ? 0.08 : 0)
+            anchors.topMargin: root.vertical ? 0 : 4
+            anchors.bottomMargin: root.vertical ? 0 : 4
+            anchors.leftMargin: root.vertical ? 4 : 0
+            anchors.rightMargin: root.vertical ? 4 : 0
+            radius: 4
+            color: Qt.rgba(1, 1, 1, compact.pressed ? 0.05 : compact.containsMouse || root.expanded ? 0.08 : 0)
             border.width: compact.activeFocus ? 1 : 0
             border.color: "#5AB0FF"
         }
@@ -121,10 +136,10 @@ PlasmoidItem {
             columnSpacing: 12
             rowSpacing: 14
 
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "WifiTile.qml"; fallbackText: i18n("Wi-Fi unavailable"); fallbackIcon: "network-wireless-disconnected-symbolic" }
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "BluetoothTile.qml"; fallbackText: i18n("Bluetooth unavailable"); fallbackIcon: "preferences-system-bluetooth-symbolic" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "WifiTile.qml"; fallbackText: i18n("Wi-Fi"); fallbackIcon: "network-wireless-disconnected-symbolic" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "BluetoothTile.qml"; fallbackText: i18n("Bluetooth"); fallbackIcon: "preferences-system-bluetooth-symbolic" }
             OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "AirplaneTile.qml"; fallbackText: i18n("Airplane mode"); fallbackIcon: "network-flightmode-off" }
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "EnergyTile.qml"; fallbackText: i18n("Energy saver unavailable"); fallbackIcon: "battery-profile-powersave-symbolic" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "EnergyTile.qml"; fallbackText: i18n("Energy saver"); fallbackIcon: "battery-profile-powersave-symbolic" }
             Tile {
                 Layout.preferredWidth: grid.tileWidth
                 text: i18n("Accessibility")
@@ -134,27 +149,24 @@ PlasmoidItem {
                 onToggled: KCMUtils.KCMLauncher.openSystemSettings("kcm_access")
                 onArrowClicked: KCMUtils.KCMLauncher.openSystemSettings("kcm_access")
             }
-            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "NightLightTile.qml"; fallbackText: i18n("Night light unavailable"); fallbackIcon: "redshift-status-off" }
+            OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "NightLightTile.qml"; fallbackText: i18n("Night light"); fallbackIcon: "redshift-status-off" }
         }
 
-        // Sliders card: glass gradient, 1 px rim, top-edge highlight, 12 px radius
+        // Sliders card: raised surface, 1 px rim, top-edge highlight, 8 px radius (wave/theme.md palette)
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: sliders.implicitHeight + 24
-            radius: 12
+            radius: 8
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.14)
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#1B1D22" }
-                GradientStop { position: 1.0; color: "#07080A" }
-            }
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+            color: "#1E1E1E"
             Rectangle {
                 anchors { top: parent.top; topMargin: 1; left: parent.left; right: parent.right; leftMargin: 12; rightMargin: 12 }
                 height: 1
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.38) }
+                    GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.14) }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -165,7 +177,6 @@ PlasmoidItem {
                 Loader {
                     source: "BrightnessRow.qml"
                     Layout.fillWidth: true
-                    visible: status === Loader.Ready && item.visible
                 }
                 Loader {
                     id: volumeRow
@@ -174,8 +185,8 @@ PlasmoidItem {
                 }
                 PC3.Label {
                     visible: volumeRow.status === Loader.Error
-                    text: i18n("Sound service unavailable")
-                    color: "#A4A9B2"
+                    text: i18n("Sound isn't available")
+                    color: "#C5C5C5"
                 }
             }
         }
@@ -187,9 +198,10 @@ PlasmoidItem {
             Loader { source: "BatteryLabel.qml" }
             Item { Layout.fillWidth: true }
             PC3.ToolButton {
-                icon.name: "configure-symbolic"
+                icon.name: "preferences-system-symbolic" // We10X's outline Fluent gear; it has no configure-symbolic (KDE's glyph showed)
                 display: PC3.AbstractButton.IconOnly
-                text: i18n("Open Settings")
+                text: i18n("All settings")
+
                 Accessible.name: text
                 PC3.ToolTip.text: text
                 PC3.ToolTip.visible: hovered

@@ -1,0 +1,10 @@
+[Unit]
+Description=Mountain: hourly snapshot of the home folders (local only, nothing is downloaded)
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

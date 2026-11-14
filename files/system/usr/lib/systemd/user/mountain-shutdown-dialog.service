@@ -1,0 +1,7 @@
+[Unit]
+Description=Shut Down Mountain dialog (Alt+F4 on the desktop)
+
+[Service]
+# oneshot that hands the dialog to its own unit, so this one is free again for the next Alt+F4 (KWin starts it over D-Bus)
+Type=oneshot
+ExecStart=/usr/bin/systemd-run --user --collect --quiet plasmawindowed org.mountain.shutdown

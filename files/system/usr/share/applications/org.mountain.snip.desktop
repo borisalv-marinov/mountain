@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Snip a region
+Comment=Select part of the screen; the snip is copied and saved to your Screenshots folder
+Exec=spectacle --background --region
+Icon=org.kde.spectacle
+NoDisplay=true
+X-KDE-Shortcuts=Meta+Shift+S

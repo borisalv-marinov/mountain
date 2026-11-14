@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <zone>
   <short>Mountain</short>
-  <description>Blocks unsolicited incoming connections. Allows network setup, finding printers and devices, Windows file sharing as a client, and Steam Remote Play / LAN game transfers.</description>
+  <description>Blocks unsolicited incoming connections. Allows network setup, finding printers and devices, and Windows file sharing as a client. Steam Remote Play, game transfers and Phone Link are only on the Home profile.</description>
   <service name="dhcpv6-client"/>
   <service name="mdns"/>
   <service name="samba-client"/>
-  <service name="steam-streaming"/>
-  <service name="steam-lan-transfer"/>
   <forward/>
 </zone>

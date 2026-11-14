@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Tighter sandbox for the shipped non-gaming Flatpak apps: no home folder (files go through the "Open" dialog instead),
+# Downloads allowed; Office also Documents and Desktop. Game launchers keep their own permissions (gaming-safe).
+# Applied once per app (a marker in /var/lib/mountain), so the undo and anything granted later in Flatseal stay. Undo for one app:
+#   sudo flatpak override --system --reset APP-ID
+set -euo pipefail
+tight() {
+  local m=/var/lib/mountain/flatpak-tight-${*: -1}
+  [[ -e $m ]] && return 0
+  if flatpak override --system --nofilesystem=home --nofilesystem=host --filesystem=xdg-download "$@"; then mkdir -p "${m%/*}"; touch "$m"
+  else echo "mountain-flatpak-policy: could not tighten ${*: -1}" >&2; rc=1; fi # the unit fails, so it shows in systemctl --failed
+}
+rc=0
+for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox; do tight "$a"; done
+tight --filesystem=xdg-documents --filesystem=xdg-desktop org.onlyoffice.desktopeditors
+exit $rc

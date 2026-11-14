@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Phone Link works on Home networks only (the firewall opens KDE Connect in the mountain-home zone, not Public).
+# shortcut: conn() is a copy of mountain-security's, keep both the same
+conn() { # UUID of the connection that carries the default route (not whichever VPN, bridge or docker link nmcli lists first)
+  local dev u; dev=$(ip -o route show default 2>/dev/null | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit } }')
+  [[ -n $dev ]] && u=$(nmcli -g GENERAL.CON-UUID device show "$dev" 2>/dev/null | head -1)
+  [[ -n ${u:-} ]] || u=$(nmcli -g UUID,TYPE connection show --active 2>/dev/null | awk -F: '$2 != "loopback" { print $1; exit }')
+  echo "${u:-}"
+}
+c=$(conn)
+[[ -n $c && $(nmcli -g connection.zone connection show uuid "$c" 2>/dev/null) == mountain-home ]] ||
+  notify-send -a "Phone Link" -i phone -h string:desktop-entry:org.kde.kdeconnect.app "Phone Link" "Phone Link works on Home networks. Settings > Privacy & security > Network profile: Home." 2>/dev/null
+# Phone Link (KDE Connect). The daemon is not autostarted or D-Bus activated (no background drain): start it here, then the app.
+# The daemon stops again when you close Phone Link, unless it was already running.
+started=0
+for d in /usr/libexec/kdeconnectd /usr/lib64/libexec/kdeconnectd /usr/bin/kdeconnectd; do
+  [[ -x $d ]] || continue
+  pgrep -u "$(id -u)" -x kdeconnectd >/dev/null || { "$d" >/dev/null 2>&1 & disown; started=1; }
+  break
+done
+sleep 1
+kdeconnect-app "$@"; rc=$?
+(( started )) && pkill -u "$(id -u)" -x kdeconnectd
+exit $rc

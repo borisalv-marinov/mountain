@@ -72,7 +72,7 @@ ColumnLayout {
                 contentItem: GText {
                     text: renameLink.text
                     color: app.accent
-                    font.underline: renameLink.hovered || renameLink.activeFocus
+                    font.underline: renameLink.hovered || renameLink.visualFocus
                 }
             }
         }
@@ -126,10 +126,10 @@ ColumnLayout {
                             onClicked: app.setWallpaper(modelData.url)
                             Keys.onReturnPressed: clicked()
                             background: Rectangle {
-                                radius: 8
+                                radius: 6
                                 color: app.glassBottom
-                                border.width: app.wallpaper === tile.modelData.url || tile.activeFocus ? 2 : 1
-                                border.color: app.wallpaper === tile.modelData.url || tile.activeFocus ? app.accent
+                                border.width: app.wallpaper === tile.modelData.url || tile.visualFocus ? 2 : 1
+                                border.color: app.wallpaper === tile.modelData.url || tile.visualFocus ? app.accent
                                                 : (tile.hovered ? Qt.rgba(1, 1, 1, 0.4) : app.rim)
                             }
                             contentItem: Image {
@@ -174,7 +174,7 @@ ColumnLayout {
                 SettingRow {
                     text: "Browse more backgrounds, colors, and themes"
                     divider: true
-                    onClicked: app.openKcm("kcm_lookandfeel")
+                    onClicked: app.page = "background"
                 }
             }
         }

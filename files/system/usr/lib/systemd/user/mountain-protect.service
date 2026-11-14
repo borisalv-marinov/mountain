@@ -1,0 +1,15 @@
+[Unit]
+Description=Mountain Active Protection (real-time, local-only; scans start only when a new file appears)
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/libexec/mountain-protect daemon
+Restart=on-failure
+Nice=19
+IOSchedulingClass=idle
+# the watcher itself: scans run in their own unit, so these limits are for the idle part
+MemoryHigh=150M
+CPUQuota=10%
+
+[Install]
+WantedBy=default.target

@@ -34,6 +34,20 @@ modules:
         - gwenview
         - okular
         - haruna
+        - kcalc # Calculator
+        - kclock # Clock (alarms, timer, stopwatch)
+        - kolourpaint # Paint
+        - kamoso # Camera
+        - krecorder # Sound Recorder
+        - skanlite # Scanner
+        - spectacle # Snipping Tool (Win+Shift+S)
+        - usbguard # USB protection, opt-in (Security > Device security)
+        - kdialog # Win+X menu
+        - inotify-tools # Active Protection watcher
+        - efibootmgr # Restart into Windows
+        - kio-gdrive # Google Drive in File Explorer after signing in under Online accounts
+        - clamav # virus scan on demand (Settings > Privacy & security)
+        - clamav-update # freshclam, run only when you click Scan now
 
   - type: script
     scripts:
@@ -44,8 +58,10 @@ modules:
       - explorer-title.sh
       - desktop-drag-fix.sh
       - lock-screen.sh
+      - mountain-desktop-labels.sh
       - icons-finalize.sh
       - hardening.sh
+      - protection.sh
 
   - type: default-flatpaks
     configurations:
@@ -67,6 +83,8 @@ modules:
         - scx_loader.service # LAVD scheduler (config /etc/scx_loader.toml)
         - mountain-avatars.service # logo as login-screen picture (AccountsService)
         - mountain-avatars.path # same for accounts created later
+        - mountain-snapshot.timer # hourly read-only home snapshots (Previous versions)
+        - mountain-flatpak-policy.service # tighter sandbox for shipped chat/browser/office apps
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
         - uupd.timer # owner's choice: no background updates; "Updates" app runs one on click
@@ -74,9 +92,17 @@ modules:
         - rpm-ostree-countme.timer # usage counting ping
         - ModemManager.service # mobile-broadband modems only
     user:
+      enabled:
+        - mountain-protect.service # Active Protection: real-time, local-only, light (watcher only; scans on demand)
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
 
   - type: initramfs # boot splash watermark lives in the initramfs
 
   - type: signing
+
+  # last module: a failing check stops the build before anything is pushed (CI copies tests/check-image.sh here first;
+  # for a build on your own PC run `cp tests/check-image.sh files/scripts/` before `bluebuild build`)
+  - type: script
+    scripts:
+      - check-image.sh
