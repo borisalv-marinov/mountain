@@ -81,7 +81,7 @@ wait $p 2>/dev/null
 ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t[0-9.]* %\t[0-9.]* MB\tlocked$'"'"' <<<"$L"' "processes: polkit agent locked"
 ok 'grep -q $'"'"'^103\tmy (odd) tool\t[0-9.]* %\t[0-9.]* MB\t$'"'"' <<<"$L" && grep -q $'"'"'^110\tPrint Spooler\t[0-9.]* %\t[0-9.]* MB\t$'"'"' <<<"$L"' "processes: ordinary rows not locked"
 for c in polkit-kde-authentication-agent-1 at-spi2-registryd xdg-desktop-portal-kde pipewire-pulse wireplumber plasmalogin dbus-broker kded6 ksmserver; do
-  cp /bin/sleep "$T/${c:0:15}"; "$T/${c:0:15}" 30 & p=$!; sleep 0.2
+  python3 -c 'import ctypes, sys, time; ctypes.CDLL(None).prctl(15, sys.argv[1].encode()[:15], 0, 0, 0); time.sleep(30)' "$c" & p=$!; sleep 0.5 # comm set with prctl(PR_SET_NAME): a copied sleep can be a multi-call binary that exits
   ok '! bash "$S" end $p 2>/dev/null && kill -0 $p 2>/dev/null' "end: refuses $c"; kill $p 2>/dev/null; wait $p 2>/dev/null
 done
 st 120 sshd 0 2; st 121 systemd-nsresou 0 2; st 122 findmnt 0 1
