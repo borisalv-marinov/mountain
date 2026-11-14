@@ -19,7 +19,7 @@ pairs = [
      '    // Mountain: Windows names and units (MB, not MiB), as Windows Task Manager\n'
      '    readonly property var mtNames: ' + json.dumps(m, ensure_ascii=False) + '\n'
      '    function mtName(n) { n = String(n ?? ""); return mtNames[n] ?? mtNames[n.split(" ")[0]] ?? n; }\n'
-     '    function mtUnits(t) { return String(t ?? "").replace(/([0-9]) ?([KMGT])iB/g, "$1 $2B"); }\n'),
+     '    function mtUnits(t) { return String(t ?? "").replace(/([0-9])\\s?([KMGT])iB/g, "$1 $2B"); }\n'),
     # kernel threads (pid 2 and its children) out, between the cache and KDE's own filter
     ('        sourceModel: cacheModel\n',
      '        sourceModel: kthreads\n'),
@@ -30,7 +30,7 @@ pairs = [
      '        filterRowCallback: (row, parent) => {\n'
      '            const c = processModel.ppidColumn, i = processModel.pidColumn;\n'
      '            if (c < 0 || i < 0) return true;\n'
-     '            const v = col => Number(cacheModel.data(cacheModel.index(row, col, parent), Process.ProcessDataModel.Value));\n'
+     '            const v = col => Number(cacheModel.data(cacheModel.index(row, col, parent))); // the shown text, "2"\n'
      '            return v(i) !== 2 && v(c) !== 2;\n'
      '        }\n'
      '    }\n\n'

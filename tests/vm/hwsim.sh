@@ -94,13 +94,13 @@ bt-up) # btvirt (bluez emulator) feeds /dev/vhci: two virtual controllers that c
   [ -n "$BTV" ] || skip "bt: no btvirt in the enabled repos (only the kernel side, hci_vhci, loads)"
   systemctl start bluetooth >>$LOG 2>&1
   bg btvirt "$BTV" -l2
-  waitfor 20 bash -c "bluetoothctl list | grep -q Controller" || fail "bt: no controller appeared (see $LOG)"
-  bluetoothctl power on >>$LOG 2>&1
-  waitfor 10 bash -c "bluetoothctl show | grep -q 'Powered: yes'" \
-    && ok "bt controllers=$(bluetoothctl list | grep -c Controller) powered=yes" || fail "bt: controller not powered" ;;
+  waitfor 20 bash -c "timeout 10 bluetoothctl list | grep -q Controller" || fail "bt: no controller appeared (see $LOG)"
+  timeout 10 bluetoothctl power on >>$LOG 2>&1
+  waitfor 10 bash -c "timeout 10 bluetoothctl show | grep -q 'Powered: yes'" \
+    && ok "bt controllers=$(timeout 10 bluetoothctl list | grep -c Controller) powered=yes" || fail "bt: controller not powered" ;;
 
 bt-pair) # best effort: controller 2 is discoverable, controller 1 scans, finds and pairs it
-  C1=$(bluetoothctl list | sed -n 1p | awk '{print $2}'); C2=$(bluetoothctl list | sed -n 2p | awk '{print $2}')
+  C1=$(timeout 10 bluetoothctl list | sed -n 1p | awk '{print $2}'); C2=$(timeout 10 bluetoothctl list | sed -n 2p | awk '{print $2}')
   [ -n "$C2" ] || skip "bt-pair: needs the two btvirt controllers from bt-up"
   { echo "select $C2"; echo "power on"; echo "pairable on"; echo "discoverable on"; sleep 1
     echo "select $C1"; echo "power on"; echo "scan on"; sleep 12; echo "devices"; echo "scan off"; sleep 1; echo "quit"; } \
