@@ -51,7 +51,8 @@ wifi-up)
   waitfor 15 test "$(wifi_ifaces | wc -l)" -ge 2 || fail "wifi: hwsim made no radios"
   STA=$(wifi_ifaces | sed -n 1p); AP=$(wifi_ifaces | sed -n 2p)
   nmcli device set "$AP" managed no >>$LOG 2>&1 # the access point side stays out of NetworkManager
-  ip link set "$AP" up
+  waitfor 15 bash -c "nmcli -t -f DEVICE,STATE device | grep -qx '$AP:unmanaged'" || fail "wifi: NetworkManager kept $AP"
+  ip link set "$AP" down; ip link set "$AP" up # no scan left running on it
   cat >$D/hostapd.conf <<EOF
 interface=$AP
 driver=nl80211
