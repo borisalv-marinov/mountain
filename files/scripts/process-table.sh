@@ -79,4 +79,51 @@ for old, new in pairs:
 open(p, 'w', encoding='utf-8', newline='').write(s)
 PY
 grep -q 'mtUnits(model.display)' "$a"
+# Apps table: no "Background Services" row (those processes are in the Background processes list)
+python3 - "$a" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '            if (pids.length == 0) {\n                return false\n            }\n'
+assert s.count(old) == 1, f'ApplicationsTableView.qml: expected 1 pids check, got {s.count(old)}'
+s = s.replace(old, old +
+    '            // Mountain: no "Background Services" row\n'
+    '            if (String(sourceModel.data(sourceModel.index(row, appModel.enabledAttributes.indexOf("menuId"), parent))) == "services") {\n'
+    '                return false\n'
+    '            }\n')
+open(p, 'w', encoding='utf-8', newline='').write(s)
+PY
+grep -q 'no "Background Services" row' "$a"
+# Line charts (Performance page): axis and legend units MB/GB; history fills from the right (KDE's FillFromEnd draws the
+# first seconds at the left and zeros to the right, which looks like the graph dropping to 0)
+l=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.linechart/contents/ui
+[[ -f $l/FullRepresentation.qml && -f $l/LineChart.qml ]] || { echo "process-table: linechart face not found"; exit 1; }
+python3 - "$l" <<'PY'
+import sys
+d = sys.argv[1]
+def patch(name, pairs):
+    p = d + '/' + name
+    s = open(p, encoding='utf-8').read()
+    for old, new in pairs:
+        assert s.count(old) == 1, f'{name}: expected 1 of {old!r}, got {s.count(old)}'
+        s = s.replace(old, new)
+    open(p, 'w', encoding='utf-8', newline='').write(s)
+patch('FullRepresentation.qml', [
+    ('    id: root\n',
+     '    id: root\n'
+     '    function mtUnits(t) { return String(t ?? "").replace(/([0-9])\\s?([KMGT])i\\u200b?B/g, "$1 $2B"); } // Mountain: MB/GB, not MiB/GiB\n'),
+    ('                    text: Formatter.Formatter.formatValueShowNull(ChartsControls.AxisLabels.label,\n'
+     '                        compactRepresentation.sensorsModel.unit)\n',
+     '                    text: root.mtUnits(Formatter.Formatter.formatValueShowNull(ChartsControls.AxisLabels.label,\n'
+     '                        compactRepresentation.sensorsModel.unit))\n'),
+    ('            sensorIds: root.showLegend ? root.controller.lowPrioritySensorIds : []\n',
+     '            sensorIds: root.showLegend ? root.controller.lowPrioritySensorIds : []\n'
+     '            formatValue: function(input, index) {\n'
+     '                return root.mtUnits(Formatter.Formatter.formatValueShowNull(input,\n'
+     '                    compactRepresentation.sensorsModel.headerData(index, Qt.Horizontal, Sensors.SensorDataModel.Unit)))\n'
+     '            }\n'),
+])
+patch('LineChart.qml', [('Charts.HistoryProxySource.FillFromEnd', 'Charts.HistoryProxySource.FillFromStart')])
+PY
+grep -q 'root.mtUnits(Formatter' "$l/FullRepresentation.qml" && grep -q FillFromStart "$l/LineChart.qml"
 echo "process-table: patched $f"

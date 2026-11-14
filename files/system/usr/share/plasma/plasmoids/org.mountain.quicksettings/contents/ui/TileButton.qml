@@ -40,7 +40,7 @@ QQC2.AbstractButton {
     contentItem: Item {
         Kirigami.Icon {
             anchors.centerIn: parent
-            width: Kirigami.Units.iconSizes.smallMedium
+            width: 28 // symbolic glyphs are hairline strokes; scaled up they read like Windows 11's tile icons (22 was thin)
             height: width
             source: button.iconSource
             isMask: true

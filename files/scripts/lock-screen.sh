@@ -184,6 +184,19 @@ grep -q '"Hello, "' "$d/UserDelegate.qml"
 grep -q 'The password is incorrect. Try again.' "$d/SessionManagementScreen.qml"
 grep -q 'mtLocale' "$d/Clock.qml"
 ! grep -q '^prefer ' "$d/qmldir"
+# Lock screen says "Virtual Keyboard" where the sign-in screen (plasma-workspace Footer.qml) says "Show/Hide On-Screen
+# Keyboard": use the sign-in screen's strings (same catalog, so translated alike).
+l=/usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml
+python3 - "$l" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p, encoding='utf-8').read()
+old = 'text: i18ndc("plasma_shell_org.kde.plasma.desktop", "Button to show/hide virtual keyboard", "Virtual Keyboard")'
+new = ('text: inputPanel.keyboardActive ? i18ndc("plasmashellprivateplugin", "@action:button", "Hide On-Screen Keyboard")'
+       ' : i18ndc("plasmashellprivateplugin", "@action:button", "Show On-Screen Keyboard")')
+assert s.count(old) == 1, f'LockScreenUi.qml: expected 1 "Virtual Keyboard" button, got {s.count(old)}'
+open(p, 'w', encoding='utf-8', newline='').write(s.replace(old, new))
+PY
+grep -q '"Show On-Screen Keyboard"' "$l"
 # the sign-in screen runs with the system locale: without one Qt shows 24 h and day-first dates (the installer's choice still wins)
 [[ -s /etc/locale.conf ]] || echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 echo "lock-screen: greeting patched in $d"

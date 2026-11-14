@@ -117,7 +117,10 @@ baloo_file=Search Indexer|baloo_file_extractor=Search Indexer|baloorunner=Search
 kactivitymanagerd=Activity history|org_kde_powerdevil=Power service|at-spi-bus-launcher=Accessibility
 at-spi2-registryd=Accessibility|kaccess=Accessibility|xembedsniproxy=Notification area|gmenudbusmenuproxy=Menu bar helper
 ibus-daemon=Text Input Host|plasma-browser-integration-host=Browser integration|kglobalacceld=Keyboard shortcuts
-ksecretd=Credential Manager|kiod6=File transfers|kioworker=File transfers|gvfsd=File transfers'
+ksecretd=Credential Manager|kiod6=File transfers|kioworker=File transfers|gvfsd=File transfers
+gvfsd-metadata=File System Helper|gvfsd-fuse=File System Helper|gvfsd-trash=File System Helper|gvfs-udisks2-vo=File System Helper
+cupsd=Print Spooler|cups-browsed=Print Spooler|tuned-ppd=Power Profiles Service|tuned=Power Profiles Service
+inotifywait=Active Protection|catatonit=Container Helper|bash=Command Shell'
 nokill=' plasmashell kwin_wayland kwin_wayland_wr kwin_x11 ksmserver startplasma-way plasma_session systemd dbus-broker dbus-broker-lau dbus-daemon Xwayland '
 
 processes() {

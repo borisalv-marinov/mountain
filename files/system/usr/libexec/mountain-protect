@@ -110,7 +110,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   if ((${#new[@]})); then
     f=$(esc "$(basename "${new[0]}")")
     ((${#new[@]} == 1)) && r="Unverified ${one}: $f." || r="${#new[@]} unverified files, including $f."
-    notify-send -a "Active Protection" -t 10000 -i security-medium -h string:desktop-entry:org.mountain.protection "Active Protection" "$r Review it in Active Protection." 2>/dev/null
+    notify-send -a "Active Protection" -i security-medium -h string:desktop-entry:org.mountain.protection "Active Protection" "$r Review it in Active Protection." 2>/dev/null
   fi
   # 5 or more new files in one burst under a subfolder (Ark, Dolphin "Extract here", a folder moved in) are an extraction: all of
   # it is scanned in this one scan, so a .txt or .png from an archive is not skipped, and the result is one calm notification
@@ -148,7 +148,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   echo x >> "$pdir/threats"
   for f in "${found[@]}"; do qmove "$f" || echo "note=could not quarantine $f"; drop "$f"; done
   f=$(basename -- "${found[0]}"); f=$(iconv -f UTF-8 -t UTF-8 -c <<<"${f//[$'\n\t']/ }")
-  notify-send -a "Active Protection" -t 15000 -i security-low -h string:desktop-entry:org.mountain.protection "Active Protection" "Threat blocked: $(esc "$f"). It was moved to quarantine." 2>/dev/null
+  notify-send -a "Active Protection" -i security-low -h string:desktop-entry:org.mountain.protection "Active Protection" "Threat blocked: $(esc "$f"). It was moved to quarantine." 2>/dev/null
 }
 sbscan() { systemd-run --user --wait --pipe --quiet --collect -p Nice=19 -p IOSchedulingClass=idle -p CPUQuota=50% "${props[@]}" /usr/libexec/mountain-security scan --no-update "$@"; }
 
@@ -201,7 +201,7 @@ daemon() {
 
 alive() { local p; for p in "${pids[@]}"; do kill -0 "$p" 2>/dev/null || { echo "a watcher stopped, see above" >&2; return 1; }; done; }
 down() { # tell the user (once until it runs again: a failing start retries every 30 s), then systemd restarts the service
-  [[ -e $down ]] || { : > "$down"; notify-send -a "Active Protection" -t 15000 -i security-low -h string:desktop-entry:org.mountain.protection "Active Protection" "Active Protection stopped (a file watcher failed). It starts again by itself in 30 seconds." 2>/dev/null; }
+  [[ -e $down ]] || { : > "$down"; notify-send -a "Active Protection" -i security-low -h string:desktop-entry:org.mountain.protection "Active Protection" "Active Protection stopped (a file watcher failed). It starts again by itself in 30 seconds." 2>/dev/null; }
   exit 1
 }
 

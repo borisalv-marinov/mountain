@@ -1,6 +1,6 @@
 # Theme-level settings (libplasma ThemePrivate). Missing SVGs fall back to the
 # default Breeze theme, recolored by this theme's colors file.
-# v7 frosted glass: KWin darkens (intensity) and saturates (vibrancy) what is behind before the 0.62 tint;
+# v7 frosted glass: KWin darkens (intensity) and saturates (vibrancy) what is behind before the 0.80 tint (black glass, not grey, over white);
 # contrast 0.8 keeps dark wallpapers dark (0.3 lifted them to grey). White behind ends at 54 % before the tint.
 [ContrastEffect]
 enabled=true

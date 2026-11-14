@@ -4,3 +4,7 @@ PopupPosition=BottomRight
 PopupTimeout=5000
 LowPriorityPopups=false
 LowPriorityHistory=true
+# Bazzite's first-boot Flatpak installer ("0 user Flatpak(s)") means nothing on Mountain: no popup, not in the center
+[Applications][Automatic Flatpak Installation Service]
+ShowPopups=false
+ShowInHistory=false

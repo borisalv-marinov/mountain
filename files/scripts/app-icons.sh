@@ -4,7 +4,16 @@ set -euo pipefail
 P=$(for f in /usr/share/code/resources/app/resources/linux/code.png /usr/share/pixmaps/vscode.png; do [[ -f $f ]] && echo "$f" && break; done)
 [[ -n "$P" ]] || { echo "app-icons: VS Code icon file not found"; exit 1; }
 # whatever name the launcher uses (vscode, com.visualstudio.code, code...), it gets the file the package ships: the brand icon
-for f in /usr/share/applications/{com.microsoft.VSCode,code}.desktop "/etc/skel/Desktop/Coding/VS Code.desktop"; do [[ -f $f ]] && sed -i "s|^Icon=.*|Icon=$P|" "$f"; done
+# The Start menu (Kirigami.Icon on the kicker model) showed the "unknown" placeholder for an absolute Icon= path and for We10X
+# symlink names, so brand icons are installed in hicolor (every Qt/KDE lookup falls back to it) under our own theme names.
+install -D -m644 "$P" "/usr/share/icons/hicolor/512x512/apps/mountain-vscode.${P##*.}"
+for f in /usr/share/applications/{com.microsoft.VSCode,code}.desktop "/etc/skel/Desktop/Coding/VS Code.desktop"; do [[ -f $f ]] && sed -i "s|^Icon=.*|Icon=mountain-vscode|" "$f"; done
+# Notepad (KWrite): Breeze's plain text-editor icon (a pad), not We10X's black/yellow tile that also stood for "unknown"
+np=$(find /usr/share/icons/breeze /usr/share/icons/breeze-dark -name 'accessories-text-editor.svg' -xtype f -print -quit)
+[[ -n $np ]] || { echo "app-icons: Breeze text editor icon not found"; exit 1; }
+install -D -m644 "$np" /usr/share/icons/hicolor/scalable/apps/mountain-notepad.svg
+sed -i "s|^Icon=.*|Icon=mountain-notepad|" /usr/share/applications/org.kde.kwrite.desktop
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
 # We10X draws an Outlook-like envelope for "okular" (PDF Reader); point it at Breeze's plain PDF document icon.
 pdf=$(find /usr/share/icons/breeze-dark /usr/share/icons/breeze -path '*/mimetypes/64/application-pdf.svg' -print -quit)
 [[ -n $pdf ]] || { echo "app-icons: Breeze PDF icon not found"; exit 1; }

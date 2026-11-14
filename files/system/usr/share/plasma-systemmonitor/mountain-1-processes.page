@@ -6,9 +6,9 @@ showTitle=true
 Title=Apps
 
 [Face-880000000001][org.kde.ksysguard.applicationstable][General]
-sortedColumns=appName,usage,memory,ioCharactersActuallyReadRate,ioCharactersActuallyWrittenRate,netInbound,netOutbound
-columnWidths=0.30,0.10,0.12,0.12,0.12,0.12,0.12
-columnDisplay={"appName":"text","usage":"textScaled","memory":"text","ioCharactersActuallyReadRate":"text","ioCharactersActuallyWrittenRate":"text","netInbound":"text","netOutbound":"text"}
+sortedColumns=appName,usage,memory
+columnWidths=0.50,0.25,0.25
+columnDisplay={"appName":"text","usage":"textScaled","memory":"text"}
 showToolBar=false
 askWhenKilling=false
 sortColumn=usage

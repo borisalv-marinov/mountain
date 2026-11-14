@@ -2,8 +2,9 @@
 BrowseThroughArchives=true
 ShowFullPath=false
 AlwaysShowTabBar=false
-# Small: "N items" only; the free-space part read "0 B free" for local folders (the read-only system image), Windows shows none
-ShowStatusBar=Small
+# Full width: Small is a floating overlay sized before its text is set ("10 ...ers", black box over the view). Free space off: it read "0 B free" on the read-only image, Windows shows none
+ShowStatusBar=FullWidth
+ShowSpaceInfo=false
 RememberOpenedTabs=false
 
 # Details pane like Windows: shows the selected file (not the one under the mouse), dates as "11/9/26 at 2:03 PM"

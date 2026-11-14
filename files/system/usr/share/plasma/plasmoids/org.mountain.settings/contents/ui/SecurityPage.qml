@@ -20,7 +20,7 @@ ColumnLayout {
     function refresh() { exec.connectSource(statusCmd); exec.connectSource(apCmd); }
     function a(k, d) { return ap[k] !== undefined ? ap[k] : (d || ""); }
     // one level per tile (0 good, 1 recommended, 2 needed); the headline is the worst of them
-    readonly property int lvAv: v("av_defs") === "none" ? 2 : (v("av_result") === "found" ? 1 : 0)
+    readonly property int lvAv: v("av_result") === "found" ? 1 : (v("av_defs") === "none" ? 1 : 0)
     readonly property int lvAp: a("ap") === "on" ? 0 : 2
     readonly property int lvFw: v("fw") === "on" ? 0 : 2
     readonly property int lvApp: v("flatpak_tight") === "5/5" ? 0 : 1
@@ -142,6 +142,7 @@ ColumnLayout {
                      + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."
             tech: "Scanner: ClamAV, on demand only. Download checks: " + (sec.v("dl_watch") === "on" ? "on" : "off") + "."
             buttons: [
+                GlassButton { text: "Update"; highlighted: true; visible: sec.v("av_defs") === "none"; enabled: sec.running === ""; onClicked: sec.start("update", sec.helper + " update") },
                 GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
                 GlassButton { text: "Full scan"; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
                 GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") || { echo av_result=cancelled; exit 0; }; " + sec.helper + " scan \"$d\"") },

@@ -588,8 +588,8 @@ jobs:
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass off"; sleep 3; QM key meta_l; sleep 3; shot start-menu-glass-off; QM key esc
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass on"; sleep 2
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot menu-context; QM key esc; sleep 1
-          L dolphin; sleep 5; L systemsettings; sleep 5
-          QM keyhold 4 alt tab & sleep 2; shot alt-tab; wait; QM key esc; K -x dolphin; K -x systemsettings
+          L dolphin; sleep 5; L kwrite; sleep 5
+          QM keyhold 4 alt tab & sleep 2; shot alt-tab; wait; QM key esc; K -x dolphin; K -x kwrite
           chk "personalize: glass back on" 0 "$(TL 'kreadconfig6 --file kwinrc --group Plugins --key blurEnabled')" '^true$'
           
           # 3. double-click the first desktop icon (folder AI)
@@ -610,7 +610,7 @@ jobs:
           # 4. file explorer
           L dolphin; sleep 8; shot file-explorer
           chk "sidebar has This PC and Network" 0 "grep -cE '<title>(This PC|Network)</title>' ~looktest/.local/share/user-places.xbel" '^2$'
-          chk "status bar without free space" 0 "grep -h '^ShowStatusBar=' /etc/xdg/dolphinrc ~looktest/.config/dolphinrc 2>/dev/null | tail -1" '^ShowStatusBar=Small$'
+          chk "status bar without free space" 0 "grep -h '^ShowStatusBar=' /etc/xdg/dolphinrc ~looktest/.config/dolphinrc 2>/dev/null | tail -1" '^ShowStatusBar=FullWidth$'
           shot explorer-home
           QM key ctrl f; sleep 2; QM type notes; sleep 3; shot explorer-search; QM key esc; sleep 1
           QM rclick $((700*W/1280)) $((500*H/800)); sleep 2; shot explorer-context-menu; QM key esc; sleep 1 # "New", "Sort"

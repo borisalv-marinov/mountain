@@ -57,6 +57,7 @@ st() { # PID COMM TICKS RSS-MB: a /proc/PID/stat line (utime = TICKS, rss in pag
   [[ -e $F/$1/cgroup ]] || echo "0::/user.slice/session.slice/x.service" > "$F/$1/cgroup"; }
 st 101 kwin_wayland 0 300; st 102 plasmashell 0 2048; st 103 "my (odd) tool" 0 5; st 104 polkit-kde-auth 0 20
 st 105 dolphin 0 100; echo "0::/user.slice/app.slice/app-org.kde.dolphin@1.scope" > "$F/105/cgroup"
+st 110 cupsd 0 3; st 111 gvfsd-metadata 0 1; st 112 catatonit 0 1; st 113 inotifywait 0 1; st 114 tuned-ppd 0 20; st 115 bash 0 4
 st 106 kaccess 0 7; st 107 at-spi2-registr 0 3; st 108 baloorunner 0 70; st 109 baloo_file 0 30
 # during the half-second sample, kwin uses a quarter of 4 cores and plasmashell more than all of them
 (sleep 0.2; st 101 kwin_wayland $((hz / 2)) 300; st 102 plasmashell $((hz * 9)) 2048) &
@@ -68,6 +69,7 @@ ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t'"'"' <<<"$L"' "proc
 ok 'grep -q $'"'"'^103\tmy (odd) tool\t0.0 %'"'"' <<<"$L"' "processes: unknown names kept, parentheses survive"
 ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB$'"'"' <<<"$L"' "processes: same-name rows merged into one, ids kept"
 ok 'grep -q $'"'"'^108,109	Search Indexer (2)	'"'"' <<<"$L" && ! grep -q baloorunner <<<"$L"' "processes: baloorunner named, merged"
+ok 'grep -q $'"'"'^110	Print Spooler	'"'"' <<<"$L" && grep -q $'"'"'^111	File System Helper	'"'"' <<<"$L" && grep -q $'"'"'^112	Container Helper	'"'"' <<<"$L" && grep -q $'"'"'^113	Active Protection	'"'"' <<<"$L" && grep -q $'"'"'^114	Power Profiles Service	'"'"' <<<"$L" && grep -q $'"'"'^115	Command Shell	'"'"' <<<"$L"' "processes: service helpers named (cupsd, gvfsd, catatonit, inotifywait, tuned-ppd, bash)"
 ok '! grep -q "^105" <<<"$L"' "processes: apps (app scopes) left out"
 ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
 ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"

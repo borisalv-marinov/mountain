@@ -29,7 +29,7 @@ PlasmoidItem {
     ].filter(c => !c.hidden)
 
     readonly property var hostWindow: Window.window
-    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Shut Down Mountain"; hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; hostWindow.width = 440; hostWindow.height = 236; }
+    onHostWindowChanged: if (hostWindow) { hostWindow.flags |= Qt.FramelessWindowHint; hostWindow.title = "Shut Down Mountain"; hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; hostWindow.width = 440; hostWindow.height = 236; }
     Connections {
         target: app.hostWindow
         function onVisibleChanged() { if (app.hostWindow.visible) app.pickDefault(); }
@@ -94,7 +94,7 @@ PlasmoidItem {
         Layout.preferredWidth: 440
         Layout.preferredHeight: 236
         radius: 8
-        color: Qt.rgba(0.071, 0.071, 0.071, 0.97)
+        color: "#121212" // opaque: plasmawindowed windows get no KWin blur, so any see-through showed sharp icons behind
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         Accessible.role: Accessible.Dialog
