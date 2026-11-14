@@ -43,7 +43,7 @@ RowLayout{
     }
     PlasmaComponents3.Menu {
         id: accountMenu
-        PlasmaComponents3.MenuItem { text: i18n("Change account settings"); icon.name: "user-identity"; onClicked: logic.runCommand("systemsettings kcm_users") }
+        PlasmaComponents3.MenuItem { text: i18n("Change account settings"); icon.name: "user-identity"; onClicked: logic.runCommand("/usr/libexec/mountain-settings-open youraccount") }
         PlasmaComponents3.MenuItem { text: i18n("Lock"); icon.name: "system-lock-screen"; visible: sessionManager.canLock; onClicked: sessionManager.lock() }
         PlasmaComponents3.MenuItem { text: i18n("Sign out"); icon.name: "system-log-out"; onClicked: sessionManager.requestLogout() }
     }

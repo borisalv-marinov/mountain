@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # KDE's own process lists (System Monitor > Processes, the Details tab): Windows names, MB/GB instead of MiB/GiB,
-# and no kernel threads (Windows Task Manager never lists them). Plain QML in the face package, no KDE C++ changed.
+# and no kernel threads (Windows Task Manager never lists them); the Apps table (Processes page) gets MB/GB too.
+# Plain QML in the face package, no KDE C++ changed.
 # Fails loudly if KDE's file changes shape.
 set -euo pipefail
 f=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml
@@ -58,4 +59,24 @@ s = s.replace('index = rowFilter.mapToSource(index)', 'index = kthreads.mapToSou
 open(p, 'w', encoding='utf-8', newline='').write(s)
 PY
 grep -q 'id: kthreads' "$f" && grep -q 'mtUnits' "$f"
+a=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
+[[ -f $a ]] || { echo "process-table: $a not found"; exit 1; }
+python3 - "$a" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+pairs = [
+    ('    property var enabledColumns: []\n',
+     '    property var enabledColumns: []\n\n'
+     '    // Mountain: units MB/GB, not MiB/GiB (KDE writes "191.8 Mi<zero-width space>B")\n'
+     '    function mtUnits(t) { return String(t ?? "").replace(/([0-9])\\s?([KMGT])i\\u200b?B/g, "$1 $2B"); }\n'),
+    ('        DelegateChoice { Table.TextCellDelegate { } }\n',
+     '        DelegateChoice { Table.TextCellDelegate { text: view.mtUnits(model.display) } }\n'),
+]
+for old, new in pairs:
+    assert s.count(old) == 1, f'ApplicationsTableView.qml: expected 1 of {old!r}, got {s.count(old)}'
+    s = s.replace(old, new)
+open(p, 'w', encoding='utf-8', newline='').write(s)
+PY
+grep -q 'mtUnits(model.display)' "$a"
 echo "process-table: patched $f"

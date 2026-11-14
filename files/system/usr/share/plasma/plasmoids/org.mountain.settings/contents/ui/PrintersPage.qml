@@ -18,8 +18,8 @@ ColumnLayout {
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Printers"; subtitle: "Printers on your network are found automatically, most need no driver." }
-        GText { visible: pr.printers.length === 0; Layout.margins: 18; text: "No printers found. Connect one by USB or join its network."; dim: true }
+        CardHeader { title: "Printers"; subtitle: "Printers on your network are added automatically" }
+        GText { visible: pr.printers.length === 0; Layout.margins: 18; text: "No printers yet. Join the same network as your printer, or plug it in by USB."; dim: true }
         Repeater {
             model: pr.printers
             delegate: SettingRow {
@@ -30,6 +30,7 @@ ColumnLayout {
                 iconName: "printer"
                 chevron: false
                 divider: index > 0
+                trailing: GlassButton { text: "Print test page"; onClicked: app.run("lp -d '" + modelData.name + "' /usr/share/cups/data/testprint") }
             }
         }
     }

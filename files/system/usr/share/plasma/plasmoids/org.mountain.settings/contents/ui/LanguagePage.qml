@@ -48,7 +48,7 @@ ColumnLayout {
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Windows display language"; subtitle: "Menus, settings and apps appear in this language" }
+        CardHeader { title: "Display language"; subtitle: "Menus, settings and apps appear in this language" }
         SettingRow { text: lang.label(lang.current); description: lang.current; iconName: "preferences-desktop-locale"; chevron: false }
         RowLayout {
             Layout.fillWidth: true

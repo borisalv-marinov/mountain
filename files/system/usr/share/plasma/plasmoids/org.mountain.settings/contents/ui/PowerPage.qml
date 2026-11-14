@@ -16,7 +16,7 @@ ColumnLayout {
     readonly property string rc: "kwriteconfig6 --file powerdevilrc --group "
 
     function load() {
-        let cmd = "powerprofilesctl get; ";
+        let cmd = "(powerprofilesctl get 2>/dev/null || echo balanced); "; // always one line, or the numbers below shift up
         cards.forEach(c => { cmd += "kreadconfig6 --file powerdevilrc --group " + c.g + " --group Display --key TurnOffDisplayIdleTimeoutSec --default " + c.off
             + "; kreadconfig6 --file powerdevilrc --group " + c.g + " --group SuspendAndShutdown --key AutoSuspendIdleTimeoutSec --default " + c.sleep + "; "; });
         app.sh(cmd + "# " + Date.now(), out => {

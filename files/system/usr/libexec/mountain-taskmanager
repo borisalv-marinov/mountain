@@ -113,7 +113,7 @@ Xwayland=Desktop Window Manager (older apps)|pipewire=Windows Audio|pipewire-pul
 wireplumber=Windows Audio Device Graph|xdg-desktop-portal=Runtime Broker|xdg-desktop-portal-kde=Runtime Broker
 xdg-desktop-portal-gtk=Runtime Broker|xdg-document-portal=Runtime Broker|xdg-permission-store=Runtime Broker
 polkit-kde-authentication-agent-1=Consent UI for administrative apps|kwalletd6=Credential Manager
-baloo_file=Search Indexer|baloo_file_extractor=Search Indexer|kdeconnectd=Phone Link|ksystemstats=Performance counters
+baloo_file=Search Indexer|baloo_file_extractor=Search Indexer|baloorunner=Search Indexer|kdeconnectd=Phone Link|ksystemstats=Performance counters
 kactivitymanagerd=Activity history|org_kde_powerdevil=Power service|at-spi-bus-launcher=Accessibility
 at-spi2-registryd=Accessibility|kaccess=Accessibility|xembedsniproxy=Notification area|gmenudbusmenuproxy=Menu bar helper
 ibus-daemon=Text Input Host|plasma-browser-integration-host=Browser integration|kglobalacceld=Keyboard shortcuts
@@ -135,11 +135,15 @@ processes() {
      if ($1 == "A") {t[pid] = f[12] + f[13]; next}
      if (f[1] == "Z" || pid in app) next
      v = (pid in t) ? (f[12] + f[13] - t[pid]) * 100 / (hz * 0.5 * n) : 0; mb = f[22] * pg / 1048576
-     printf "%s\t%s\t%.1f %%\t%s\n", pid, (c in nm ? nm[c] : c), (v > 100 ? 100 : v), (mb >= 1024 ? sprintf("%.1f GB", mb / 1024) : sprintf("%.1f MB", mb))}' |
+     w = (c in nm ? nm[c] : c); if (!(w in cnt)) order[++no] = w; cnt[w]++; ids[w] = (w in ids ? ids[w] "," : "") pid; cpu[w] += v; mem[w] += mb}
+    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\n", ids[w], w, (cnt[w] > 1 ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w]))}}' |
     sort -t$'\t' -k2,2 -k1,1n
 }
 
-end_task() { # PID: only a process of this user, never the session core; TERM, then KILL after 3 s like Windows
+end_task() { # PID[,PID...] (a merged row): each only a process of this user, never the session core; TERM, then KILL after 3 s like Windows
+  local p rc=0; for p in ${1//,/ }; do end_one "$p" || rc=$?; done; return $rc
+}
+end_one() {
   local pid=${1:-} c
   [[ $pid =~ ^[1-9][0-9]{0,9}$ ]] || { echo "bad process id: $pid" >&2; return 2; }
   ((EUID != 0)) && [[ -O /proc/$pid ]] || { echo "not your process: $pid" >&2; return 1; }

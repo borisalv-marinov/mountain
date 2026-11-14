@@ -427,16 +427,24 @@ jobs:
           chk "Background: solid color" 0 "grep -E '^(wallpaperplugin=org.kde.color|Color=)' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc | sort -u | paste -sd' '" 'org.kde.color'
           chk "Background: status" 2 "$LT /usr/libexec/mountain-background status | paste -sd' '" 'plugin=org.kde.color'
           # v7 glass over a bright wallpaper: white desktop, Start menu, then File Explorer over a white window (blur and tint must stay dark)
-          R "$LT /usr/libexec/mountain-background color '#FFFFFF'" >> bg-apply.txt 2>&1; sleep 12
+          K -f org.mountain.settings; R "$LT /usr/libexec/mountain-background color '#FFFFFF'" >> bg-apply.txt 2>&1; sleep 12
           QM key meta_l; sleep 3; shot start-menu-bright-wallpaper; QM key esc; sleep 1
           L kwrite; sleep 6; L dolphin; sleep 7; shot explorer-over-white-window; K -x dolphin; K -x kwrite
+          chk "KWin blur effect is loaded" 0 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:blur | awk '/boolean/{print \$2}'" '^true$'
+          chk "KWin contrast effect is loaded" 0 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:contrast | awk '/boolean/{print \$2}'" '^true$'
           R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 12
           # v7 Settings pages are native: no KDE System Settings or kcmshell6 window opens for them
+          R "echo IyBQcmludHMgZXZlcnkgYWNjZXNzaWJsZSBuYW1lIGluIG9uZSBhcHAncyB3aW5kb3dzIChBVC1TUEkpLCBvbmUgcGVyIGxpbmU6IG5hbWVzLnB5IEFQUC1OQU1FIFtNSU4tTElORVNdCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKd2FudCA9IHN5cy5hcmd2WzFdLmxvd2VyKCkKbmVlZCA9IGludChzeXMuYXJndlsyXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDIgZWxzZSAxCgpkZWYgd2FsayhhLCBkLCBvdXQpOgogICAgaWYgZCA+IDQwIG9yIGxlbihvdXQpID4gMjAwMDA6CiAgICAgICAgcmV0dXJuCiAgICB0cnk6CiAgICAgICAgbiA9IGEuZ2V0X25hbWUoKQogICAgICAgIGsgPSBhLmdldF9jaGlsZF9jb3VudCgpCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIHJldHVybgogICAgaWYgbjoKICAgICAgICBvdXQuYXBwZW5kKG4pCiAgICBmb3IgaSBpbiByYW5nZShtaW4oaywgMjAwMCkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgYyA9IGEuZ2V0X2NoaWxkX2F0X2luZGV4KGkpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgY29udGludWUKICAgICAgICBpZiBjOgogICAgICAgICAgICB3YWxrKGMsIGQgKyAxLCBvdXQpCgpiZXN0ID0gW10KZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIGFwcCBhbmQgd2FudCBpbiAoYXBwLmdldF9uYW1lKCkgb3IgJycpLmxvd2VyKCk6CiAgICAgICAgICAgIG5hbWVzID0gW10KICAgICAgICAgICAgd2FsayhhcHAsIDAsIG5hbWVzKQogICAgICAgICAgICBpZiBsZW4obmFtZXMpID4gbGVuKGJlc3QpOgogICAgICAgICAgICAgICAgYmVzdCA9IG5hbWVzCiAgICBpZiBsZW4oYmVzdCkgPj0gbmVlZDoKICAgICAgICBicmVhawogICAgdGltZS5zbGVlcCgxKQpwcmludCgnXG4nLmpvaW4oYmVzdCkpCg== | base64 -d > /tmp/names.py && chmod 644 /tmp/names.py"
+          declare -A PT=([display]="Display" [sound]="Sound" [bluetooth]="Bluetooth" [nightlight]="Night light" [language]="Language & region" [typing]="Typing" [notifications]="Notifications" [mouse]="Mouse & touchpad" [defaultapps]="Default apps" [power]="Power & battery" [about]="About" [storage]="Storage" [startup]="Startup apps" [datetime]="Date & time" [lockscreen]="Lock screen" [colors]="Colors" [controllers]="Game controllers" [printers]="Printers & scanners" [youraccount]="Your account")
+          # the page title must be on screen over AT-SPI (a blank or solid window has none)
           for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount; do
-            L "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
+            L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
+            R "$LT python3 /tmp/names.py plasmawindowed 20 > /tmp/set-names.txt 2>&1; true"
+            chk "Settings $p: page shows its title" 0 "grep -cxF '${PT[$p]}' /tmp/set-names.txt" "^[1-9]"
             chk "Settings $p: no systemsettings or kcmshell6" 0 "pgrep -u looktest -f 'systemsettings|kcmshell6' || echo none" '^none$'
             K -f org.mountain.settings
           done
+          chk "no QML id masks a global" 0 "journalctl -b --no-pager | grep -c 'illegally masks' || true" '^0$'
           chk "tray layout indicator says ENG" 0 "grep -h '^DisplayNames=' /etc/xdg/kxkbrc ~looktest/.config/kxkbrc 2>/dev/null | tail -1" 'ENG'
           R "$LT /usr/libexec/mountain-background picture /usr/share/wallpapers/mountain-silk/ 2" >> bg-apply.txt 2>&1; sleep 3 # back to the default for the later shots
           K -f org.mountain.settings
@@ -593,7 +601,7 @@ jobs:
           chk "a desktop folder opens through desktop:/ (labels without .desktop)" 0 "pgrep -a -u looktest -x dolphin | head -1" 'desktop:/'
           # the labels File Explorer draws, read over AT-SPI from a File Explorer opened on ~/Desktop/Coding by path (the wrapper turns it into desktop:/)
           K -x dolphin
-          R "echo IyBQcmludHMgdGhlIGl0ZW0gbGFiZWxzIEZpbGUgRXhwbG9yZXIgKERvbHBoaW4pIHNob3dzLCByZWFkIHRocm91Z2ggQVQtU1BJOiAib2sgPGxhYmVscz4iIG9yICJiYWQgPHdoeT4iCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKZGVmIHdhbGsoYSwgZCwgb3V0KToKICAgIGlmIGQgPiAzMDoKICAgICAgICByZXR1cm4KICAgIHRyeToKICAgICAgICBuID0gYS5nZXRfbmFtZSgpCiAgICAgICAgayA9IGEuZ2V0X2NoaWxkX2NvdW50KCkKICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgcmV0dXJuCiAgICBpZiBuOgogICAgICAgIG91dC5hcHBlbmQobikKICAgIGZvciBpIGluIHJhbmdlKG1pbihrLCA0MDApKToKICAgICAgICB0cnk6CiAgICAgICAgICAgIGMgPSBhLmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgaWYgYzoKICAgICAgICAgICAgd2FsayhjLCBkICsgMSwgb3V0KQoKZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIG5vdCBhcHAgb3IgKGFwcC5nZXRfbmFtZSgpIG9yICcnKS5sb3dlcigpIG5vdCBpbiAoJ2RvbHBoaW4nLCAnZmlsZSBleHBsb3JlcicpOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIG5hbWVzID0gW10KICAgICAgICB3YWxrKGFwcCwgMCwgbmFtZXMpCiAgICAgICAgaGl0ID0gc29ydGVkKHtuIGZvciBuIGluIG5hbWVzIGlmIG4uc3RhcnRzd2l0aCgoJ1Rlcm1pbmFsJywgJ05vZGUuanMnKSl9KQogICAgICAgIGlmIGhpdDoKICAgICAgICAgICAgYmFkID0gW24gZm9yIG4gaW4gaGl0IGlmICcuZGVza3RvcCcgaW4gbl0KICAgICAgICAgICAgcHJpbnQoKCdiYWQgJyBpZiBiYWQgZWxzZSAnb2sgJykgKyAnIHwgJy5qb2luKGhpdCkpCiAgICAgICAgICAgIHN5cy5leGl0KDEgaWYgYmFkIGVsc2UgMCkKICAgIHRpbWUuc2xlZXAoMSkKcHJpbnQoJ2JhZCBubyBGaWxlIEV4cGxvcmVyIGxhYmVscyBvdmVyIEFULVNQSScpCnN5cy5leGl0KDEpCg== | base64 -d > /tmp/labels.py && chmod 644 /tmp/labels.py"
+          R "echo IyBQcmludHMgdGhlIGl0ZW0gbGFiZWxzIEZpbGUgRXhwbG9yZXIgKERvbHBoaW4pIHNob3dzLCByZWFkIHRocm91Z2ggQVQtU1BJOiAib2sgPGxhYmVscz4iIG9yICJiYWQgPHdoeT4iCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKZGVmIHdhbGsoYSwgZCwgb3V0KToKICAgIGlmIGQgPiAzMDoKICAgICAgICByZXR1cm4KICAgIHRyeToKICAgICAgICBuID0gYS5nZXRfbmFtZSgpCiAgICAgICAgayA9IGEuZ2V0X2NoaWxkX2NvdW50KCkKICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgcmV0dXJuCiAgICBpZiBuOgogICAgICAgIG91dC5hcHBlbmQobikKICAgIGZvciBpIGluIHJhbmdlKG1pbihrLCA0MDApKToKICAgICAgICB0cnk6CiAgICAgICAgICAgIGMgPSBhLmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgaWYgYzoKICAgICAgICAgICAgd2FsayhjLCBkICsgMSwgb3V0KQoKZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIG5vdCBhcHAgb3IgKGFwcC5nZXRfbmFtZSgpIG9yICcnKS5sb3dlcigpIG5vdCBpbiAoJ2RvbHBoaW4nLCAnZmlsZSBleHBsb3JlcicpOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIG5hbWVzID0gW10KICAgICAgICB3YWxrKGFwcCwgMCwgbmFtZXMpCiAgICAgICAgaGl0ID0gc29ydGVkKHtuIGZvciBuIGluIG5hbWVzIGlmIG4uc3RhcnRzd2l0aCgoJ1Rlcm1pbmFsJywgJ05vZGUuanMnKSl9KQogICAgICAgIGlmIGhpdDoKICAgICAgICAgICAgYmFkID0gW24gZm9yIG4gaW4gbmFtZXMgaWYgbi5lbmRzd2l0aCgnLmRlc2t0b3AnKV0gKyBbbiBmb3IgbiBpbiBoaXQgaWYgJy5kZXNrdG9wJyBpbiBuXQogICAgICAgICAgICBwcmludCgoJ2JhZCAnIGlmIGJhZCBlbHNlICdvayAnKSArICcgfCAnLmpvaW4oaGl0KSkKICAgICAgICAgICAgc3lzLmV4aXQoMSBpZiBiYWQgZWxzZSAwKQogICAgdGltZS5zbGVlcCgxKQpwcmludCgnYmFkIG5vIEZpbGUgRXhwbG9yZXIgbGFiZWxzIG92ZXIgQVQtU1BJJykKc3lzLmV4aXQoMSkK | base64 -d > /tmp/labels.py && chmod 644 /tmp/labels.py"
           L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 /usr/libexec/mountain-explorer /home/looktest/Desktop/Coding; wchk "File Explorer opens Desktop/Coding" 0 dolphin 15; sleep 3; shot explorer-coding-labels
           chk "File Explorer label of a launcher has no .desktop" 0 "$LT python3 /tmp/labels.py 2>&1 | tail -1" '^ok .*Terminal'
           K -x dolphin
@@ -610,7 +618,7 @@ jobs:
           K -x dolphin; L 'dolphin /'; sleep 7; shot explorer-thispc; K -x dolphin
           R "$LT /usr/libexec/mountain-explorer --this-pc"
           chk "This PC lists Local Disk (C:)" 0 "$LT ls '/home/looktest/.local/share/mountain/This PC'" 'Local Disk \(C:\)'
-          L 'dolphin "/home/looktest/.local/share/mountain/This PC"'; sleep 7; shot this-pc; K -x dolphin
+          L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 /usr/libexec/mountain-explorer --open-this-pc; sleep 7; shot this-pc; K -x dolphin
           QM key meta_l; sleep 3; shot start-menu-pins; QM key esc; sleep 1
           L 'dolphin /home/looktest/Pictures'; sleep 6; shot pictures-folder; K -x dolphin
           chk "shipped launcher is trusted (u+x and metadata::trusted): no open-or-run dialog" 0 "{ stat -c %A /home/looktest/Desktop/Coding/Terminal.desktop | cut -c4; $LT gio info -a metadata::trusted /home/looktest/Desktop/Coding/Terminal.desktop | grep -o 'trusted: .*'; } | paste -sd' '" '^x trusted: true$'
@@ -798,7 +806,6 @@ jobs:
             K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-$pg.page"; sleep 8; shot "taskmanager-${pg#*-}"
           done
           # KDE's own process list (Details tab), read over AT-SPI: Windows names, MB not MiB, no kernel threads
-          R "echo IyBQcmludHMgZXZlcnkgYWNjZXNzaWJsZSBuYW1lIGluIG9uZSBhcHAncyB3aW5kb3dzIChBVC1TUEkpLCBvbmUgcGVyIGxpbmU6IG5hbWVzLnB5IEFQUC1OQU1FIFtNSU4tTElORVNdCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKd2FudCA9IHN5cy5hcmd2WzFdLmxvd2VyKCkKbmVlZCA9IGludChzeXMuYXJndlsyXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDIgZWxzZSAxCgpkZWYgd2FsayhhLCBkLCBvdXQpOgogICAgaWYgZCA+IDQwIG9yIGxlbihvdXQpID4gMjAwMDA6CiAgICAgICAgcmV0dXJuCiAgICB0cnk6CiAgICAgICAgbiA9IGEuZ2V0X25hbWUoKQogICAgICAgIGsgPSBhLmdldF9jaGlsZF9jb3VudCgpCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIHJldHVybgogICAgaWYgbjoKICAgICAgICBvdXQuYXBwZW5kKG4pCiAgICBmb3IgaSBpbiByYW5nZShtaW4oaywgMjAwMCkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgYyA9IGEuZ2V0X2NoaWxkX2F0X2luZGV4KGkpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgY29udGludWUKICAgICAgICBpZiBjOgogICAgICAgICAgICB3YWxrKGMsIGQgKyAxLCBvdXQpCgpiZXN0ID0gW10KZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIGFwcCBhbmQgd2FudCBpbiAoYXBwLmdldF9uYW1lKCkgb3IgJycpLmxvd2VyKCk6CiAgICAgICAgICAgIG5hbWVzID0gW10KICAgICAgICAgICAgd2FsayhhcHAsIDAsIG5hbWVzKQogICAgICAgICAgICBpZiBsZW4obmFtZXMpID4gbGVuKGJlc3QpOgogICAgICAgICAgICAgICAgYmVzdCA9IG5hbWVzCiAgICBpZiBsZW4oYmVzdCkgPj0gbmVlZDoKICAgICAgICBicmVhawogICAgdGltZS5zbGVlcCgxKQpwcmludCgnXG4nLmpvaW4oYmVzdCkpCg== | base64 -d > /tmp/names.py && chmod 644 /tmp/names.py"
           K -f plasma-systemmonitor; L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 plasma-systemmonitor --page-id mountain-6-details.page; sleep 10; shot taskmanager-details-windows-names
           R "$LT python3 /tmp/names.py plasma-systemmonitor 100 > /tmp/tm-names.txt 2>&1; true"
           chk "Details tab: Windows names" 0 "grep -cxE 'Windows Explorer|Desktop Window Manager|Service Host: .*' /tmp/tm-names.txt" '^[1-9]'
@@ -809,7 +816,9 @@ jobs:
           R "cat /usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml" > processtable-qml.txt 2>&1 || true
           R "journalctl -b --no-pager | grep -iE 'processtable|ProcessTableView|plasma-systemmonitor' | tail -80" > processtable-log.txt 2>&1 || true
           # End task: Mountain's Background processes list (Windows names, own processes only)
-          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 10; shot taskmanager-background
+          K -f plasma-systemmonitor; L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 10; shot taskmanager-background
+          R "$LT python3 /tmp/names.py plasma-systemmonitor 50 > /tmp/bg-names.txt 2>&1; true"
+          chk "Background processes page: no MiB/KiB/GiB, no baloorunner" 0 "echo n=\$(grep -c . /tmp/bg-names.txt) bad=\$(sed 's/\xe2\x80\x8b//g' /tmp/bg-names.txt | grep -cE 'MiB|KiB|GiB|baloorunner')" '^n=[1-9][0-9]+ bad=0$'
           chk "Background processes: Windows names" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'Desktop Window Manager'
           chk "Background processes: shell named like Windows" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2')" 'Windows Explorer'
           chk "Background processes: CPU at most 100 %" 0 "$(TL '/usr/libexec/mountain-taskmanager processes') | awk -F'\t' 'NR>1 && \$3+0>100 {b=1} END {print b ? \"over\" : \"ok\"}'" '^ok$'
@@ -877,7 +886,7 @@ jobs:
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
           # without --quiet systemd-run prints the scan unit's runtime, CPU time and memory peak (the "virus scan cost" row)
           SCAN=$(R "timeout 600 $LT systemd-run --user --wait --pipe --collect /usr/libexec/mountain-security scan /home/looktest/Downloads" 2>&1); echo "$SCAN" > scan-log.txt
-          chk "virus definitions service log" 2 "journalctl -u mountain-virus-definitions -b --no-pager | tail -4 | cut -c1-160; journalctl -b --no-pager | grep -i 'polkit.*mountain-virus' | tail -2" '.'
+          chk "virus definitions service log" 2 "journalctl -u mountain-virus-definitions -b --no-pager | tail -20 | cut -c1-160; journalctl -b --no-pager | grep -i 'polkit.*mountain-virus' | tail -2" '.'
           chk "virus definitions downloaded on Scan now (no password)" 2 "ls /var/lib/clamav | paste -sd' '" '.'
           if ! grep -q 'av_result=found' <<<"$SCAN"; then # the definitions server may refuse CI machines: test the pipeline with one test signature
             echo "| virus scan with downloaded definitions | INFO | $(grep -m1 -E 'av_result|note' <<<"$SCAN") - retrying with a test signature |" >> report.md
@@ -886,6 +895,7 @@ jobs:
           fi
           chk "virus scan finds the test file and quarantines it" 0 "test ! -e ~looktest/Downloads/eicar.com && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo quarantined" '^quarantined$'
           chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
+          chk "Update definitions downloads them (as the user, no password)" 0 "timeout 300 $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security update >/dev/null 2>&1; $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^av_defs='" '^av_defs=[^n]'
           chk "nothing scans or downloads in the background" 0 "pgrep -l -x 'clamd|freshclam|clamscan|clamonacc' || echo none" '^none$'
           R "$LT systemctl --user start mountain-protect.service"; sleep 3 # the next checks need the watcher
           chk "Active Protection is on" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
@@ -924,6 +934,7 @@ jobs:
           AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
           chk "Active Protection: a new user service is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*/apa-[a-z]*\.service|starts at sign-in' <<<"$AP")'" '^2$'
           chk "Active Protection: a .bashrc change is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*/\.bashrc|starts at sign-in' <<<"$AP")'" '^1$'
+          chk "Active Protection: no shipped launcher is listed unverified" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status | grep '^ap_unverified=' | grep -cE 'Recycle Bin|Claude Code|Terminal.desktop' || true" '^0$'
           chk "Active Protection: a link into autostart is flagged, not followed" 0 "echo '$(grep -c 'ap_unverified=.*/apa-link\.desktop|link that starts at sign-in' <<<"$AP")'" '^1$'
           chk "Active Protection: a threat in a folder moved to the Desktop is caught" 0 "test ! -e ~looktest/Desktop/apa-stage/apa-dir.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-dir && echo caught" '^caught$'
           R "rm -rf ~looktest/Desktop/apa-stage ~looktest/.config/systemd/user/apa-cfg.service ~looktest/.local/share/systemd/user/apa-data.service ~looktest/.config/autostart/apa-link.desktop"
@@ -1102,12 +1113,12 @@ jobs:
           chk "printer: driverless IPP printer in CUPS" 0 "$HW printer-up" '^OK printer MountainTest idle'
           chk "printer: lpstat lists it" 0 "lpstat -p" 'MountainTest'
           chk "printer: test page job completes" 0 "$HW printer-print" '^OK printer-print job=MountainTest-[0-9]+ completed'
-          L systemsettings kcm_printer_manager; sleep 8; shot hw-printer-settings; K -x systemsettings
+          L "/usr/libexec/mountain-settings-open printers"; sleep 6; shot hw-printer-settings; K -f org.mountain.settings
           # Game controller: uinput Xbox 360 pad, press A and read it back
           chk "controller: virtual Xbox 360 pad appears" 0 "$HW pad-up" "^OK pad name='Microsoft X-Box 360 pad' event=event[0-9]+"
           chk "controller: joystick node (js*)" 0 "ls /dev/input/js*" 'js[0-9]'
           chk "controller: button press read back" 0 "$HW pad-press" '^OK pad-press BTN_SOUTH=1'
-          L systemsettings kcm_gamecontroller; sleep 8; shot hw-gaming-controller-kcm; K -x systemsettings # Settings > Gaming only launches this KCM; it lists no controllers itself
+          L "/usr/libexec/mountain-settings-open controllers"; sleep 6; shot hw-gaming-controller-kcm; K -f org.mountain.settings
           # Brightness: cannot be faked; report the DDC path
           chk "brightness: no fakeable backlight; DDC library present" 2 "$HW brightness" '^INFO brightness backlight-devices=0 libddcutil=yes'
           R "$HW teardown" >/dev/null 2>&1 || true

@@ -60,7 +60,7 @@ PlasmoidItem {
     SessionManagement { id: session }
 
     readonly property var hostWindow: Window.window
-    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Quick Link menu"; hostWindow.color = "transparent"; hostWindow.width = menuWidth; hostWindow.height = menuHeight; }
+    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Quick Link menu"; hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; hostWindow.width = menuWidth; hostWindow.height = menuHeight; }
     readonly property int menuHeight: 12 + items.reduce((h, i) => h + (i.sep ? 9 : rowHeight), 0)
     onSubChanged: if (hostWindow) hostWindow.width = sub ? menuWidth + 4 + subWidth : menuWidth
     onMenuHeightChanged: if (hostWindow) hostWindow.height = menuHeight

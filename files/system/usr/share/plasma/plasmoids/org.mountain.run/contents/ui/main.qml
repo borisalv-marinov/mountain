@@ -22,7 +22,7 @@ PlasmoidItem {
     property var box: null // the Open: box (ids inside fullRepresentation are not visible up here)
 
     readonly property var hostWindow: Window.window
-    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Run"; hostWindow.color = "transparent"; hostWindow.width = 420; hostWindow.height = 218; }
+    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Run"; hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; hostWindow.width = 420; hostWindow.height = 218; }
     Connections { // plasmawindowed keeps one window per applet: start fresh each time it is shown
         target: app.hostWindow
         function onVisibleChanged() { if (app.hostWindow.visible) app.reset(); }
@@ -156,6 +156,7 @@ PlasmoidItem {
                 QQC2.ComboBox {
                     id: field
                     Layout.fillWidth: true
+                    implicitHeight: 32 // the custom background has no size: without this the box collapses to its 4 px border
                     editable: true
                     model: app.history
                     focus: true

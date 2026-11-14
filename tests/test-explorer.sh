@@ -22,4 +22,6 @@ ok 'grep -qx "SortRole=destination" "$P/.directory" && [[ $(for f in "$P"/*; do 
 Games (D:)
 USB Drive (E:)'"'"' ]]' "This PC: Dolphin sorts by link target, giving C:, D:, E: (not by name)"
 ok '[[ $(readlink "$P/USB Drive (E:)") == "/run/media/u/USB stick" ]]' "a mount point with a space is linked right"
+ok '[[ $(x --open-this-pc) == "[file://$T/data/mountain/This%20PC]" && $(x "$P") == "[file://$T/data/mountain/This%20PC]" ]]' "This PC opens with the exact URL of its sidebar place (location bar reads This PC)"
+ok 'grep -q "^Exec=/usr/libexec/mountain-explorer --open-this-pc" "$(dirname "$S")/../../etc/skel/Desktop/files.desktop"' "the This PC desktop shortcut opens the drive folder"
 exit $rc

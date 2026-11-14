@@ -33,5 +33,7 @@ pick system-file-manager folder-open system-file-manager
 pick preferences-system settings preferences-system
 pick security-high security-high security-medium
 pick accessories-text-editor text-editor accessories-text-editor
+pick kwrite accessories-text-editor text-editor
+pick org.kde.kwrite accessories-text-editor text-editor
 pick utilities-system-monitor utilities-system-monitor task-manager
 pick org.kde.spectacle accessories-screenshot applets-screenshooter

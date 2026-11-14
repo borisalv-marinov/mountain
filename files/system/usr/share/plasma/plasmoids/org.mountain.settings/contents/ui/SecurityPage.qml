@@ -20,7 +20,7 @@ ColumnLayout {
     function refresh() { exec.connectSource(statusCmd); exec.connectSource(apCmd); }
     function a(k, d) { return ap[k] !== undefined ? ap[k] : (d || ""); }
     // one level per tile (0 good, 1 recommended, 2 needed); the headline is the worst of them
-    readonly property int lvAv: v("av_result") === "found" ? 1 : 0
+    readonly property int lvAv: v("av_defs") === "none" ? 2 : (v("av_result") === "found" ? 1 : 0)
     readonly property int lvAp: a("ap") === "on" ? 0 : 2
     readonly property int lvFw: v("fw") === "on" ? 0 : 2
     readonly property int lvApp: v("flatpak_tight") === "5/5" ? 0 : 1
@@ -136,7 +136,7 @@ ColumnLayout {
             title: "Virus & threat protection"
             level: sec.lvAv
             details: (sec.v("av_last", "never") === "never" ? "No scan yet." : "Last scan: " + sec.v("av_last") + (sec.v("av_result") === "found" ? " · " + sec.v("av_found") + " found" : sec.v("av_result") === "clean" ? " · no threats" : ""))
-                     + "\nDefinitions: " + (sec.v("av_defs") === "none" ? "not downloaded yet" : sec.v("av_defs"))
+                     + "\nDefinitions: " + (sec.v("av_defs") === "none" ? "No virus definitions — press Update (Scan now downloads them)" : sec.v("av_defs"))
                      + " · In quarantine: " + sec.v("av_quarantine", "0")
                      + "\nDefinitions download only when you click a scan button. New files in Downloads are checked with the definitions you have"
                      + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."

@@ -40,11 +40,11 @@ QQC2.AbstractButton {
     contentItem: Item {
         Kirigami.Icon {
             anchors.centerIn: parent
-            width: Kirigami.Units.iconSizes.small
+            width: Kirigami.Units.iconSizes.smallMedium
             height: width
             source: button.iconSource
             isMask: true
-            color: button.on ? "#FFFFFF" : button.enabled ? "#FFFFFF" : "#8A8A8A" // disabled glyph 4.8:1
+            color: button.on ? "#FFFFFF" : button.enabled ? "#FFFFFF" : "#B4B4B4" // disabled glyph, readable on #1E1E1E
         }
     }
 }

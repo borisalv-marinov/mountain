@@ -65,7 +65,7 @@ PlasmoidItem {
             { t: "Bluetooth", d: "Pair and manage Bluetooth devices", i: "preferences-system-bluetooth", page: "bluetooth", k: "bluetooth pair headphones" },
             { t: "Mouse & touchpad", d: "Pointer speed, scrolling, buttons, taps", i: "input-mouse", page: "mouse", k: "mouse touchpad trackpad pointer cursor speed natural scrolling left handed tap" },
             { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", page: "typing", k: "layout typing keys" },
-            { t: "Printers & scanners", d: "Add and manage printers (most work without drivers)", i: "printer", page: "printers", k: "print" },
+            { t: "Printers & scanners", d: "Your printers and test page; network printers are added automatically", i: "printer", page: "printers", k: "print" },
             { t: "Scanner", d: "Scan a document or photo", i: "scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
             { t: "Phone Link", d: "Your phone's messages, files and notifications on this PC", i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad joystick controller" }
@@ -217,6 +217,7 @@ PlasmoidItem {
         function onActiveChanged() { if (app.hostWindow.active) exec.connectSource(app.pageCmd); }
     }
     onHostWindowChanged: {
+        if (hostWindow) { hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; } // glass: plasmawindowed paints a solid background by default
         if (hostWindow && hostWindow.width < 1000) {
             hostWindow.width = 1100;
             hostWindow.height = 720;
@@ -229,7 +230,7 @@ PlasmoidItem {
         Layout.minimumHeight: 560
         Layout.preferredWidth: 1100
         Layout.preferredHeight: 720
-        color: app.pageColor
+        color: Qt.rgba(0.043, 0.047, 0.059, 0.8) // pageColor, see-through so the blur shows
 
         // Top bar: title on the left, "Find a setting" in the middle like Windows 11.
         Item {

@@ -138,7 +138,7 @@ pairs = [
         text: "Power"
         Accessible.name: text
         PlasmaComponents3.ToolTip.text: text
-        PlasmaComponents3.ToolTip.visible: hovered
+        PlasmaComponents3.ToolTip.visible: hovered && !mtMenu.visible // the tooltip otherwise stays behind the open menu as a ghost box
         focusPolicy: Qt.TabFocus // reachable with Tab; a click leaves typing in the password box
         onClicked: mtMenu.open()
     }

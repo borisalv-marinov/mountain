@@ -20,6 +20,17 @@ done
 dl=/h/Downloads
 ok 'skip /run/media/u/D/SteamLibrary/steamapps/common/g/game.exe && skip /run/media/u/D/compatdata/1/pfx/x.dll && skip /run/media/u/D/shadercache/1/x' "game folders on a drive are never checked"
 ok '! skip /run/media/u/D/setup.exe && ! skip /h/Downloads/steamapps/setup.exe && ! skip /h/Downloads/node_modules/a.zip' "other drive files and anything in Downloads are checked"
+# launchers the image ships (byte-identical copies in ~/Desktop) are never listed; an edited copy still is
+shipped=$T/shipped; mkdir -p "$T/Desktop"; printf '[Desktop Entry]
+Name=Recycle Bin
+' > "$T/Desktop/Recycle Bin.desktop"
+sha256sum "$T/Desktop/Recycle Bin.desktop" | cut -d' ' -f1 > "$shipped"
+ok '! is_unverified "$T/Desktop/Recycle Bin.desktop" >/dev/null' "a launcher identical to the image's own is not flagged"
+printf '[Desktop Entry]
+Exec=evil
+' > "$T/Desktop/Recycle Bin.desktop"
+ok '[[ $(is_unverified "$T/Desktop/Recycle Bin.desktop") == "program or script" ]]' "an edited copy of a shipped launcher is flagged"
+: > "$shipped"
 sha256sum "$T/run-me" | cut -d' ' -f1 > "$allowed"
 ok '! is_unverified "$T/run-me" >/dev/null' "an allowed file is no longer flagged"
 H=$T/home; mkdir -p "$H"; printf '%s\tscript\n' "$T/setup.exe" > /dev/null

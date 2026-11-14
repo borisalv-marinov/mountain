@@ -155,7 +155,7 @@ scan() { # [--no-update] quick|full|DIR...
 scan_notify() { # right-click > Scan with Mountain Security
   local out; out=$(scan --no-update "$@")
   case $out in
-    *av_result=found*) notify-send -a "Security" -u critical -i security-low -h string:desktop-entry:org.mountain.security "Mountain Security" "Threat found and moved to quarantine." ;;
+    *av_result=found*) notify-send -a "Security" -t 15000 -i security-low -h string:desktop-entry:org.mountain.security "Mountain Security" "Threat found and moved to quarantine." ;;
     *av_result=clean*) notify-send -a "Security" -i security-high -h string:desktop-entry:org.mountain.security "Mountain Security" "No threats found." ;;
     *) notify-send -a "Security" -i security-medium -h string:desktop-entry:org.mountain.security "Mountain Security" "No virus definitions yet: open Security and click Scan now." ;;
   esac 2>/dev/null
@@ -229,6 +229,7 @@ rollback() {
 case ${1:-} in
   status) status ;;
   scan) shift; scan "$@" ;;
+  update) systemctl start mountain-virus-definitions.service && newest_def ;; # Update definitions: the only download (owner's rule)
   scan-notify) shift; scan_notify "$@" ;;
   quarantine-list) ls -1 "$quarantine" 2>/dev/null ;;
   quarantine-restore) restore "${2:-}" ;;
@@ -239,5 +240,5 @@ case ${1:-} in
   rollback) rollback ;;
   reset) reset_pc ;;
   repair-etc) repair_etc "${2:-}" ;;
-  *) echo "usage: mountain-security status|scan|scan-notify|quarantine-*|allow|profile|usb|rollback|reset" >&2; exit 2 ;;
+  *) echo "usage: mountain-security status|update|scan|scan-notify|quarantine-*|allow|profile|usb|rollback|reset" >&2; exit 2 ;;
 esac

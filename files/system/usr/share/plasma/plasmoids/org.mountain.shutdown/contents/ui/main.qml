@@ -29,7 +29,7 @@ PlasmoidItem {
     ].filter(c => !c.hidden)
 
     readonly property var hostWindow: Window.window
-    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Shut Down Mountain"; hostWindow.color = "transparent"; hostWindow.width = 440; hostWindow.height = 236; }
+    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Shut Down Mountain"; hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; hostWindow.width = 440; hostWindow.height = 236; }
     Connections {
         target: app.hostWindow
         function onVisibleChanged() { if (app.hostWindow.visible) app.pickDefault(); }

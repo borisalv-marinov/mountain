@@ -20,10 +20,13 @@ SortOrder=0
   done < <(findmnt -rno TARGET,SOURCE 2>/dev/null | grep -E '^(/run/media|/var/run/media|/mnt|/var/mnt)/' | sort)
 fi
 [[ ${1:-} == --this-pc ]] && exit 0
+tu=file://${t// /%20}; tr=$(realpath -m -- "$t") # the This PC folder, spelled exactly as its sidebar place so Dolphin's location bar reads "This PC" (not /home/...)
+[[ ${1:-} == --open-this-pc ]] && set -- "$tu" # "This PC" shortcut
 a=()
 for u; do
   p=$u; [[ $p == file://* ]] && { p=${p#file://}; p=$(printf '%b' "${p//%/\\x}"); } # file:///a%20b -> /a b
   [[ $p == /* ]] && p=$(realpath -m -- "$p")
+  [[ $p == "$tr" ]] && u=$tu
   if [[ $p == "$d" || $p == "$d"/* ]]; then u="desktop:/${p#"$d"}"; u=${u/#desktop:\/\//desktop:\/}; fi
   a+=("$u")
 done

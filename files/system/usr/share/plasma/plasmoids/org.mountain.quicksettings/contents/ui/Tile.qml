@@ -52,7 +52,7 @@ ColumnLayout {
         id: label
         Layout.fillWidth: true
         Layout.preferredHeight: Math.ceil(2 * metrics.height)
-        text: tile.available ? tile.text : tile.text + "\n" + i18n("Not available")
+        text: tile.text // "Not available" stays in the accessible description; a second line made "Wi-Fi" wrap and elide to "Wi-Fi..."
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignTop
         wrapMode: Text.Wrap

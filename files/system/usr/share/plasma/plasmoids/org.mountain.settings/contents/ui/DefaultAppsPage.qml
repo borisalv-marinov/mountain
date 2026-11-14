@@ -12,7 +12,7 @@ ColumnLayout {
         { label: "Web browser", match: "MimeType=.*x-scheme-handler/https", get: "xdg-settings get default-web-browser", set: id => "xdg-settings set default-web-browser " + id },
         { label: "Email", match: "MimeType=.*x-scheme-handler/mailto", get: "xdg-mime query default x-scheme-handler/mailto", set: id => "xdg-mime default " + id + " x-scheme-handler/mailto" },
         { label: "File manager", match: "MimeType=.*inode/directory", get: "xdg-mime query default inode/directory", set: id => "xdg-mime default " + id + " inode/directory" },
-        { label: "Terminal", match: "Categories=.*TerminalEmulator", get: "kreadconfig6 --file kdeglobals --group General --key TerminalService", set: id => "kwriteconfig6 --file kdeglobals --group General --key TerminalService " + id }
+        { label: "Terminal", match: "Categories=.*TerminalEmulator", get: "kreadconfig6 --file kdeglobals --group General --key TerminalService --default org.kde.konsole.desktop", set: id => "kwriteconfig6 --file kdeglobals --group General --key TerminalService " + id }
     ]
     function safe(id) { return /^[A-Za-z0-9._-]+\.desktop$/.test(id); }
     function list(r) { // "Name|file.desktop" lines of visible launchers that match

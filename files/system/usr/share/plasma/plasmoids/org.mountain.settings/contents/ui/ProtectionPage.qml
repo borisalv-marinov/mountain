@@ -107,10 +107,10 @@ ColumnLayout {
         Layout.fillWidth: true
         iconName: ap.v("ap") === "on" ? "security-high" : "security-low"
         title: "Real-time protection is " + (ap.v("ap") === "on" ? "on" : "off")
-        level: ap.v("ap") === "on" ? (ap.list("ap_unverified").length > 0 ? 1 : 0) : 2
+        level: ap.v("ap") === "on" ? (ap.v("av_defs") === "none" ? 2 : (ap.list("ap_unverified").length > 0 ? 1 : 0)) : 2
         details: "Files checked today: " + ap.v("ap_checked_today", "0") + " · Threats blocked: " + ap.v("ap_threats", "0")
                  + " · Unverified to review: " + ap.list("ap_unverified").length
-                 + "\nDefinitions: " + (ap.v("av_defs") === "none" ? "not downloaded yet: press Update definitions" : ap.v("av_defs"))
+                 + "\nDefinitions: " + (ap.v("av_defs") === "none" ? "No virus definitions — press Update" : ap.v("av_defs"))
                  + ". They update only when you press Update or a scan button."
         buttons: [
             GlassButton { text: ap.v("ap") === "on" ? "Turn off" : "Turn on"; highlighted: ap.v("ap") !== "on"; enabled: ap.running === ""; onClicked: ap.start("fix", ap.helper + (ap.v("ap") === "on" ? " off" : " on")) },

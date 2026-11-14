@@ -495,9 +495,9 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
     grep -qE '^(Background|Foreground)[A-Za-z]*=(16,18,22|11,12,15|7,8,10|27,29,34|164,169,178)$' "$f" && fail "old blue-black left in $f"
   done
   cmp -s /usr/share/color-schemes/BlackGlass.colors $t/colors || fail "Plasma theme and color scheme differ"
-  grep -q 'stop-color="#121212" stop-opacity="0.62"' $t/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.62"
-  grep -q 'stop-color="#121212" stop-opacity="0.62"' $t/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.62"
-  grep -q 'stop-color="#121212" stop-opacity="1"' $t/translucent/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
+  grep -q 'stop-color="#121212" stop-opacity="0.62"' $t/translucent/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.62"
+  grep -q 'stop-color="#121212" stop-opacity="0.62"' $t/translucent/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.62"
+  grep -q 'stop-color="#121212" stop-opacity="1"' $t/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
   assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
   # Terminal uses the same black glass; Settings cards keep a 3:1 edge against the page
@@ -972,6 +972,17 @@ check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
   ! grep -q 'href="file:///"' /usr/share/mountain/user-places.xbel.in || fail "This PC still opens /"
   assert_grep 'Local Disk (C:)' /usr/libexec/mountain-explorer
   f=$(find /usr/share/icons/We10X-dark -name 'folder-pictures.*' -print -quit 2>/dev/null || true); [[ -n $f ]] || fail "We10X-dark has no folder-pictures icon (Pictures place)"
+  # v7 QA fix wave: native Settings, security, File Explorer, Task Manager
+  ! grep -rnE 'systemsettings|kcmshell' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml || fail "Settings, quick settings or the Start footer still open KDE System Settings"
+  ! grep -nE '^\s*id: (gc|print|escape|name|isFinite|parseInt)\b' $ui/*.qml || fail "a QML id masks a JS global"
+  assert_grep '--config-file=/usr/share/mountain/freshclam.conf' /usr/lib/systemd/system/mountain-virus-definitions.service
+  ! grep -qE '^(UpdateLogFile|Example)' /usr/share/mountain/freshclam.conf || fail "freshclam.conf writes a log file or still has Example"
+  ! grep -rqe '-u critical' /usr/libexec/mountain-* || fail "a Mountain notification is critical (never times out)"
+  assert_grep '^Exec=/usr/libexec/mountain-explorer --open-this-pc' /etc/skel/Desktop/files.desktop
+  assert_grep 'open-this-pc' /usr/libexec/mountain-explorer
+  assert_grep 'mtUnits(model.display)' /usr/share/ksysguard/sensorfaces/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
+  assert_grep 'baloorunner=Search Indexer' /usr/libexec/mountain-taskmanager
+  assert_grep '^showToolBar=false' /usr/share/plasma-systemmonitor/mountain-1-processes.page
   true
 }
 
