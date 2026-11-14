@@ -139,6 +139,7 @@ pairs = [
         Accessible.name: text
         PlasmaComponents3.ToolTip.text: text
         PlasmaComponents3.ToolTip.visible: hovered
+        focusPolicy: Qt.NoFocus // typing still goes to the password box
         onClicked: mtMenu.open()
     }
     PlasmaComponents3.Menu {
@@ -146,6 +147,7 @@ pairs = [
         parent: mtPower
         x: mtPower.width - width
         y: -height - Kirigami.Units.smallSpacing
+        onClosed: root.forceActiveFocus() // back to the password box, as Windows
         Instantiator {
             model: root.mtActions
             delegate: PlasmaComponents3.MenuItem {
