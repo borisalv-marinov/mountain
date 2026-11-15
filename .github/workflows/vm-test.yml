@@ -1027,6 +1027,7 @@ jobs:
           # snapshots: delete a file, copy it back from Previous versions
           R "$(TL 'echo precious > ~/Documents/precious.txt')"
           chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service; s=\$(ls /var/home/.snapshots | tail -1); [ -n \"\$s\" ] && echo \$s || { journalctl -u mountain-snapshot -b -n 8 --no-pager -o cat; stat -c %i /var/home; df -h /var/home | tail -1; } | paste -sd' '" '^[0-9]{4}-'
+          R "journalctl -u mountain-snapshot -b --no-pager -o short-monotonic | tail -40; df -h / /var /var/home; btrfs subvolume list /var/home | tail -8; ls -la /var/home/.snapshots" > snapshot-log.txt 2>&1 # why, if the check above fails
           SNAP=$(R "ls /var/home/.snapshots | tail -1")
           R "$(TL 'rm ~/Documents/precious.txt')"
           chk "deleted file restored from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP/looktest/Documents/precious.txt ~/Documents/ && cat ~/Documents/precious.txt")" '^precious$'
