@@ -30,7 +30,7 @@ def norm(s):
 def found(text, phrase, need):
     """phrase in text, allowing OCR slips: best window of the same length scores >= need (0..1)"""
     t, p = norm(text), norm(phrase)
-    if p in t:
+    if p in t or p.replace(" ", "") in t.replace(" ", ""):  # OCR drops spaces: "0 B free" reads "0b free"
         return True
     n = len(p)
     return any(difflib.SequenceMatcher(None, t[i:i + n], p).ratio() >= need for i in range(0, max(1, len(t) - n + 1)))
