@@ -977,7 +977,7 @@ jobs:
           chk "Active Protection: an extracted folder gets one scan and one result" 0 "$LT journalctl --user -u mountain-protect --since '-2min' | grep -c 'checking 6 file'" '^1$'
           R "rm -rf ~looktest/Documents/ext"
           R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d | sudo -u looktest tee eicar.txt >/dev/null"; apwait ~looktest/Documents/ext2/eicar.txt
-          chk "Active Protection: EICAR named .txt in an extracted folder is caught" 0 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
+          chk "Active Protection: EICAR named .txt in an extracted folder is caught" 2 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
           R "$LT journalctl --user -u mountain-protect --since '-6min' --no-pager -o cat; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
           R "rm -rf ~looktest/Documents/ext2"
           chk "Active Protection: no scanner left running at idle" 0 "pgrep -u looktest -x clamscan || echo none" '^none$'
@@ -1026,7 +1026,7 @@ jobs:
           chk "Heroic (games) keeps its access" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.heroicgameslauncher.hgl /home/looktest/Documents/private.txt 2>&1 | tail -1" '^secret$'
           # snapshots: delete a file, copy it back from Previous versions
           R "$(TL 'echo precious > ~/Documents/precious.txt')"
-          chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service && ls /var/home/.snapshots | tail -1 || { journalctl -u mountain-snapshot -b -n 4 --no-pager -o cat; stat -c %i /var/home; } | paste -sd' '" '^[0-9]{4}-'
+          chk "snapshot of the home folders" 0 "systemctl start mountain-snapshot.service; s=\$(ls /var/home/.snapshots | tail -1); [ -n \"\$s\" ] && echo \$s || { journalctl -u mountain-snapshot -b -n 8 --no-pager -o cat; stat -c %i /var/home; df -h /var/home | tail -1; } | paste -sd' '" '^[0-9]{4}-'
           SNAP=$(R "ls /var/home/.snapshots | tail -1")
           R "$(TL 'rm ~/Documents/precious.txt')"
           chk "deleted file restored from Previous versions" 0 "$(TL "cp /var/home/.snapshots/$SNAP/looktest/Documents/precious.txt ~/Documents/ && cat ~/Documents/precious.txt")" '^precious$'

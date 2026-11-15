@@ -29,3 +29,5 @@ computer on the same Wi-Fi.
 | Disk filled to the last 64 MB | Still boots | PASS: still boots with 64 MB free |
 
 Not tested in this run: Allow-an-app firewall rows, definitions download (Initialization error: fixed after this run, see `mountain-security update`), and AV scan with the real database (no definitions in the VM). Holes found and fixed are listed under the run that found them.
+
+**Known limit (v7):** files written straight into a brand-new folder in the same instant (for example `unzip` on the command line) can land before the watcher adds that folder, so they are not scanned on arrival. Covered instead: Ark/Dolphin extraction (temp folder moved into place: checked whole), and any archive in Downloads is scanned with its contents on arrival. vm-test row "EICAR named .txt in an extracted folder" is INFO for this reason.
