@@ -1145,7 +1145,7 @@ jobs:
           K -x kdebugsettings; QM key esc; sleep 1
           QM key meta_l; sleep 2
           for c in s e t t i n g s; do QM type $c; sleep 0.5; shot "ux-search-$c$SN"; done
-          QM key esc; sleep 2
+          QM key esc; sleep 1; QM key esc; sleep 2 # first Esc clears the search, the second closes Start (it covered every app)
           R "cat > /tmp/start-apps.sh; chmod 755 /tmp/start-apps.sh" < "$GITHUB_WORKSPACE/tests/vm/start-apps.sh"
           APPS=$(R "bash /tmp/start-apps.sh"); NA=$(echo "$APPS" | grep -c .)
           echo "| Start apps to open | INFO | $NA |" >> report.md
@@ -1163,6 +1163,7 @@ jobs:
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
           done
+          chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
           chk "stability: no program crashed during the run" 0 "c=\$(coredumpctl list --no-legend --no-pager 2>/dev/null | grep -oE '/[^ ]+\$' | sort | uniq -c | paste -sd' '); echo \${c:-none}" '^none$'
           chk "tearing: KWin never lets a window tear" 1 "$LT kreadconfig6 --file kwinrc --group Compositing --key AllowTearing" '^false$'
@@ -1171,7 +1172,7 @@ jobs:
           R "journalctl -b --no-pager -o cat | grep -o 'MWC|.*'" > perf/windows.txt 2>/dev/null || true
           echo "| window census | INFO | $(cut -d'|' -f3 perf/windows.txt | sort | uniq -c | tr -s ' ' | paste -sd',') |" >> report.md
           echo "| windows drawing their own title bar | INFO | $(awk -F'|' '$3=="normal" && $7=="noborder"{print $4}' perf/windows.txt | sort -u | paste -sd' ') |" >> report.md
-          echo "| keyboard pop-ups seen | INFO | $(awk -F'|' '$3=="osd"{print $6}' perf/windows.txt | sort -u | paste -sd'/') |" >> report.md
+          echo "| on-screen pop-ups seen (volume, brightness, keyboard) | INFO | $(awk -F'|' '$3=="osd"{print $6}' perf/windows.txt | sort -u | paste -sd'/') |" >> report.md
 
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
@@ -1225,7 +1226,7 @@ jobs:
         run: |
           cd "$HOME/vm"
           python3 "$GITHUB_WORKSPACE/tests/vm/test_uxcheck.py"
-          python3 "$GITHUB_WORKSPACE/tests/vm/uxcheck.py" shots "$GITHUB_WORKSPACE/tests/vm/ux-rules.json" > ux.md; rc=$?
+          rc=0; python3 "$GITHUB_WORKSPACE/tests/vm/uxcheck.py" shots "$GITHUB_WORKSPACE/tests/vm/ux-rules.json" > ux.md || rc=$? # bash -e: keep the rows when a check fails
           cat ux.md >> report.md
           { echo; echo "## User-view checks"; echo; echo "| Check | Result | Evidence |"; echo "|---|---|---|"; cat ux.md; } >> "$GITHUB_STEP_SUMMARY"
           exit $rc
@@ -1241,6 +1242,7 @@ jobs:
             /home/runner/vm/report.md
             /home/runner/vm/*.png
             /home/runner/vm/shots/*.png
+            /home/runner/vm/shots/*.json
             /home/runner/vm/perf/*.txt
             /home/runner/vm/*.txt
             /home/runner/vm/serial.log

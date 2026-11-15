@@ -1034,6 +1034,7 @@ check_phase35() { # v7.1 (owner 2026-11-15): stability first, tearing impossible
   # taskbar right-click: Task Manager like Windows
   assert_grep 'Mountain: Task Manager' $X/usr/share/plasma/plasmoids/org.mountain.taskbarspace/contents/ui/main.qml
   assert_grep 'org.mountain.taskbarspace' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  assert_grep 'tasks.writeConfig("fill", false)' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js # the task list stretched over the empty space (VM: right-click showed KDE's menu)
   # one look in Mountain's own windows: standard dropdowns (a custom background hid the Shut Down choice), neutral greys only
   for f in org.mountain.shutdown org.mountain.run; do
     python3 - $X/usr/share/plasma/plasmoids/$f/contents/ui/main.qml <<'PY2' || fail "$f: a ComboBox has its own background (the desktop style paints the text there)"

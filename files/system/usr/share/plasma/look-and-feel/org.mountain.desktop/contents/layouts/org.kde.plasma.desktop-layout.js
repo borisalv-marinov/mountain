@@ -46,6 +46,8 @@ tasks.writeConfig("launchers", [
     "applications:org.kde.konsole.desktop"
 ]);
 tasks.writeConfig("showOnlyCurrentDesktop", false);
+// only as wide as its icons: the empty taskbar around them is Mountain's space (right-click = Task Manager), not the task list's
+tasks.writeConfig("fill", false);
 spacer(panel, true);
 
 const tray = panel.addWidget("org.kde.plasma.systemtray");
