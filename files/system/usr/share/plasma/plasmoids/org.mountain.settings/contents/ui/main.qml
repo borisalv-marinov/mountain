@@ -22,7 +22,7 @@ PlasmoidItem {
     readonly property color glassTop: "#2D2D2D"
     readonly property color glassBottom: "#262626"
     readonly property color pageColor: "#121212" // v7.1: the same window colour as every app (was blue-black)
-    readonly property color rim: Qt.rgba(1, 1, 1, 0.23) // card edge at 3:1 against the page (WCAG 1.4.11)
+    readonly property color rim: Qt.rgba(1, 1, 1, 0.26) // card edge at 3:1 against the page (WCAG 1.4.11): 3.15 on the #121212 page
     readonly property color rimTop: Qt.rgba(1, 1, 1, 0.38)
     readonly property color innerShadow: Qt.rgba(0, 0, 0, 0.60)
     readonly property color textColor: "#FFFFFF"
