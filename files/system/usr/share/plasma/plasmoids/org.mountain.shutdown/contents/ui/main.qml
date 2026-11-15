@@ -76,7 +76,7 @@ PlasmoidItem {
             border.width: btn.activeFocus ? 2 : 1
             border.color: btn.activeFocus ? "#5AB0FF" : Qt.rgba(1, 1, 1, 0.14)
             color: btn.highlighted ? (btn.pressed ? "#0063B1" : btn.hovered ? "#1A86D9" : "#0078D4")
-                                   : (btn.pressed ? "#101114" : btn.hovered ? "#2A2D33" : "#202227")
+                                   : (btn.pressed ? "#262626" : btn.hovered ? "#383838" : "#2D2D2D")
         }
         contentItem: Text {
             id: label
@@ -147,12 +147,8 @@ PlasmoidItem {
                         Keys.onReturnPressed: if (!popup.visible) app.ok()
                         Keys.onEnterPressed: if (!popup.visible) app.ok()
                         Keys.onEscapePressed: if (popup.visible) popup.close(); else app.close()
-                        background: Rectangle {
-                            radius: 4
-                            color: combo.hovered ? "#202227" : "#16171C"
-                            border.width: combo.activeFocus ? 2 : 1
-                            border.color: combo.activeFocus ? "#5AB0FF" : Qt.rgba(1, 1, 1, 0.16)
-                        }
+                        // v7.1: no custom background (the desktop style paints the chosen text in its own background, so
+                        // replacing it left an empty 4 px bar; the same look as every other dropdown is the point)
                     }
                     Text {
                         Layout.fillWidth: true

@@ -6,8 +6,9 @@ const opt = (p, id) => {
     if (known === null) { try { return p.addWidget(id); } catch (e) { return null; } }
     return known.indexOf(id) >= 0 ? p.addWidget(id) : null;
 };
+// empty taskbar space: Mountain's (right-click = Task Manager, like Windows), Plasma's spacer if it is missing
 const spacer = (p, expanding, length) => {
-    const s = opt(p, "org.kde.plasma.panelspacer");
+    const s = opt(p, "org.mountain.taskbarspace") || opt(p, "org.kde.plasma.panelspacer");
     if (s) { s.currentConfigGroup = ["General"]; s.writeConfig("expanding", expanding); if (length) s.writeConfig("length", length); }
 };
 

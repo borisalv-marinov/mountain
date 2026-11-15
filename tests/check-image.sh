@@ -137,7 +137,7 @@ check_phase11() {
   assert_file "$k/GlassDark.kvconfig"
   assert_file "$k/GlassDark.svg"
   assert_grep '^translucent_windows=true$' "$k/GlassDark.kvconfig"
-  assert_grep '^theme=BlackGlass$' /etc/xdg/Kvantum/kvantum.kvconfig # v5: BlackGlass replaced GlassDark as the default
+  assert_grep '^theme=BlackGlassSolid$' /etc/xdg/Kvantum/kvantum.kvconfig # v7.1: solid app windows (stability over glass)
   assert_grep '^widgetStyle=kvantum$' /etc/xdg/kdeglobals
   assert_grep '^ButtonsOnRight=IAX$' /etc/xdg/kwinrc
   assert_grep '^blurEnabled=true$' /etc/xdg/kwinrc
@@ -472,7 +472,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   [[ -z $missing ]] || fail "Settings pages without a KDE module:$missing"
   # black glass
   assert_file /usr/share/Kvantum/BlackGlass/BlackGlass.svg
-  assert_grep '^theme=BlackGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
+  assert_grep '^theme=BlackGlassSolid$' /etc/skel/.config/Kvantum/kvantum.kvconfig
   assert_grep '^translucent_windows=false$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig
   assert_grep '^reduce_menu_opacity=0$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig # lite mode: no see-through menus either
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /usr/share/Kvantum/BlackGlass/BlackGlass.svg || fail "Kvantum SVG invalid"
@@ -495,7 +495,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
     grep -qE '^(Background|Foreground)[A-Za-z]*=(16,18,22|11,12,15|7,8,10|27,29,34|164,169,178)$' "$f" && fail "old blue-black left in $f"
   done
   cmp -s /usr/share/color-schemes/BlackGlass.colors $t/colors || fail "Plasma theme and color scheme differ"
-  grep -q 'stop-color="#121212" stop-opacity="0.85"' $t/translucent/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.85"
+  grep -q 'stop-color="#121212" stop-opacity="0.95"' $t/translucent/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.95 (v7.1: readable)"
   grep -q 'stop-color="#121212" stop-opacity="0.85"' $t/translucent/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.85"
   grep -q 'stop-color="#121212" stop-opacity="1"' $t/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
@@ -637,7 +637,7 @@ PY
   assert_grep '^clipboardGroup=PostScreenshotCopyImage$' /etc/xdg/spectaclerc
   # Bulgarian keyboard, Cyrillic fonts
   assert_grep '^LayoutList=us,bg$' /etc/xdg/kxkbrc
-  assert_grep '^VariantList=,phonetic$' /etc/xdg/kxkbrc
+  assert_grep '^VariantList=,bas_phonetic$' /etc/xdg/kxkbrc
   assert_grep '^DisplayNames=ENG,БГ$' /etc/xdg/kxkbrc
   assert_grep '^Options=grp:alt_shift_toggle$' /etc/xdg/kxkbrc
   n=$(fc-list :lang=bg family 2>/dev/null || true); [[ -n $n ]] || fail "no font covers Bulgarian" # captured: grep -q would SIGPIPE fc-list under pipefail
@@ -999,6 +999,58 @@ check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
   assert_grep 'Math.max(lvAv, lvAp, lvFw, lvApp, lvDev, lvSnap, lvUpd, lvAcc)' $ui/SecurityPage.qml
   ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key'
   assert_grep 'realpath -m' /usr/libexec/mountain-user-setup
+  true
+}
+
+check_phase35() { # v7.1 (owner 2026-11-15): stability first, tearing impossible, one Windows style, readable pop-ups, glass last
+  local X=${MOUNTAIN_ROOT:-} t f # MOUNTAIN_ROOT=files/system runs these against the repo (before/after every change)
+  t=$X/usr/share/plasma/desktoptheme/mountain-glass
+  # tearing: KWin never lets a window tear (fullscreen games included); no blur grain redrawn on every repaint
+  assert_grep '^AllowTearing=false$' $X/etc/xdg/kwinrc
+  assert_grep '^NoiseStrength=0$' $X/etc/xdg/kwinrc
+  # stability: app windows are solid (see-through apps made KWin redraw the blur behind them: smearing, half-drawn rows)
+  assert_grep '^theme=BlackGlassSolid$' $X/etc/xdg/Kvantum/kvantum.kvconfig
+  assert_grep '^theme=BlackGlassSolid$' $X/etc/skel/.config/Kvantum/kvantum.kvconfig
+  assert_grep 'theme=BlackGlassSolid' $X/usr/libexec/mountain-user-setup # existing accounts move over too
+  # Settings is its own app on the taskbar, not "Plasma"
+  assert_grep '^desktopfile=org.mountain.settings$' $X/etc/xdg/kwinrulesrc
+  # keyboard: no layout pop-up (Windows shows none); Windows' "Bulgarian (Phonetic)" is XKB bas_phonetic
+  assert_grep '^kbdLayoutChangedEnabled=false$' $X/etc/xdg/plasmarc
+  assert_grep '^VariantList=,bas_phonetic$' $X/etc/xdg/kxkbrc
+  assert_grep 'bas_phonetic' $X/usr/libexec/mountain-user-setup
+  # pop-ups readable over any wallpaper: flyouts, menus and tooltips 0.95 (taskbar keeps 0.85)
+  for f in dialogs/background widgets/background widgets/tooltip; do
+    grep -q 'stop-opacity="0.85"' $t/translucent/$f.svg && fail "$f pop-up still 0.85 see-through"
+    assert_grep 'stop-color="#121212" stop-opacity="0.95"' $t/translucent/$f.svg
+  done
+  # File Explorer opens Home on its real path (/home is a link on the read-only disk: "0 B free")
+  assert_grep 'HomeUrl' $X/usr/libexec/mountain-user-setup
+  # Notepad opens a blank page like Windows (Notepad and Paint keep File/Edit menus: Windows 11 has them too)
+  assert_grep '^Show welcome view for new window=false$' $X/etc/xdg/kwriterc
+  # one style for GTK and Flatpak apps: same dark theme, font and cursor as KDE apps
+  assert_grep 'gtk-application-prefer-dark-theme=true' $X/etc/gtk-3.0/settings.ini
+  assert_grep 'gtk-application-prefer-dark-theme=true' $X/etc/gtk-4.0/settings.ini
+  assert_grep 'xdg-config/gtk-3.0:ro' $X/usr/libexec/mountain-flatpak-policy
+  # taskbar right-click: Task Manager like Windows
+  assert_grep 'Mountain: Task Manager' $X/usr/share/plasma/plasmoids/org.mountain.taskbarspace/contents/ui/main.qml
+  assert_grep 'org.mountain.taskbarspace' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  # one look in Mountain's own windows: standard dropdowns (a custom background hid the Shut Down choice), neutral greys only
+  for f in org.mountain.shutdown org.mountain.run; do
+    python3 - $X/usr/share/plasma/plasmoids/$f/contents/ui/main.qml <<'PY2' || fail "$f: a ComboBox has its own background (the desktop style paints the text there)"
+import re, sys
+s = open(sys.argv[1]).read()
+for m in re.finditer(r"QQC2\.ComboBox \{", s):
+    depth, i = 1, m.end()
+    while depth:
+        depth += {"{": 1, "}": -1}.get(s[i], 0); i += 1
+    body = s[m.end():i]
+    assert "background:" not in body, body[:80]
+PY2
+  done
+  ! grep -rqE '#(202227|2A2D33|101114|F2F3F5|A4A9B2|16171C|0B0C0F|303238|28292E)' $X/usr/share/plasma/plasmoids/org.mountain.{run,shutdown,settings,quicksettings,winx} || fail "blue-tinted greys in Mountain windows (palette: #121212/#2D2D2D/#FFFFFF/#C5C5C5)"
+  # Task Manager: one search box, an icon per background process
+  ! grep -q '^actionsFace=' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page || fail "Task Manager page toolbar back (second search, Quit Application)"
+  assert_grep 'fallback: "application-x-executable"' $X/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
   true
 }
 

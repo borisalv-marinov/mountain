@@ -23,7 +23,7 @@ Faces.SensorFace {
     property string filter: ""
 
     // Services and Background processes end in a hidden column: Offer (stop|start|empty) and Locked (can not be ended)
-    readonly property int hiddenCols: mode === "services" || mode === "processes" ? 1 : 0
+    readonly property int hiddenCols: mode === "processes" ? 2 : mode === "services" ? 1 : 0 // processes also end in Icon
 
     Layout.minimumHeight: mode === "device" ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * (mode === "processes" ? 14 : 10)
     Layout.minimumWidth: Kirigami.Units.gridUnit * 12
@@ -218,6 +218,13 @@ Faces.SensorFace {
                 Accessible.name: modelData.slice(1).join(", ")
                 contentItem: RowLayout {
                     spacing: Kirigami.Units.largeSpacing
+                    Kirigami.Icon { // Background processes: one icon per process, like Windows (the generic program icon if none)
+                        visible: root.mode === "processes"
+                        source: line.modelData[5] || ""
+                        fallback: "application-x-executable"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    }
                     Repeater {
                         model: line.modelData.slice(1, line.modelData.length - root.hiddenCols)
                         QQC2.Label {

@@ -38,4 +38,23 @@ echo '[Desktop Entry]' > "$K/Coding/Mine.desktop"; echo '[Desktop Entry]
 Exec=evil' > "$D/Coding/Mine.desktop"; echo '[Desktop Entry]' > "$D/Coding/Downloaded.desktop"; chmod -x "$D"/Coding/*
 HOME=$H XDG_DATA_HOME= MOUNTAIN_SKEL_DESKTOP=$K MOUNTAIN_DESKTOP_DIR=$D MOUNTAIN_EXPLORER=true MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok '[[ -x $D/Coding/Terminal.desktop && ! -x $D/Coding/Mine.desktop && ! -x $D/Coding/Downloaded.desktop ]]' "shipped launchers are trusted (executable, no open-or-run prompt); edited and downloaded ones are not"
+C=$H/.config; mkdir -p "$C/Kvantum"; printf '[General]
+theme=BlackGlass
+' > "$C/Kvantum/kvantum.kvconfig"; printf '[Layout]
+LayoutList=us,bg
+VariantList=,phonetic
+' > "$C/kxkbrc"; printf '[General]
+ViewMode=1
+' > "$C/dolphinrc"
+HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok 'grep -qx "theme=BlackGlassSolid" "$C/Kvantum/kvantum.kvconfig"' "v7.1: an account with see-through app windows gets solid ones"
+ok 'grep -qx "VariantList=,bas_phonetic" "$C/kxkbrc"' "v7.1: the old Bulgarian layout becomes Windows' Bulgarian (Phonetic)"
+ok '[[ $(sed -n 2p "$C/dolphinrc") == HomeUrl=file://?* ]] && grep -qx "ViewMode=1" "$C/dolphinrc"' "v7.1: File Explorer Home is the real path, in [General], other keys kept"
+printf '[General]
+theme=KvArc
+' > "$C/Kvantum/kvantum.kvconfig"; printf '[General]
+HomeUrl=file:///mine
+' > "$C/dolphinrc"
+HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok 'grep -qx "theme=KvArc" "$C/Kvantum/kvantum.kvconfig" && [[ $(grep -c HomeUrl "$C/dolphinrc") == 1 ]] && grep -qx "HomeUrl=file:///mine" "$C/dolphinrc"' "v7.1: a user's own theme and Home are kept"
 rm -rf "$H"; exit $rc

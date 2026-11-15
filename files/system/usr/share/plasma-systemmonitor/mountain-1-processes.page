@@ -22,7 +22,7 @@ Title=Background processes
 mode=processes
 
 [page]
-actionsFace=Face-880000000001
+# v7.1: no page toolbar (a second search box and KDE's "Quit Application"); Background processes keeps the one search
 icon=view-process-system
 loadType=
 margin=2

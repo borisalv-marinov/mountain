@@ -1,2 +1,6 @@
 [Theme]
 name=mountain-glass
+
+# v7.1: no pop-up when the keyboard layout changes (Windows shows none; it stayed stuck over windows)
+[OSD]
+kbdLayoutChangedEnabled=false
