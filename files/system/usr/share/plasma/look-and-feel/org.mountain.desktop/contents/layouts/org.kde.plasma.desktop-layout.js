@@ -89,4 +89,5 @@ for (const d of desktopsForActivity(currentActivity())) {
     d.writeConfig("Image", "file:///usr/share/wallpapers/mountain-silk/");
     d.currentConfigGroup = ["General"];
     d.writeConfig("arrangement", 1); // icons in columns from the top left, like Windows
+    d.writeConfig("iconSize", 3); // 48 px: Windows 11 "Medium icons" (0-5 = 16, 22, 32, 48, 64, 128 px)
 }

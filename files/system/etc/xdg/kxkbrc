@@ -1,8 +1,8 @@
 [Layout]
 Use=true
-LayoutList=us,bg,bg
-VariantList=,phonetic,
-DisplayNames=ENG,БЪЛ,БДС
+LayoutList=us,bg
+VariantList=,phonetic
+DisplayNames=ENG,БГ
 Options=grp:alt_shift_toggle
 ResetOldOptions=true
 SwitchMode=Global

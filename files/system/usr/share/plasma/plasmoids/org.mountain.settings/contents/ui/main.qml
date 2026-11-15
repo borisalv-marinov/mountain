@@ -9,7 +9,6 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 import org.kde.plasma.plasma5support as P5Support
-import org.kde.kcmutils as KCMUtils
 import org.kde.coreaddons as KCoreAddons
 
 PlasmoidItem {
@@ -34,7 +33,11 @@ PlasmoidItem {
 
     property string page: "home"
     // pages without their own nav entry light up their category
-    readonly property string navPage: page === "background" ? "personalization" : page === "protection" ? "privacy" : page
+    readonly property var nativePages: ({ display: "DisplayPage.qml", sound: "SoundPage.qml", bluetooth: "BluetoothPage.qml", nightlight: "NightLightPage.qml", language: "LanguagePage.qml", typing: "TypingPage.qml", notifications: "NotificationsPage.qml", mouse: "MousePage.qml", defaultapps: "DefaultAppsPage.qml", power: "PowerPage.qml", about: "AboutPage.qml", storage: "StoragePage.qml", startup: "StartupPage.qml", datetime: "DateTimePage.qml", lockscreen: "LockScreenPage.qml", colors: "ColorsPage.qml", controllers: "ControllersPage.qml", printers: "PrintersPage.qml", youraccount: "AccountPage.qml" })
+    readonly property string navPage: categories.some(c => c.id === page) ? page : page === "protection" ? "privacy"
+        : (categories.find(c => c.items.some(it => it.page === page)) || categories[0]).id
+    readonly property var navCategory: categories.find(c => c.id === navPage)
+    property var pending: ({}) // shell commands waiting for their output: see sh()
     property string query: ""
     property bool netFailed: false // no plasma-nm QML module: Network shows the plain rows
     property string modelName: ""
@@ -45,49 +48,39 @@ PlasmoidItem {
     // a launcher can ask for a start page (mountain-settings-open PAGE), e.g. the Security start-menu entry
     readonly property string pageCmd: "f=\"$XDG_RUNTIME_DIR/mountain-settings-page\"; cat \"$f\" 2>/dev/null; rm -f \"$f\""
 
-    // Windows 11 categories and their sub-pages. kcm = System Settings module id,
-    // info = Info Center module id, cmd = shell command, k = extra search keywords.
+    // Windows 11 categories and their sub-pages. page = a native Settings page, cmd = shell command, k = extra search keywords.
+    // Every page is built in: nothing here opens KDE System Settings.
     readonly property var categories: [
-        { id: "home", name: "Home", icon: "user-home", items: [] },
+        { id: "home", name: "Home", icon: "go-home", items: [] },
         { id: "system", name: "System", icon: "preferences-system", items: [
-            { t: "Display", d: "Monitors, brightness, resolution, scale", i: "preferences-desktop-display", kcm: "kcm_kscreen", k: "screen monitor resolution refresh hdr" },
-            { t: "Sound", d: "Volume, output and input devices", i: "preferences-desktop-sound", kcm: "kcm_pulseaudio", k: "audio speaker microphone headphones" },
-            { t: "Notifications", d: "Alerts from apps and system, do not disturb", i: "preferences-desktop-notification-bell", kcm: "kcm_notifications", k: "alerts do not disturb" },
-            { t: "Power & battery", d: "Sleep, screen off, battery saver", i: "battery", kcm: "kcm_powerdevilprofilesconfig", k: "power sleep suspend energy" },
-            { t: "Storage", d: "Drives and partitions", i: "drive-harddisk", info: "kcm_block_devices", k: "disk drive space ssd" },
-            { t: "Multitasking", d: "Virtual desktops", i: "preferences-desktop-virtual", kcm: "kcm_kwin_virtualdesktops", k: "workspaces desktops" },
-            { t: "Screen edges", d: "Hot corners and edge actions", i: "preferences-system-windows", kcm: "kcm_kwinscreenedges", k: "corners snap" },
-            { t: "Window switching", d: "Alt+Tab appearance", i: "preferences-system-windows", kcm: "kcm_kwintabbox", k: "alt tab task switcher" },
+            { t: "Display", d: "Monitors, brightness, resolution, scale", i: "preferences-desktop-display", page: "display", k: "screen monitor resolution refresh hdr" },
+            { t: "Sound", d: "Volume, output and input devices", i: "preferences-desktop-sound", page: "sound", k: "audio speaker microphone headphones" },
+            { t: "Notifications", d: "Alerts from apps and system, do not disturb", i: "preferences-desktop-notification-bell", page: "notifications", k: "alerts do not disturb" },
+            { t: "Power & battery", d: "Sleep, screen off, battery saver", i: "battery", page: "power", k: "power sleep suspend energy" },
+            { t: "Storage", d: "Drives and partitions", i: "drive-harddisk", page: "storage", k: "disk drive space ssd" },
             { t: "Recovery", d: "Go back to the previous version, reset this PC", i: "document-revert", page: "updates", k: "recovery reset go back rollback restore" },
-            { t: "About", d: "Device specifications, PC name", i: "help-about", kcm: "kcm_about-distro", k: "pc name hostname rename specs version" }
+            { t: "About", d: "Device specifications, PC name", i: "help-about", page: "about", k: "pc name hostname rename specs version" }
         ] },
-        { id: "devices", name: "Bluetooth & devices", icon: "preferences-system-bluetooth", items: [
-            { t: "Bluetooth", d: "Pair and manage Bluetooth devices", i: "preferences-system-bluetooth", kcm: "kcm_bluetooth", k: "bluetooth pair headphones" },
-            { t: "Mouse", d: "Pointer speed, buttons, scrolling", i: "input-mouse", kcm: "kcm_mouse", k: "pointer cursor speed" },
-            { t: "Touchpad", d: "Taps, gestures, scrolling", i: "input-touchpad", kcm: "kcm_touchpad", k: "trackpad gestures" },
-            { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", kcm: "kcm_keyboard", k: "layout typing keys" },
-            { t: "Printers & scanners", d: "Add and manage printers (most work without drivers)", i: "printer", kcm: "kcm_printer_manager", k: "print" },
+        { id: "devices", name: "Bluetooth & devices", icon: "bluetooth", items: [
+            { t: "Bluetooth", d: "Pair and manage Bluetooth devices", i: "preferences-system-bluetooth", page: "bluetooth", k: "bluetooth pair headphones" },
+            { t: "Mouse & touchpad", d: "Pointer speed, scrolling, buttons, taps", i: "input-mouse", page: "mouse", k: "mouse touchpad trackpad pointer cursor speed natural scrolling left handed tap" },
+            { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", page: "typing", k: "layout typing keys" },
+            { t: "Printers & scanners", d: "Your printers and test page; network printers are added automatically", i: "printer", page: "printers", k: "print" },
             { t: "Scanner", d: "Scan a document or photo", i: "scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
             { t: "Phone Link", d: "Your phone's messages, files and notifications on this PC", i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
-            { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad joystick controller" }
+            { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad joystick controller" }
         ] },
-        { id: "network", name: "Network & internet", icon: "preferences-system-network", items: [
-            { t: "Wi-Fi", d: "Connect, manage known networks", i: "network-wireless", kcm: "kcm_networkmanagement", net: "wifi", k: "wifi wireless internet" },
-            { t: "Ethernet", d: "Authentication, IP and DNS settings", i: "network-wired", kcm: "kcm_networkmanagement", net: "ethernet", k: "ethernet wired cable lan ip dns internet" },
-            { t: "VPN", d: "Add, connect, manage", i: "network-vpn", kcm: "kcm_networkmanagement", net: "vpn", k: "vpn wireguard openvpn" },
-            { t: "Mobile hotspot", d: "Share your internet connection", i: "network-wireless-hotspot", kcm: "kcm_networkmanagement", net: "hotspot", k: "hotspot tethering share" },
-            { t: "Airplane mode", d: "Stop all wireless communication", i: "network-flightmode-on", kcm: "kcm_networkmanagement", net: "airplane", k: "airplane flight mode radio" },
-            { t: "Proxy", d: "Proxy server for Wi-Fi and Ethernet connections", i: "preferences-system-network-proxy", kcm: "kcm_proxy", k: "proxy" },
-            { t: "Advanced network settings", d: "All network adapters, network reset", i: "preferences-system-network", kcm: "kcm_networkmanagement", k: "adapters advanced network reset dns" }
+        { id: "network", name: "Network & internet", icon: "network-wireless", items: [
+            { t: "Wi-Fi", d: "Connect, manage known networks", i: "network-wireless", page: "network", net: "wifi", k: "wifi wireless internet" },
+            { t: "Ethernet", d: "Authentication, IP and DNS settings", i: "network-wired", page: "network", net: "ethernet", k: "ethernet wired cable lan ip dns internet" },
+            { t: "VPN", d: "Add, connect, manage", i: "network-vpn", page: "network", net: "vpn", k: "vpn wireguard openvpn" },
+            { t: "Mobile hotspot", d: "Share your internet connection", i: "network-wireless-hotspot", page: "network", net: "hotspot", k: "hotspot tethering share" },
+            { t: "Airplane mode", d: "Stop all wireless communication", i: "network-flightmode-on", page: "network", net: "airplane", k: "airplane flight mode radio" }
         ] },
         { id: "personalization", name: "Personalization", icon: "preferences-desktop-theme", items: [
             { t: "Background", d: "Picture, solid color, slideshow", i: "preferences-desktop-wallpaper", page: "background", k: "wallpaper background picture" },
-            { t: "Colors", d: "Dark and light mode, accent color", i: "preferences-desktop-color", kcm: "kcm_colors", k: "dark light accent color colour" },
-            { t: "Themes", d: "Colors, icons and pointers in one set", i: "preferences-desktop-theme-global", kcm: "kcm_lookandfeel", k: "theme look" },
-            { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock wallpaper" },
-            { t: "Fonts", d: "Font family and size", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text font" },
-            { t: "Icons", d: "Icon theme", i: "preferences-desktop-icons", kcm: "kcm_icons", k: "icons" },
-            { t: "Cursors", d: "Mouse pointer style and size", i: "preferences-desktop-cursors", kcm: "kcm_cursortheme", k: "pointer cursor" },
+            { t: "Colors", d: "Dark and light mode, accent color", i: "preferences-desktop-color", page: "colors", k: "dark light accent color colour" },
+            { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", page: "lockscreen", k: "lock wallpaper" },
             { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "preferences-desktop-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
             { t: "Taskbar alignment", d: "Click to switch between center and left", i: "preferences-desktop", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
             { t: "Start menu: more pins", d: "Four rows of pinned apps, fewer recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
@@ -96,47 +89,39 @@ PlasmoidItem {
             { t: "Top bar", d: "Click to add or remove a top bar with CPU and memory", i: "view-split-top-bottom", cmd: "/usr/libexec/mountain-topbar toggle", k: "top bar panel" }
         ] },
         { id: "apps", name: "Apps", icon: "applications-all", items: [
-            { t: "Default apps", d: "Browser, mail, music, video", i: "preferences-desktop-default-applications", kcm: "kcm_componentchooser", k: "default browser" },
-            { t: "File associations", d: "Which app opens each file type", i: "preferences-desktop-filetype-association", kcm: "kcm_filetypes", k: "file types open with" },
-            { t: "Startup apps", d: "Apps that start when you sign in", i: "preferences-system-startup", kcm: "kcm_autostart", k: "autostart startup login" },
+            { t: "Default apps", d: "Browser, mail, music, video", i: "preferences-desktop-default-applications", page: "defaultapps", k: "default browser" },
+            { t: "Startup apps", d: "Apps that start when you sign in", i: "preferences-system-startup", page: "startup", k: "autostart startup login" },
             { t: "App Store", d: "Install and remove apps", i: "plasmadiscover", cmd: "kstart --application io.github.kolunmi.Bazaar", k: "install store bazaar flatpak" }
         ] },
-        { id: "accounts", name: "Accounts", icon: "preferences-system-users", items: [
-            { t: "Your info", d: "Name and account picture", i: "user-identity", kcm: "kcm_users", k: "account picture avatar name" },
-            { t: "Sign-in options", d: "Password", i: "preferences-desktop-user-password", kcm: "kcm_users", k: "password sign in login" },
-            { t: "Online accounts", d: "Google, Nextcloud and more", i: "preferences-online-accounts", kcm: "kcm_kaccounts", k: "online accounts cloud" }
+        { id: "accounts", name: "Accounts", icon: "system-users", items: [
+            { t: "Your info", d: "Name and account picture", i: "user-identity", page: "youraccount", k: "account picture avatar name" },
+            { t: "Sign-in options", d: "Password", i: "preferences-desktop-user-password", page: "youraccount", k: "password sign in login" }
         ] },
         { id: "time", name: "Time & language", icon: "preferences-system-time", items: [
-            { t: "Date & time", d: "Time zone, clock", i: "preferences-system-time", kcm: "kcm_clock", k: "clock time zone date" },
-            { t: "Language & region", d: "Language, formats, region", i: "preferences-desktop-locale", kcm: "kcm_regionandlang", k: "language region locale format" },
-            { t: "Typing", d: "Keyboard layouts (English, Bulgarian phonetic and BDS): Alt+Shift or Win+Space switches", i: "preferences-desktop-keyboard", kcm: "kcm_keyboard", k: "input method layout bulgarian cyrillic български" }
+            { t: "Date & time", d: "Time zone, clock", i: "preferences-system-time", page: "datetime", k: "clock time zone date" },
+            { t: "Language & region", d: "Language, formats, region", i: "preferences-desktop-locale", page: "language", k: "language region locale format add a language display" },
+            { t: "Typing", d: "Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches", i: "preferences-desktop-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български" }
         ] },
-        { id: "gaming", name: "Gaming", icon: "applications-games", items: [
-            { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", kcm: "kcm_gamecontroller", k: "gamepad controller joystick" },
+        { id: "gaming", name: "Gaming", icon: "input-gamepad", items: [
+            { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad controller joystick" },
             { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
             { t: "GTA Online and FiveM", d: "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming", i: "dialog-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
             { t: "Check game support", d: "See if a game runs on Mountain (opens two game-support websites)", i: "help-browser", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
             { t: "Game overlay", d: "Press Win+G in a game for FPS and performance", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
-            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", kcm: "kcm_kscreen", k: "vrr freesync gsync hdr adaptive sync refresh" }
+            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: "Accessibility", icon: "preferences-desktop-accessibility", items: [
-            { t: "Keyboard, mouse and hearing", d: "Sticky keys, sound alerts, screen reader", i: "preferences-desktop-accessibility", kcm: "kcm_access", k: "screen reader sticky keys" },
-            { t: "Text size", d: "Make text bigger", i: "preferences-desktop-font", kcm: "kcm_fonts", k: "text size font bigger" },
-            { t: "Visual effects", d: "Desktop effects and animations", i: "preferences-desktop-effects", kcm: "kcm_kwin_effects", k: "effects animations transparency" },
-            { t: "Night light", d: "Warmer colors at night", i: "preferences-desktop-display-color", kcm: "kcm_nightlight", k: "night light blue light" }
+            { t: "Night light", d: "Warmer colors at night", i: "preferences-desktop-display-color", page: "nightlight", k: "night light blue light" }
         ] },
-        { id: "privacy", name: "Privacy & security", icon: "preferences-security", items: [
-            { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", kcm: "kcm_screenlocker", k: "lock password security" },
-            { t: "Recent files", d: "Remember recently used files", i: "document-open-recent", kcm: "kcm_recentFiles", k: "history recent activity" },
-            { t: "App permissions", d: "What apps may access: camera, microphone, files", i: "preferences-security", kcm: "kcm_app-permissions", k: "permissions flatpak camera microphone" },
+        { id: "privacy", name: "Privacy & security", icon: "security-high", items: [
+            { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", page: "lockscreen", k: "lock password security" },
             { t: "Virus & threat protection", d: "Scan now, quarantine, Previous versions", i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
         ] },
         { id: "updates", name: "Updates", icon: "system-software-update", items: [
             { t: "Check for updates", d: "Updates are manual: open the Updates app and run it when you choose", i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
             { t: "Go back to the previous version", d: "Undo the last update: Mountain restarts into the version you had before", i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
             { t: "Reset this PC (keep my files)", d: "Removes system changes made on this PC and restarts into plain Mountain; files and apps stay", i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
-            { t: "Update virus definitions", d: "Download the newest definitions now (they never download in the background)", i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" },
-            { t: "All settings (advanced)", d: "Every setting, for advanced users", i: "preferences-system", cmd: "systemsettings", k: "advanced all control panel kde" }
+            { t: "Update virus definitions", d: "Download the newest definitions now (they never download in the background)", i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" }
         ] }
     ]
 
@@ -164,16 +149,13 @@ PlasmoidItem {
         exec.connectSource(cmd + " >/dev/null 2>&1 &");
     }
 
-    function openKcm(id) {
-        KCMUtils.KCMLauncher.openSystemSettings(id);
+    function sh(cmd, done) { // run a command and call done(stdout) when it ends; cmd must be unique while pending
+        pending[cmd] = done;
+        exec.connectSource(cmd);
     }
 
     function openItem(it) {
-        if (it.kcm) {
-            openKcm(it.kcm);
-        } else if (it.info) {
-            KCMUtils.KCMLauncher.openInfoCenter(it.info);
-        } else if (it.cmd) {
+        if (it.cmd) {
             run(it.cmd);
         } else if (it.page) {
             page = it.page; // the search box clears itself on a page change
@@ -204,10 +186,14 @@ PlasmoidItem {
         connectedSources: []
         onNewData: (sourceName, data) => {
             const out = (data["stdout"] || "").trim();
-            if (sourceName === app.modelCmd) {
+            const done = app.pending[sourceName];
+            if (done) {
+                delete app.pending[sourceName];
+                done(out);
+            } else if (sourceName === app.modelCmd) {
                 app.modelName = out;
             } else if (sourceName === app.pageCmd) {
-                if (out === "protection" || out === "background" || app.categories.some(c => c.id === out)) {
+                if (out === "protection" || out === "background" || out in app.nativePages || app.categories.some(c => c.id === out)) {
                     app.page = out;
                 }
             } else if (sourceName === app.colorCmd) {
@@ -231,6 +217,7 @@ PlasmoidItem {
         function onActiveChanged() { if (app.hostWindow.active) exec.connectSource(app.pageCmd); }
     }
     onHostWindowChanged: {
+        if (hostWindow) { hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; } // glass: plasmawindowed paints a solid background by default
         if (hostWindow && hostWindow.width < 1000) {
             hostWindow.width = 1100;
             hostWindow.height = 720;
@@ -243,7 +230,7 @@ PlasmoidItem {
         Layout.minimumHeight: 560
         Layout.preferredWidth: 1100
         Layout.preferredHeight: 720
-        color: app.pageColor
+        color: app.pageColor // opaque: plasmawindowed windows get no KWin blur, so see-through showed sharp desktop icons behind text
 
         // Top bar: title on the left, "Find a setting" in the middle like Windows 11.
         Item {
@@ -398,10 +385,13 @@ PlasmoidItem {
                     contentItem: RowLayout {
                         spacing: 12
                         Item { Layout.preferredWidth: 4 }
-                        Kirigami.Icon {
-                            Layout.preferredWidth: 22
-                            Layout.preferredHeight: 22
-                            source: navButton.modelData.icon
+                        Kirigami.Icon { // one style: symbolic icon painted in the text colour (the plain name is the fallback)
+                            Layout.preferredWidth: 20
+                            Layout.preferredHeight: 20
+                            source: navButton.modelData.icon + "-symbolic"
+                            fallback: navButton.modelData.icon
+                            isMask: true
+                            color: app.textColor
                         }
                         GText {
                             Layout.fillWidth: true
@@ -428,7 +418,7 @@ PlasmoidItem {
                 id: pageLoader
                 width: Math.min(flick.width - 32, 1000)
                 height: item ? item.implicitHeight : 0
-                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "network" && !app.netFailed ? "NetworkPage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : app.page === "background" ? "BackgroundPage.qml" : "ListPage.qml"
+                source: app.query !== "" ? "ListPage.qml" : app.page === "home" ? "HomePage.qml" : app.page === "network" && !app.netFailed ? "NetworkPage.qml" : app.page === "privacy" ? "SecurityPage.qml" : app.page === "protection" ? "ProtectionPage.qml" : app.page === "background" ? "BackgroundPage.qml" : app.nativePages[app.page] || "ListPage.qml"
                 onSourceChanged: flick.contentY = 0
                 onStatusChanged: if (status === Loader.Error && app.page === "network") app.netFailed = true
             }

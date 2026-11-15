@@ -1,5 +1,5 @@
 [Desktop Entry]
 Type=Application
 Name=This PC
-Exec=dolphin
+Exec=/usr/libexec/mountain-explorer --open-this-pc
 Icon=computer

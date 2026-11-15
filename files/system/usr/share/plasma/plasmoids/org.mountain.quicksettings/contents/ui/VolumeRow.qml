@@ -30,14 +30,26 @@ ColumnLayout {
             onClicked: volume.sink.muted = !volume.sink.muted
         }
         PC3.Slider {
+            id: slider
             Layout.fillWidth: true
             from: PulseAudio.MinimalVolume
             to: PulseAudio.NormalVolume
             stepSize: PulseAudio.NormalVolume / 100
-            value: volume.real ? volume.sink.volume : 0
+            // follow the device only while not dragging: its late echo of our own change made the knob jump back
+            Binding on value { when: !slider.pressed; value: volume.real ? volume.sink.volume : 0 }
             opacity: volume.real && volume.sink.muted ? 0.5 : 1
             Accessible.name: i18n("Volume")
-            onMoved: volume.sink.volume = Math.round(value)
+            onMoved: {
+                volume.sink.volume = Math.round(value);
+                if (value > 0 && volume.sink.muted) {
+                    volume.sink.muted = false; // dragging up un-mutes, as in the Plasma applet
+                }
+            }
+        }
+        PC3.Label {
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 2.5
+            horizontalAlignment: Text.AlignRight
+            text: volume.real ? Math.round(volume.sink.volume / PulseAudio.NormalVolume * 100) + "%" : ""
         }
         PC3.ToolButton {
             icon.name: "go-next-symbolic" // Windows' ">" output picker beside the volume slider

@@ -22,7 +22,10 @@ Faces.SensorFace {
     property bool busy: false
     property string filter: ""
 
-    Layout.minimumHeight: mode === "device" ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * 10
+    // Services and Background processes end in a hidden column: Offer (stop|start|empty) and Locked (can not be ended)
+    readonly property int hiddenCols: mode === "services" || mode === "processes" ? 1 : 0
+
+    Layout.minimumHeight: mode === "device" ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * (mode === "processes" ? 14 : 10)
     Layout.minimumWidth: Kirigami.Units.gridUnit * 12
 
     function quote(s) {
@@ -172,14 +175,14 @@ Faces.SensorFace {
             visible: root.mode !== "device"
             spacing: Kirigami.Units.largeSpacing
             Repeater {
-                model: root.header.slice(1)
+                model: root.header.slice(1, root.header.length - root.hiddenCols)
                 QQC2.Label {
                     required property string modelData
                     required property int index
                     text: modelData
                     font.bold: true
                     elide: Text.ElideRight
-                    Layout.fillWidth: index === 0 || (root.mode === "services" && index === 1)
+                    Layout.fillWidth: index === 0
                     Layout.preferredWidth: Kirigami.Units.gridUnit * 7
                 }
             }
@@ -216,14 +219,14 @@ Faces.SensorFace {
                 contentItem: RowLayout {
                     spacing: Kirigami.Units.largeSpacing
                     Repeater {
-                        model: line.modelData.slice(1)
+                        model: line.modelData.slice(1, line.modelData.length - root.hiddenCols)
                         QQC2.Label {
                             required property string modelData
                             required property int index
                             text: modelData
                             elide: Text.ElideRight
                             font.bold: root.mode === "device" && index === 0
-                            Layout.fillWidth: root.mode === "device" ? index === 1 : (index === 0 || (root.mode === "services" && index === 1))
+                            Layout.fillWidth: root.mode === "device" ? index === 1 : index === 0
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 7
                         }
                     }
@@ -232,11 +235,11 @@ Faces.SensorFace {
                         id: buttons
                         visible: root.actions
                         Layout.preferredWidth: Kirigami.Units.gridUnit * 10
-                        readonly property bool on: root.mode === "startup" ? line.modelData[3] === "Enabled" : line.modelData[3] === "Running"
+                        readonly property bool on: root.mode === "startup" ? line.modelData[3] === "Enabled" : line.modelData[2] === "Running"
                         QQC2.Button {
                             visible: root.mode === "processes"
                             text: "End task"
-                            enabled: !root.busy
+                            enabled: !root.busy && line.modelData[4] !== "locked" // the desktop and admin prompts need these
                             onClicked: {
                                 confirm.pid = line.modelData[0];
                                 confirm.name = line.modelData[1];
@@ -244,7 +247,7 @@ Faces.SensorFace {
                             }
                         }
                         QQC2.Button {
-                            visible: root.mode !== "processes"
+                            visible: root.mode === "startup" || (root.mode === "services" && line.modelData[3] !== "")
                             text: root.mode === "startup" ? (buttons.on ? "Disable" : "Enable") : (buttons.on ? "Stop" : "Start")
                             enabled: !root.busy
                             onClicked: root.act(root.mode === "startup"
@@ -252,7 +255,7 @@ Faces.SensorFace {
                                 : "service " + (buttons.on ? "stop " : "start ") + root.quote(line.modelData[0]))
                         }
                         QQC2.Button {
-                            visible: root.mode === "services" && buttons.on
+                            visible: root.mode === "services" && buttons.on && line.modelData[3] === "stop"
                             text: "Restart"
                             enabled: !root.busy
                             onClicked: root.act("service restart " + root.quote(line.modelData[0]))

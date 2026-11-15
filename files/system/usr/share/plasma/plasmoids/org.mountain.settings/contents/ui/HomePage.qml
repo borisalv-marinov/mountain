@@ -67,7 +67,7 @@ ColumnLayout {
                 hoverEnabled: true
                 activeFocusOnTab: true
                 Accessible.name: "Rename this PC"
-                onClicked: app.openKcm("kcm_about-distro")
+                onClicked: app.page = "about"
                 Keys.onReturnPressed: clicked()
                 contentItem: GText {
                     text: renameLink.text
@@ -95,9 +95,9 @@ ColumnLayout {
                 Layout.fillWidth: true
                 padding: 6
                 CardHeader { title: "Recommended settings"; subtitle: "Recent and commonly used settings" }
-                SettingRow { text: "Sound"; iconName: "preferences-desktop-sound"; onClicked: app.openKcm("kcm_pulseaudio") }
-                SettingRow { text: "Power & battery"; iconName: "battery"; divider: true; onClicked: app.openKcm("kcm_powerdevilprofilesconfig") }
-                SettingRow { text: "Display"; iconName: "preferences-desktop-display"; divider: true; onClicked: app.openKcm("kcm_kscreen") }
+                SettingRow { text: "Sound"; iconName: "preferences-desktop-sound"; onClicked: app.page = "sound" }
+                SettingRow { text: "Power & battery"; iconName: "battery"; divider: true; onClicked: app.page = "power" }
+                SettingRow { text: "Display"; iconName: "preferences-desktop-display"; divider: true; onClicked: app.page = "display" }
             }
 
             GlassCard {

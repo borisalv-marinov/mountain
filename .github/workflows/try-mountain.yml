@@ -57,7 +57,7 @@ jobs:
           # main builds are tagged "latest", branch builds "br-<branch>-<ver>"
           if [ "$BRANCH" = main ]; then echo "tag=latest" >> "$GITHUB_OUTPUT"; echo "Using tag: latest"; exit 0; fi
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
-          TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
+          TAG=$(echo "$ALL" | grep -F -- "br-$SAFE-" | sort -V | tail -n 1 || true)
           [ -n "$TAG" ] || { echo "::error::no tag contains $SAFE"; echo "$ALL"; exit 1; }
           echo "Using tag: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"

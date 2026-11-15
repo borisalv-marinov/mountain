@@ -14,7 +14,7 @@
   </metadata>
  </info>
 @PLACES@ <!-- Windows "This PC" (the whole computer) and "Network" (remote:/ is KIO's own network view, in the Remote group) -->
- <bookmark href="file:///">
+ <bookmark href="@THISPC@">
   <title>This PC</title>
   <info>
    <metadata owner="http://freedesktop.org"><bookmark:icon name="computer"/></metadata>

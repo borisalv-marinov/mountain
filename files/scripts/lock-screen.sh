@@ -112,10 +112,91 @@ patch('SessionManagementScreen.qml', [
 '''),
 ])
 PY
+# Windows-style power button at the bottom right of both screens: one icon with a menu of the screen's own actions
+# (Sleep, Restart, Shut down...). KDE's centred row of big buttons stays in place, invisible, so its actions still run.
+python3 - "$d/SessionManagementScreen.qml" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p, encoding='utf-8').read()
+pairs = [
+    ('    property alias actionItemsVisible: actionItemsLayout.visible\n',
+     """    property alias actionItemsVisible: actionItemsLayout.visible
+
+    // Mountain: the actions as a power menu at the bottom right of the screen, as Windows
+    readonly property var mtActions: Array.from(actionItemsLayout.children).filter(b => b.visible && b.text)
+    PlasmaComponents3.ToolButton {
+        id: mtPower
+        parent: root.Window.window ? root.Window.window.contentItem : root
+        z: 1000
+        visible: root.visible && root.actionItemsVisible && root.mtActions.length > 0
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: Kirigami.Units.gridUnit * 2
+        icon.name: "system-shutdown"
+        icon.width: Kirigami.Units.iconSizes.medium
+        icon.height: Kirigami.Units.iconSizes.medium
+        display: PlasmaComponents3.AbstractButton.IconOnly
+        text: "Power"
+        Accessible.name: text
+        PlasmaComponents3.ToolTip.text: text
+        PlasmaComponents3.ToolTip.visible: hovered && !mtMenu.visible // the tooltip otherwise stays behind the open menu as a ghost box
+        focusPolicy: Qt.TabFocus // reachable with Tab; a click leaves typing in the password box
+        onClicked: mtMenu.open()
+    }
+    PlasmaComponents3.Menu {
+        id: mtMenu
+        parent: mtPower
+        x: mtPower.width - width
+        y: -height - Kirigami.Units.smallSpacing
+        onClosed: root.forceActiveFocus() // back to the password box, as Windows
+        Instantiator {
+            model: root.mtActions
+            delegate: PlasmaComponents3.MenuItem {
+                required property var modelData
+                text: modelData.text.replace(/&(?!&)/g, "")
+                icon.name: modelData.icon.name
+                onTriggered: modelData.clicked()
+            }
+            onObjectAdded: (index, object) => mtMenu.insertItem(index, object)
+            onObjectRemoved: (index, object) => mtMenu.removeItem(object)
+        }
+    }
+"""),
+    ("""        Item {
+            Layout.alignment: Qt.AlignHCenter
+            implicitHeight: actionItemsLayout.implicitHeight
+            implicitWidth: actionItemsLayout.implicitWidth
+""",
+     """        Item { // Mountain: KDE's row stays for its actions only; the power menu at the bottom right shows them
+            Layout.alignment: Qt.AlignHCenter
+            implicitHeight: 0
+            implicitWidth: 0
+            opacity: 0
+            enabled: false
+"""),
+]
+for old, new in pairs:
+    assert s.count(old) == 1, f'SessionManagementScreen.qml: expected 1 of {old!r}, got {s.count(old)}'
+    s = s.replace(old, new)
+open(p, 'w', encoding='utf-8', newline='').write(s)
+PY
+grep -q 'id: mtPower' "$d/SessionManagementScreen.qml"
 grep -q '"Hello, "' "$d/UserDelegate.qml"
 grep -q 'The password is incorrect. Try again.' "$d/SessionManagementScreen.qml"
 grep -q 'mtLocale' "$d/Clock.qml"
 ! grep -q '^prefer ' "$d/qmldir"
+# Lock screen says "Virtual Keyboard" where the sign-in screen (plasma-workspace Footer.qml) says "Show/Hide On-Screen
+# Keyboard": use the sign-in screen's strings (same catalog, so translated alike).
+l=/usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml
+python3 - "$l" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p, encoding='utf-8').read()
+old = 'text: i18ndc("plasma_shell_org.kde.plasma.desktop", "Button to show/hide virtual keyboard", "Virtual Keyboard")'
+new = ('text: Qt.inputMethod.visible ? i18ndc("plasmashellprivateplugin", "@action:button", "Hide On-Screen Keyboard")'
+       ' : i18ndc("plasmashellprivateplugin", "@action:button", "Show On-Screen Keyboard")')
+assert s.count(old) == 1, f'LockScreenUi.qml: expected 1 "Virtual Keyboard" button, got {s.count(old)}'
+open(p, 'w', encoding='utf-8', newline='').write(s.replace(old, new))
+PY
+grep -q '"Show On-Screen Keyboard"' "$l"
 # the sign-in screen runs with the system locale: without one Qt shows 24 h and day-first dates (the installer's choice still wins)
 [[ -s /etc/locale.conf ]] || echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 echo "lock-screen: greeting patched in $d"

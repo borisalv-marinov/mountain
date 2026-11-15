@@ -7,7 +7,9 @@ Switch to Next Keyboard Layout=Meta+Space,Meta+Alt+K,Switch to Next Keyboard Lay
 [kwin]
 Window Close=none,Alt+F4,Close Window
 WindowsAltF4=Alt+F4,Alt+F4,Close window, or shut down from the desktop
-Overview=Meta+Tab	Meta+W,Meta+W,Toggle Overview
+# Task view (Win+Tab): KWin's Window View, all windows and no desktops strip (Overview's strip sits at the top, built into KWin)
+Overview=none,Meta+W,Toggle Overview
+Expose=Meta+Tab	Meta+W,Ctrl+F9,Toggle Present Windows (Current desktop)
 Edit Tiles=Meta+T,Meta+T,Toggle Tiles Editor
 MountainSnapLayouts=Meta+Z,Meta+Z,Snap layouts
 MountainClipboard=Meta+V,Meta+V,Clipboard history

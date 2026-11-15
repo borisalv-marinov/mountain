@@ -60,7 +60,8 @@ PlasmoidItem {
     SessionManagement { id: session }
 
     readonly property var hostWindow: Window.window
-    onHostWindowChanged: if (hostWindow) { hostWindow.title = "Quick Link menu"; hostWindow.color = "transparent"; hostWindow.width = menuWidth; hostWindow.height = menuHeight; }
+    // frameless from the start: when KWin (mountain-altf4) took the title bar off later, the window kept its height (empty strip)
+    onHostWindowChanged: if (hostWindow) { hostWindow.flags |= Qt.FramelessWindowHint; hostWindow.title = "Quick Link menu"; hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; hostWindow.width = menuWidth; hostWindow.height = menuHeight; }
     readonly property int menuHeight: 12 + items.reduce((h, i) => h + (i.sep ? 9 : rowHeight), 0)
     onSubChanged: if (hostWindow) hostWindow.width = sub ? menuWidth + 4 + subWidth : menuWidth
     onMenuHeightChanged: if (hostWindow) hostWindow.height = menuHeight
@@ -122,7 +123,7 @@ PlasmoidItem {
 
     component Glass: Rectangle {
         radius: 8
-        color: Qt.rgba(0.071, 0.071, 0.071, 0.97)
+        color: "#121212" // opaque: plasmawindowed windows get no KWin blur, so any see-through showed sharp icons behind
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         Rectangle {

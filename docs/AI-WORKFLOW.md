@@ -1,5 +1,7 @@
 # How AI builds Mountain (and keeps usage low)
 
+> **Out of date (written for the November 10 phases).** The current rules are in `docs/superpowers/prompts/2026-11-14-mountain-v6.1-prompt.md` (Standing rules); where the two disagree, that file wins (for example, the owner now authorizes merging once everything is green).
+
 Paste the **Session prompt** below at the start of every new Claude Code session in this folder.
 
 ---

@@ -445,6 +445,13 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^State=' /etc/skel/.local/state/dolphinstaterc # File Explorer opens with the Details (Information) pane
   assert_grep 'BelowTime' "$L"
   assert_grep '"arrangement", 1' "$L"
+  assert_grep '"iconSize", 3' "$L" # Medium icons
+  bc=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit 2>/dev/null || true)
+  assert_grep 'id: mtPower' "$bc/SessionManagementScreen.qml" # sign-in and lock screen: power menu at the bottom right
+  assert_grep 'title: "Protection history"' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  pt=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml # KDE's process lists
+  assert_grep 'id: kthreads' $pt; assert_grep '"plasmashell": "Windows Explorer"' $pt; assert_grep 'mtUnits(model.display)' $pt
+  assert_grep 'Threat quarantined: ' /usr/libexec/mountain-protect; assert_grep 'Threat quarantined: ' /usr/libexec/mountain-security
   grep -q 'location = "top"' "$L" && fail "top bar is on by default"
   grep -q 'systemtray' /usr/libexec/mountain-topbar && fail "top bar would add a second tray"
   assert_grep '^URL=trash:/$' "/etc/skel/Desktop/Recycle Bin.desktop"
@@ -458,18 +465,16 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep 'org.mountain.quicksettings' "$L"
   assert_grep 'org.mountain.settings.desktop' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/config/main.xml
   assert_cmd plasmawindowed
-  for id in $(grep -rhoE 'kcm_[A-Za-z0-9_-]+' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings | sort -u); do
+  for id in $({ grep -rhoE 'kcm_[A-Za-z0-9_-]+' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings || true; } | sort -u); do # v7: none left is the goal
     compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/*/$id.so" >/dev/null || compgen -G "/usr/lib*/qt6/plugins/plasma/kcms/$id.so" >/dev/null \
       || [[ -e /usr/share/applications/$id.desktop ]] || missing="$missing $id"
   done
   [[ -z $missing ]] || fail "Settings pages without a KDE module:$missing"
-  for id in kcm_kscreen kcm_pulseaudio kcm_bluetooth kcm_networkmanagement kcm_wallpaper kcm_colors kcm_users kcm_clock kcm_access; do
-    [[ " $missing " == *" $id "* ]] && fail "Settings page has no module: $id"
-  done
   # black glass
   assert_file /usr/share/Kvantum/BlackGlass/BlackGlass.svg
   assert_grep '^theme=BlackGlass$' /etc/skel/.config/Kvantum/kvantum.kvconfig
   assert_grep '^translucent_windows=false$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig
+  assert_grep '^reduce_menu_opacity=0$' /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.kvconfig # lite mode: no see-through menus either
   python3 -c 'import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1])' /usr/share/Kvantum/BlackGlass/BlackGlass.svg || fail "Kvantum SVG invalid"
   local t=/usr/share/plasma/desktoptheme/mountain-glass f
   python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["KPlugin"]["Id"]=="mountain-glass"' $t/metadata.json || fail "bad Plasma theme metadata"
@@ -481,7 +486,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '^name=mountain-glass$' /etc/xdg/plasmarc
   assert_grep '^ColorScheme=BlackGlass$' /etc/xdg/kdeglobals
   assert_grep '^theme=__aurorae__svg__BlackGlass$' /etc/xdg/kwinrc
-  # one palette: base #121212 (glass 0.82 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
+  # one palette: base #121212 (glass 0.85 with blur, opaque without), text #FFFFFF/#C5C5C5, disabled >= 4.5:1, accent #0078D4
   for f in /usr/share/color-schemes/BlackGlass.colors $t/colors; do
     assert_grep '^BackgroundNormal=18,18,18$' "$f"
     assert_grep '^ForegroundInactive=197,197,197$' "$f"
@@ -490,9 +495,9 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
     grep -qE '^(Background|Foreground)[A-Za-z]*=(16,18,22|11,12,15|7,8,10|27,29,34|164,169,178)$' "$f" && fail "old blue-black left in $f"
   done
   cmp -s /usr/share/color-schemes/BlackGlass.colors $t/colors || fail "Plasma theme and color scheme differ"
-  grep -q 'stop-color="#121212" stop-opacity="0.82"' $t/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.82"
-  grep -q 'stop-color="#121212" stop-opacity="0.82"' $t/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.82"
-  grep -q 'stop-color="#121212" stop-opacity="1"' $t/translucent/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
+  grep -q 'stop-color="#121212" stop-opacity="0.85"' $t/translucent/dialogs/background.svg || fail "start menu/flyout glass is not #121212 at 0.85"
+  grep -q 'stop-color="#121212" stop-opacity="0.85"' $t/translucent/widgets/panel-background.svg || fail "taskbar glass is not #121212 at 0.85"
+  grep -q 'stop-color="#121212" stop-opacity="1"' $t/dialogs/background.svg || fail "glass-off flyouts are not solid #121212"
   grep -lq '#24272D\|#07080A' $t/dialogs/background.svg $t/widgets/panel-background.svg && fail "grey-to-black gradient left in the Plasma theme"
   assert_grep '^window.color=#121212$' /usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
   # Terminal uses the same black glass; Settings cards keep a 3:1 edge against the page
@@ -524,11 +529,11 @@ check_phase29() { # v6 (was v5.1): brightness, sharp solid windows, File Explore
   grep -q 'item.visible' $q/main.qml && fail "brightness row can still disappear"
   # File Explorer: tab bar only with 2+ tabs, item-count-only status bar (v6, see phase 33), sidebar wide enough for "Documents"/"Recycle Bin"/"Previous versions"
   assert_grep '^AlwaysShowTabBar=false$' /etc/xdg/dolphinrc
-  assert_grep '^ShowStatusBar=Small$' /etc/xdg/dolphinrc
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc; ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key (free space shows only in FullWidth)'
   python3 -c 'import base64,sys; b=base64.b64decode(open(sys.argv[1]).read().split("State=")[1]); w=int.from_bytes(b[17:21],"big"); assert w>=150, w' /etc/skel/.local/state/dolphinstaterc || fail "File Explorer sidebar too narrow"
   # contrast: solid app windows, glass menus; Windows-like minimize; crisp fonts
   f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
-  assert_grep '^translucent_windows=false$' $f
+  assert_grep '^translucent_windows=true$' $f # v7 everything glass (phase 34 asserts blur and opacity)
   assert_grep '^popup_blurring=true$' $f
   assert_grep '^transparent_dolphin_view=false$' $f
   assert_grep '^squashEnabled=true$' /etc/xdg/kwinrc
@@ -620,7 +625,9 @@ PY
     [[ ! -e $f ]] || { assert_grep '^X-KDE-Shortcuts=Print$' "$f"; assert_grep '^X-KDE-Shortcuts=$' "$f"
       ! grep -qE '^X-KDE-Shortcuts=(.*,)?Meta\+(R|Shift\+S)(,|$)' "$f" || fail "Spectacle still holds Win+R or Win+Shift+S: $f"; }
   done
-  assert_grep $'^Overview=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep $'^Expose=Meta+Tab\tMeta+W,' /etc/skel/.config/kglobalshortcutsrc # Task view without the desktops strip
+  assert_grep '^Overview=none,' /etc/skel/.config/kglobalshortcutsrc
+  assert_grep '^windowviewEnabled=true$' /etc/xdg/kwinrc
   assert_grep '^next activity=none,' /etc/skel/.config/kglobalshortcutsrc
   assert_grep $'^_launch=Ctrl+Shift+Esc\tCtrl+Esc$' /etc/skel/.config/kglobalshortcutsrc
   assert_grep '^\[services\]\[mountain-winx.desktop\]$' /etc/skel/.config/kglobalshortcutsrc
@@ -629,8 +636,9 @@ PY
   assert_grep '^MANGOHUD_CONFIGFILE=/etc/xdg/MangoHud/MangoHud.conf$' /usr/lib/environment.d/60-mountain-mangohud.conf
   assert_grep '^clipboardGroup=PostScreenshotCopyImage$' /etc/xdg/spectaclerc
   # Bulgarian keyboard, Cyrillic fonts
-  assert_grep '^LayoutList=us,bg,bg$' /etc/xdg/kxkbrc
-  assert_grep '^VariantList=,phonetic,$' /etc/xdg/kxkbrc
+  assert_grep '^LayoutList=us,bg$' /etc/xdg/kxkbrc
+  assert_grep '^VariantList=,phonetic$' /etc/xdg/kxkbrc
+  assert_grep '^DisplayNames=ENG,БГ$' /etc/xdg/kxkbrc
   assert_grep '^Options=grp:alt_shift_toggle$' /etc/xdg/kxkbrc
   n=$(fc-list :lang=bg family 2>/dev/null || true); [[ -n $n ]] || fail "no font covers Bulgarian" # captured: grep -q would SIGPIPE fc-list under pipefail
   # Windows 11 taskbar: 48 px, not floating, show-desktop corner
@@ -670,6 +678,8 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   [[ $(systemctl --global is-enabled mountain-protect.service 2>/dev/null) == enabled ]] || fail "Active Protection off"
   assert_cmd inotifywait
   assert_grep '^MemoryHigh=150M$' /usr/lib/systemd/user/mountain-protect.service
+  assert_grep '^StartLimitIntervalSec=0$' /usr/lib/systemd/user/mountain-protect.service; assert_grep '^RestartSec=30$' /usr/lib/systemd/user/mountain-protect.service
+  for s in .local/share/systemd/user .config/environment.d .local/share/dbus-1/services plasma-workspace/shutdown 'too large to scan' 'link that starts at sign-in'; do assert_grep "$s" /usr/libexec/mountain-protect; done
   [[ -x /usr/libexec/mountain-protect ]] && bash -n /usr/libexec/mountain-protect || fail "mountain-protect"
   grep -q 'Steam' /usr/libexec/mountain-protect && grep -qE 'rec=.*Steam' /usr/libexec/mountain-protect && fail "Active Protection watches games"
   desktop-file-validate /usr/share/applications/org.mountain.protection.desktop || fail "Active Protection launcher"
@@ -772,7 +782,7 @@ PY
   assert_cmd spectacle
   assert_cmd plasma-emojier
   # File Explorer: no free-space status, short Details pane, 1100x700, This PC and Network, drag moves on the same drive
-  assert_grep '^ShowStatusBar=Small$' /etc/xdg/dolphinrc
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc; ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key (free space shows only in FullWidth)'
   assert_grep '^tags=false$' /etc/xdg/baloofileinformationrc
   assert_grep '^rating=false$' /etc/xdg/baloofileinformationrc
   assert_grep '^userComment=false$' /etc/xdg/baloofileinformationrc
@@ -855,7 +865,7 @@ PY
   grep -qx 'Send feedback' <<<"$v" || fail "Notepad welcome page still says Get involved"
   # Windows 11 menus and 8 px corners, no Overview hot corner, yellow folders, no classic menubars
   f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
-  for p in '^frame.left=8$' '^menu_shadow_depth=8$' '^menu_blur_radius=8$' '^reduce_menu_opacity=6$' '^text.iconspacing=12$'; do assert_grep "$p" $f; done
+  for p in '^frame.left=8$' '^menu_shadow_depth=8$' '^menu_blur_radius=8$' '^reduce_menu_opacity=20$' '^text.iconspacing=12$'; do assert_grep "$p" $f; done
   for f in /usr/share/Kvantum/BlackGlass/BlackGlass.svg /usr/share/Kvantum/BlackGlassSolid/BlackGlassSolid.svg; do assert_grep 'id="menu-shadow-topleft"' $f; done
   assert_grep 'id="menu-shadow-hint-left"' /usr/share/Kvantum/BlackGlass/BlackGlass.svg
   [[ -z "$(grep -o 'A10,10' /usr/share/aurorae/themes/BlackGlass/decoration.svg || true)" ]] || fail "window corners are not 8 px"
@@ -874,7 +884,7 @@ PY
   assert_file $su/NetworkPage.qml
   assert_grep 'NetworkPage.qml' $su/main.qml
   assert_grep 'app.netFailed' $su/main.qml # falls back to the plain rows without plasma-nm
-  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode' 'Proxy' 'Advanced network settings'; do assert_grep "{ t: \"$t\"" $su/main.qml; done
+  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode'; do assert_grep "{ t: \"$t\"" $su/main.qml; done # v7: Proxy and Advanced network removed (they opened KDE windows)
   assert_grep 'handler.enableAirplaneMode(on)' $su/NetworkPage.qml
   n=$({ grep -c 'Timer' $su/NetworkPage.qml || true; }); [[ $n == 0 ]] || fail "Network page polls"
   assert_grep 'navButton.visualFocus ? 2 : 0' $su/main.qml
@@ -932,6 +942,63 @@ PY
   grep -rq 'unavailable")' /usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui && fail "quick-settings tile names too long for the tile"
   f=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -path '*/org/kde/plasma/extras/ShadowedLabel.qml' -print -quit 2>/dev/null || true); grep -qs 'spread: 0.55' "$f" || fail "desktop label shadow not patched"
   assert_grep '^LANG=' /etc/locale.conf # sign-in screen clock follows US English (12 h, M/d) unless the installer chose another language
+  true
+}
+
+check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
+  local t=/usr/share/plasma/desktoptheme/mountain-glass ui=/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui f p
+  f=/usr/share/Kvantum/BlackGlass/BlackGlass.kvconfig
+  for p in '^translucent_windows=true$' '^blurring=true$' '^reduce_window_opacity=20$' '^reduce_menu_opacity=20$'; do assert_grep "$p" $f; done
+  assert_grep '^contrast=0.8$' $t/plasmarc
+  assert_grep '^BlurStrength=12$' /etc/xdg/kwinrc
+  ! grep -q 'fill-opacity="0.86"' /usr/share/aurorae/themes/BlackGlass/decoration.svg || fail "BlackGlass title bar still 0.86 opaque"
+  # Settings: own pages for Display, Sound, Bluetooth, Night light, Language, Typing (no KDE System Settings window)
+  for p in PageTitle ChoiceRow DeviceCard SoundPage DisplayPage BluetoothPage NightLightPage LanguagePage TypingPage; do assert_file $ui/$p.qml; done
+  ! grep -q systemsettings $ui/main.qml || fail "Settings main.qml still opens systemsettings"
+  assert_cmd kscreen-doctor
+  for p in NotificationsPage MousePage DefaultAppsPage PowerPage AboutPage StoragePage StartupPage DateTimePage LockScreenPage ColorsPage ControllersPage PrintersPage AccountPage; do assert_file $ui/$p.qml; done
+  ! grep -rqE 'KCMLauncher|kcmshell|systemsettings|openSystemSettings|openKcm' $ui /usr/share/plasma/plasmoids/org.mountain.quicksettings || fail "Settings or quick settings still open a KDE System Settings window"
+  # Start: the 18 pins of ruling 19 (no Welcome), VS Code with its own icon
+  ! grep -q yafti_gtk /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc || fail "Welcome is still pinned"
+  f=$(sed -n 's/^Icon=//p' /usr/share/applications/com.microsoft.VSCode.desktop 2>/dev/null | head -n1); [[ -z $f || $f == /* && -f $f || $f != /* ]] || fail "VS Code icon file missing: $f"
+  [[ -f /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo ]] || echo "NOTE: Bulgarian plasmashell.mo not installed (translations are not part of this image check)"
+  # Security: one scan and one calm result for an extracted folder; the page shows the live state
+  assert_grep 'xn >= 5' /usr/libexec/mountain-protect
+  assert_grep 'extracted files' /usr/libexec/mountain-protect
+  assert_grep 'mountain-protect status' $ui/SecurityPage.qml
+  assert_grep 'Your device is protected' $ui/SecurityPage.qml
+  # File Explorer: This PC is a folder of drive links, not the file system root
+  assert_grep 'href="@THISPC@"' /usr/share/mountain/user-places.xbel.in
+  ! grep -q 'href="file:///"' /usr/share/mountain/user-places.xbel.in || fail "This PC still opens /"
+  assert_grep 'Local Disk (C:)' /usr/libexec/mountain-explorer
+  f=$(find /usr/share/icons/We10X-dark -name 'folder-pictures.*' -print -quit 2>/dev/null || true); [[ -n $f ]] || fail "We10X-dark has no folder-pictures icon (Pictures place)"
+  # v7 QA fix wave: native Settings, security, File Explorer, Task Manager
+  ! grep -rnE 'systemsettings|kcmshell' /usr/share/plasma/plasmoids/org.mountain.settings /usr/share/plasma/plasmoids/org.mountain.quicksettings /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml || fail "Settings, quick settings or the Start footer still open KDE System Settings"
+  ! grep -nE '^\s*id: (gc|print|escape|name|isFinite|parseInt)\b' $ui/*.qml || fail "a QML id masks a JS global"
+  assert_grep '--config-file=/usr/share/mountain/freshclam.conf' /usr/lib/systemd/system/mountain-virus-definitions.service
+  ! grep -qE '^(UpdateLogFile|Example)' /usr/share/mountain/freshclam.conf || fail "freshclam.conf writes a log file or still has Example"
+  ! grep -rqe '-u critical' /usr/libexec/mountain-* || fail "a Mountain notification is critical (never times out)"
+  assert_grep '^Exec=/usr/libexec/mountain-explorer --open-this-pc' /etc/skel/Desktop/files.desktop
+  assert_grep 'open-this-pc' /usr/libexec/mountain-explorer
+  assert_grep 'mtUnits(model.display)' /usr/share/ksysguard/sensorfaces/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
+  assert_grep 'baloorunner=Search Indexer' /usr/libexec/mountain-taskmanager
+  assert_grep '^showToolBar=false' /usr/share/plasma-systemmonitor/mountain-1-processes.page
+  # v7 wave 4: Task Manager units/names/rows, toasts follow Plasma's timeout, first-boot, frameless flyouts, icons
+  q=/usr/share/ksysguard/sensorfaces
+  assert_grep 'no "Background Services" row' $q/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
+  assert_grep 'root.mtUnits(Formatter' $q/org.kde.ksysguard.linechart/contents/ui/FullRepresentation.qml
+  assert_grep FillFromStart $q/org.kde.ksysguard.linechart/contents/ui/LineChart.qml
+  assert_grep 'cupsd=Print Spooler' /usr/libexec/mountain-taskmanager
+  ! grep -nE 'notify-send.* -t [0-9]' /usr/libexec/mountain-protect /usr/libexec/mountain-security || fail "notify-send -t is ignored by Plasma (toasts follow PopupTimeout)"
+  assert_grep '^ShowPopups=false$' /etc/xdg/plasmanotifyrc
+  for p in winx run shutdown; do assert_grep FramelessWindowHint /usr/share/plasma/plasmoids/org.mountain.$p/contents/ui/main.qml; done
+  [[ -f /usr/share/icons/hicolor/512x512/apps/mountain-vscode.png ]] || fail "VS Code icon not installed for Start"
+  assert_grep '^ShowStatusBar=FullWidth$' /etc/xdg/dolphinrc
+  # v7 wave 5: first-boot Flatpak installer stays quiet, one Security status, This PC/Home on real paths
+  grep -n 'notify' /usr/share/bluebuild/default-flatpaks/configuration.yaml 2>/dev/null | sed 's/^/NOTE: default-flatpaks /' || true # ours is notify: false; the base image may add its own entry (screenshot shows if a toast remains)
+  assert_grep 'Math.max(lvAv, lvAp, lvFw, lvApp, lvDev, lvSnap, lvUpd, lvAcc)' $ui/SecurityPage.qml
+  ! grep -q '^ShowSpaceInfo' /etc/xdg/dolphinrc || fail 'ShowSpaceInfo is not a Dolphin key'
+  assert_grep 'realpath -m' /usr/libexec/mountain-user-setup
   true
 }
 

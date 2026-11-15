@@ -3,7 +3,7 @@
 S=$(dirname "$0")/../files/system/usr/libexec/mountain-protect
 T=$(mktemp -d); rc=0
 ok() { if eval "$1"; then echo "ok: $2"; else echo "FAIL: $2"; rc=1; fi; }
-eval "$(sed -n '/^is_unverified()/,/^}/p' "$S")"
+eval "$(sed -n '/^signin()/,/esac; return 1; }/p; /^is_unverified()/,/^}/p; /^skip()/,/^}/p' "$S")"
 allowed=$T/allowed
 mkdir -p "$T/.config/autostart"
 printf '#!/bin/sh\necho hi\n' > "$T/run-me"; echo text > "$T/notes.txt"; echo x > "$T/setup.exe"; printf '[Desktop Entry]\n' > "$T/.config/autostart/evil.desktop"
@@ -13,6 +13,24 @@ ok '[[ $(is_unverified "$T/.config/autostart/evil.desktop") == "starts at sign-i
 mkdir -p "$T/.local/share/kwin/scripts/x/contents/code"; echo 'callDBus()' > "$T/.local/share/kwin/scripts/x/contents/code/main.js"
 ok '[[ $(is_unverified "$T/.local/share/kwin/scripts/x/contents/code/main.js") == "starts at sign-in" ]]' "a new KWin script is flagged"
 ok '! is_unverified "$T/notes.txt" >/dev/null' "a text file is fine"
+for p in .config/systemd/user/a.service .local/share/systemd/user/b.service .config/environment.d/c.conf .local/share/dbus-1/services/d.service .config/plasma-workspace/shutdown/e .bashrc .profile .bash_profile; do
+  mkdir -p "$(dirname "$T/$p")"; echo x > "$T/$p"
+  ok '[[ $(is_unverified "$T/$p") == "starts at sign-in" ]]' "a change to ~/$p is flagged (starts at sign-in)"
+done
+dl=/h/Downloads
+ok 'skip /run/media/u/D/SteamLibrary/steamapps/common/g/game.exe && skip /run/media/u/D/compatdata/1/pfx/x.dll && skip /run/media/u/D/shadercache/1/x' "game folders on a drive are never checked"
+ok '! skip /run/media/u/D/setup.exe && ! skip /h/Downloads/steamapps/setup.exe && ! skip /h/Downloads/node_modules/a.zip' "other drive files and anything in Downloads are checked"
+# launchers the image ships (byte-identical copies in ~/Desktop) are never listed; an edited copy still is
+shipped=$T/shipped; mkdir -p "$T/Desktop"; printf '[Desktop Entry]
+Name=Recycle Bin
+' > "$T/Desktop/Recycle Bin.desktop"
+sha256sum "$T/Desktop/Recycle Bin.desktop" | cut -d' ' -f1 > "$shipped"
+ok '! is_unverified "$T/Desktop/Recycle Bin.desktop" >/dev/null' "a launcher identical to the image's own is not flagged"
+printf '[Desktop Entry]
+Exec=evil
+' > "$T/Desktop/Recycle Bin.desktop"
+ok '[[ $(is_unverified "$T/Desktop/Recycle Bin.desktop") == "program or script" ]]' "an edited copy of a shipped launcher is flagged"
+: > "$shipped"
 sha256sum "$T/run-me" | cut -d' ' -f1 > "$allowed"
 ok '! is_unverified "$T/run-me" >/dev/null' "an allowed file is no longer flagged"
 H=$T/home; mkdir -p "$H"; printf '%s\tscript\n' "$T/setup.exe" > /dev/null
@@ -31,13 +49,14 @@ printf '%s	script
 B=$T/bin; H=$T/h; D=$T/d; mkdir -p "$B" "$H/Downloads/node_modules" "$H/proj/node_modules"
 cat > "$B/systemd-run" <<'STUB'
 #!/usr/bin/env bash
+printf '%s\n' "$@" >> "$0.log"
 printf '%s\n' "$@" | grep -qx 'Environment=MOUNTAIN_SCAN_REPORT_ONLY=1' || { echo "av_result=error"; exit 0; }
 printf '%s\n' "$@" | grep -q '^InaccessiblePaths=.*/bus"$' || { echo "av_result=error"; exit 0; }
 while [[ $1 != /usr/libexec/mountain-security ]]; do shift; done; shift 3; r=clean
 for f; do if [[ $f == - ]]; then grep -q EVIL && { echo "stdin: Evil FOUND"; r=found; }; elif grep -q EVIL "$f"; then echo "$f: Evil FOUND"; r=found; fi; done
 echo "av_result=$r"
 STUB
-printf '#!/bin/sh\n' > "$B/notify-send"; chmod +x "$B/systemd-run" "$B/notify-send"
+printf '%s\n' '#!/bin/sh' 'for a; do :; done; printf "%s\n" "$a" >> "$0.log"' > "$B/notify-send"; chmod +x "$B/systemd-run" "$B/notify-send"
 echo EVIL > "$H/Downloads/node_modules/a.zip"; echo EVIL > "$H/proj/node_modules/b.zip"; echo fine > "$H/Downloads/ok.zip"
 pc() { HOME=$H XDG_DATA_HOME=$D XDG_RUNTIME_DIR=$T/run PATH=$B:$PATH bash "$S" check "$@" >/dev/null 2>&1; }
 mkdir -p "$T/run"; pc "$H/Downloads/node_modules/a.zip" "$H/proj/node_modules/b.zip" "$H/Downloads/ok.zip"
@@ -46,5 +65,27 @@ ok '[[ -e $H/proj/node_modules/b.zip ]]' "node_modules outside Downloads is stil
 if touch "$H/Downloads/t"$'\t'"x.zip" 2>/dev/null; then # tabs in names: not on Windows file systems
   echo EVIL > "$H/Downloads/t"$'\t'"x.zip"; pc "$H/Downloads/t"$'\t'"x.zip"
   ok '[[ ! -e $H/Downloads/t$'"'\t'"'x.zip && -e $D/mountain/quarantine/t_x.zip ]] && ! grep -q "t	x" "$D/mountain/protect/unverified" 2>/dev/null' "a file with a tab in its name is scanned and quarantined under a plain name"
+  ok 'grep -q "Threat quarantined: t_x.zip" "$D/mountain/scan-history"' "the quarantine shows in Protection history"
 fi
+truncate -s 401M "$H/Downloads/big.zip"; pc "$H/Downloads/big.zip"
+truncate -s 401M "$H/Downloads/film.mkv"; pc "$H/Downloads/film.mkv"
+ok '! grep -q film.mkv "$D/mountain/protect/unverified"' "a big movie is not listed (no pop-up for every large download)"
+ok 'grep -q "big.zip	too large to scan$" "$D/mountain/protect/unverified" && ! grep -q big.zip "$B/systemd-run.log"' "a file over 400 MB is listed as too large to scan, not hashed, scanned or passed as clean"
+# extracted archives: 5+ new files under one subfolder = one scan, one calm result; fewer = no notification at all
+rl() { rm -f "$B/systemd-run.log" "$B/notify-send.log"; }
+mkdir -p "$H/Documents/ex"; for i in 1 2 3 4 5 6; do echo fine$i > "$H/Documents/ex/f$i.txt"; done
+rl; pc "$H"/Documents/ex/*
+ok '[[ $(grep -c "^--collect$" "$B/systemd-run.log") == 1 && $(cat "$B/notify-send.log") == "Checked 6 extracted files: no threats found." ]]' "6 extracted files: one scan, one result notification"
+mkdir -p "$H/Documents/ey"; for i in 1 2 3; do echo fine$i > "$H/Documents/ey/f$i.txt"; done
+rl; pc "$H/Documents/ey/f1.txt" "$H/Documents/ey/f2.txt" "$H/Documents/ey/f3.txt"
+ok '[[ ! -e $B/systemd-run.log && ! -e $B/notify-send.log ]]' "3 normal files in a subfolder: no scan, no notification"
+mkdir -p "$H/Documents/ez"; for i in 1 2 3 4 5; do echo fine$i > "$H/Documents/ez/f$i.png"; done; echo EVIL > "$H/Documents/ez/bad.txt"
+rl; pc "$H"/Documents/ez/*
+ok '[[ ! -e $H/Documents/ez/bad.txt && -e $D/mountain/quarantine/bad.txt ]] && ! grep -q Checked "$B/notify-send.log" && grep -q "Threat blocked: bad.txt" "$B/notify-send.log"' "a threat in an extracted .txt is quarantined and replaces the clean notice"
+mkdir -p "$H/Documents/ew"; for i in 1 2 3 4 5; do echo fine$i > "$H/Documents/ew/f$i.txt"; done
+rl; pc "$H"/Documents/ew/*; echo EVIL > "$H/Documents/ew/late.txt"; rl; pc "$H/Documents/ew/late.txt"
+ok '[[ ! -e $H/Documents/ew/late.txt && -e $D/mountain/quarantine/late.txt ]]' "a threat arriving in the next burst of the same extraction is still scanned"
+mkdir -p "$H/Documents/proj/.git"; for i in 1 2 3 4 5 6; do echo fine$i > "$H/Documents/proj/f$i.txt"; done
+rl; pc "$H"/Documents/proj/*.txt
+ok '[[ ! -e $B/systemd-run.log && ! -e $B/notify-send.log ]]' "a git clone / project copy (6 files under a .git folder) is not an extracted archive: no scan, no notice"
 rm -rf "$T"; exit $rc

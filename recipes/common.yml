@@ -58,6 +58,7 @@ modules:
       - explorer-title.sh
       - desktop-drag-fix.sh
       - lock-screen.sh
+      - process-table.sh
       - mountain-desktop-labels.sh
       - icons-finalize.sh
       - hardening.sh
@@ -65,7 +66,7 @@ modules:
 
   - type: default-flatpaks
     configurations:
-      - notify: true
+      - notify: false # no "Automatic Flatpak Installation Service" toast on first boot
         scope: system
         install:
           - dev.vencord.Vesktop

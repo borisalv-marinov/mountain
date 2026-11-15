@@ -38,13 +38,18 @@ QQC2.AbstractButton {
     }
 
     contentItem: Item {
-        Kirigami.Icon {
-            anchors.centerIn: parent
-            width: Kirigami.Units.iconSizes.small
-            height: width
-            source: button.iconSource
-            isMask: true
-            color: button.on ? "#FFFFFF" : button.enabled ? "#FFFFFF" : "#8A8A8A" // disabled glyph 4.8:1
+        // Breeze symbolic glyphs are hairlines at any size; four copies nudged 0.6 px apart embolden them to Fluent-like weight
+        Repeater {
+            model: [[-0.6, 0], [0.6, 0], [0, -0.6], [0, 0.6]]
+            Kirigami.Icon {
+                x: (parent.width - width) / 2 + modelData[0]
+                y: (parent.height - height) / 2 + modelData[1]
+                width: 30
+                height: width
+                source: button.iconSource
+                isMask: true
+                color: button.enabled ? "#FFFFFF" : "#B4B4B4" // disabled glyph, readable on #1E1E1E
+            }
         }
     }
 }

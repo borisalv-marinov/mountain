@@ -100,13 +100,13 @@ GlassCard {
         SettingRow {
             text: "View all devices"
             chevron: false
-            onClicked: app.openKcm("kcm_bluetooth")
+            onClicked: app.page = "bluetooth"
         }
         GlassButton {
             text: "Add device"
             enabled: bt.hasAdapter
             opacity: enabled ? 1 : 0.5
-            onClicked: app.openKcm("kcm_bluetooth")
+            onClicked: app.page = "bluetooth"
         }
     }
 }

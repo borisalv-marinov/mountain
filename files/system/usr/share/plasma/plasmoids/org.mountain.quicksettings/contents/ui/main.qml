@@ -7,7 +7,6 @@ import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PC3
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.kirigami as Kirigami
-import org.kde.kcmutils as KCMUtils
 
 PlasmoidItem {
     id: root
@@ -146,8 +145,8 @@ PlasmoidItem {
                 iconName: "preferences-desktop-accessibility-symbolic"
                 checkable: false
                 split: true
-                onToggled: KCMUtils.KCMLauncher.openSystemSettings("kcm_access")
-                onArrowClicked: KCMUtils.KCMLauncher.openSystemSettings("kcm_access")
+                onToggled: exec.connectSource("/usr/libexec/mountain-settings-open accessibility >/dev/null 2>&1 &")
+                onArrowClicked: exec.connectSource("/usr/libexec/mountain-settings-open accessibility >/dev/null 2>&1 &")
             }
             OptionalTile { Layout.preferredWidth: grid.tileWidth; source: "NightLightTile.qml"; fallbackText: i18n("Night light"); fallbackIcon: "redshift-status-off" }
         }
@@ -207,7 +206,7 @@ PlasmoidItem {
                 PC3.ToolTip.visible: hovered
                 onClicked: {
                     root.expanded = false;
-                    exec.connectSource("plasmawindowed org.mountain.settings >/dev/null 2>&1 &");
+                    exec.connectSource("/usr/libexec/mountain-settings-open home >/dev/null 2>&1 &");
                 }
             }
         }

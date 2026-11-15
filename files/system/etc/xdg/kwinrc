@@ -1,4 +1,5 @@
 [Plugins]
+windowviewEnabled=true
 mountain-altf4Enabled=true
 org.mountain.snaplayoutsEnabled=true
 org.mountain.clipboardEnabled=true
@@ -9,8 +10,9 @@ magiclampEnabled=false
 squashEnabled=true
 
 [Effect-blur]
-BlurStrength=10
-NoiseStrength=3
+# v7 frosted glass: strong blur (more downsampling, so no extra GPU cost) and fine acrylic grain
+BlurStrength=12
+NoiseStrength=4
 
 [Effect-overview]
 # Windows 11 Task view: no hot corner (9 = ElectricNone), windows in an organized grid, minimized ones shown
