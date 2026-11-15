@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Self-test for uxcheck.py on drawn screenshots (needs tesseract and a TrueType font; skips without them)."""
+import json, os, shutil, sys, tempfile
+from PIL import Image, ImageDraw, ImageFont
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import uxcheck
+
+font = next((ImageFont.truetype(p, 18) for p in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/arial.ttf") if os.path.exists(p)), None)
+if not font:
+    print("SKIP: no TrueType font"); sys.exit(0)
+has_ocr = bool(shutil.which("tesseract"))
+d = tempfile.mkdtemp(); rc = 0
+
+
+def shot(name, text, bg=(18, 18, 18), fg=(255, 255, 255)):
+    im = Image.new("RGB", (640, 400), bg); dr = ImageDraw.Draw(im)
+    for i, t in enumerate(text):
+        dr.text((40, 40 + 40 * i), t, font=font, fill=fg)
+    im.save(os.path.join(d, name + ".png"))
+
+
+def expect(rule, name, want):
+    global rc
+    for f in os.listdir(d): os.remove(os.path.join(d, f))
+    name()
+    rows, fails = uxcheck.run(d, rule)
+    ok = (fails > 0) == want
+    print(("ok: " if ok else "FAIL: ") + str(rows)); rc |= not ok
+
+
+if not has_ocr:
+    print("SKIP: OCR checks (no tesseract)")
+else:
+  expect({"dialog-shutdown": {"must_read": ["Shut down"]}}, lambda: shot("01-dialog-shutdown", ["What do you want the computer to do?", "Shut down"]), False)
+  expect({"dialog-shutdown": {"must_read": ["Shut down"]}}, lambda: shot("01-dialog-shutdown", ["What do you want the computer to do?", ""]), True)
+  expect({"file-explorer": {"must_not_read": ["0 B free"]}}, lambda: shot("02-file-explorer", ["11 folders", "0 B free"]), True)
+  expect({"file-explorer": {"must_not_read": ["0 B free"]}}, lambda: shot("02-file-explorer", ["11 folders", "41.2 GB free"]), False)
+
+
+def app(bg):
+    shot("03-every-x", ["Title"], bg=bg, fg=(0, 0, 0) if bg[0] > 128 else (255, 255, 255))
+    json.dump({"geom": [100, 50, 400, 300], "class": "x"}, open(os.path.join(d, "03-every-x.json"), "w"))
+
+
+expect({"every-.*": {"dark_window": True}}, lambda: app((18, 18, 18)), False)
+expect({"every-.*": {"dark_window": True}}, lambda: app((245, 245, 245)), True)
+shutil.rmtree(d); sys.exit(rc)

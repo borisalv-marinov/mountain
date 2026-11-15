@@ -30,7 +30,7 @@ PlasmoidItem {
         Layout.fillHeight: true
         Layout.minimumWidth: root.expanding ? 1 : root.length
         Layout.preferredWidth: root.expanding ? 1 : root.length
-        Layout.maximumWidth: root.expanding ? -1 : root.length
+        Layout.maximumWidth: root.expanding ? Number.POSITIVE_INFINITY : root.length
         acceptedButtons: Qt.RightButton
         onPressed: mouse => { menu.open(mouse.x, mouse.y); mouse.accepted = true; }
 
