@@ -79,6 +79,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   for f in "${all[@]}"; do
     [[ $f == /* ]] && ! skip "$f" || continue
     sig=$(stat -c '%s %Y %a' -- "$f" 2>/dev/null) || continue # of a link itself, never its target
+    [[ ${sig%% *} == 0 && ! -L $f ]] && continue # just created and still empty: its close_write comes next
     [[ ${seen[$f]:-} == "$sig" ]] && continue # same path, unchanged: already checked
     seen[$f]=$sig
     if [[ -L $f ]]; then # a link in a sign-in folder starts its target at sign-in: listed, never followed
@@ -179,7 +180,9 @@ daemon() {
   trap 'kill $(jobs -p) 2>/dev/null' EXIT
   # watcher errors go to the journal; if one stops (watch limit, missing tool) the service fails and systemd restarts it
   # records end in NUL, not newline: a file name may contain a newline
-  inotifywait -mrq -e close_write,moved_to,attrib --no-newline --format '%w%f%0' "${rec[@]}" >&3 & pids+=($!)
+  # create too: a new folder (an archive being extracted) is checked whole, since files written before inotifywait adds its
+  # watch are never reported (the race let an EICAR in a fresh Documents subfolder through)
+  inotifywait -mrq -e close_write,moved_to,attrib,create --no-newline --format '%w%f%0' "${rec[@]}" >&3 & pids+=($!)
   # sign-in folders also report new links (ln, ln -s), which never get a close_write
   inotifywait -mrq -e close_write,moved_to,create,attrib --no-newline --format '%w%f%0' "${sign[@]}" >&3 & pids+=($!)
   # one level only: home (never game folders) and /tmp, /var/tmp (other accounts' trees cannot use up the watch limit)
