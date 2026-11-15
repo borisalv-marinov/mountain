@@ -849,7 +849,7 @@ PY
   [[ -z $(grep -l '#F2F3F5' /usr/share/plasma/plasmoids/org.mountain.{run,winx,shutdown}/contents/ui/main.qml || true) ]] || fail "Run / Win+X / Shut Down text is not #FFFFFF"
   # Task Manager Background processes: Mountain face with Windows names, End task only for own processes
   assert_grep '^mode=processes$' /usr/share/plasma-systemmonitor/mountain-1-processes.page
-  assert_grep '^actionsFace=Face-880000000001$' /usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep '^actionsFace=Face-880000000002$' /usr/share/plasma-systemmonitor/mountain-1-processes.page
   assert_grep 'Kirigami.PromptDialog' /usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
   f=$(/usr/libexec/mountain-taskmanager processes || true); [[ $f == $'id\tName\tCPU\tMemory'* ]] || fail "Task Manager background processes list"
   /usr/libexec/mountain-taskmanager end '1;true' 2>/dev/null && fail "End task accepts a non-numeric pid"
@@ -1049,7 +1049,7 @@ PY2
   done
   ! grep -rqE '#(202227|2A2D33|101114|F2F3F5|A4A9B2|16171C|0B0C0F|303238|28292E)' $X/usr/share/plasma/plasmoids/org.mountain.{run,shutdown,settings,quicksettings,winx} || fail "blue-tinted greys in Mountain windows (palette: #121212/#2D2D2D/#FFFFFF/#C5C5C5)"
   # Task Manager: one search box, an icon per background process
-  ! grep -q '^actionsFace=' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page || fail "Task Manager page toolbar back (second search, Quit Application)"
+  assert_grep '^actionsFace=Face-880000000002$' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page # Mountain's list: no second search, no Quit Application, no Edit Page
   # selected rows: soft grey like Windows 11 (was solid blue #2A6CC4) in every Qt list and in Task Manager
   python3 -c 'import re,sys; g=re.findall(r"<g id=.itemview-(?:toggled|pressed)[^>]*>.*?</g>", open(sys.argv[1]).read()); assert g and not [x for x in g if "#2A6CC4" in x]' $X/usr/share/Kvantum/BlackGlass/BlackGlass.svg || fail "Kvantum selected rows still solid blue"
   assert_grep 'Kirigami.Theme.highlightColor: Qt.rgba(1, 1, 1, 0.10)' $X/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml

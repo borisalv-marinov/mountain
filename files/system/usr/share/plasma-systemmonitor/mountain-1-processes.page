@@ -22,7 +22,8 @@ Title=Background processes
 mode=processes
 
 [page]
-# v7.1: no page toolbar (a second search box and KDE's "Quit Application"); Background processes keeps the one search
+# v7.1: the page toolbar comes from Mountain's list (no actions): one search box, no KDE "Quit Application"; any actionsFace hides "Edit Page"
+actionsFace=Face-880000000002
 icon=view-process-system
 loadType=
 margin=2
