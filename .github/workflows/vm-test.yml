@@ -167,7 +167,10 @@ jobs:
           # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
           # the installer makes /var/home a Btrfs subvolume (Previous versions need it); bootc-image-builder does not, so do it here
+          # wait for boot to settle first: moving /var/home while first-boot jobs write into it failed silently (no snapshots)
+          R "timeout 300 systemctl is-system-running --wait >/dev/null 2>&1; true"
           R "btrfs subvolume show /var/home >/dev/null 2>&1 || { mv /var/home /var/home.old && btrfs subvolume create /var/home && cp -a /var/home.old/. /var/home/ && rm -rf /var/home.old && restorecon -R /var/home; }; stat -c %i /var/home"
+          chk "/var/home is a Btrfs subvolume (Previous versions need it)" 1 "stat -c %i /var/home" '^256$'
 
           chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
           chk "hostname" 0 "hostname" '^mountain$'
