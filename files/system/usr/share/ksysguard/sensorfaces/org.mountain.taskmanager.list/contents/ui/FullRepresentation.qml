@@ -214,6 +214,9 @@ Faces.SensorFace {
                 readonly property var modelData: cells.split("\t")
                 width: ListView.view.width
                 highlighted: ListView.isCurrentItem
+                // v7.1: Windows 11 marks the chosen row with a soft grey, not a solid blue bar
+                Kirigami.Theme.inherit: false
+                Kirigami.Theme.highlightColor: Qt.rgba(1, 1, 1, 0.10)
                 onClicked: list.currentIndex = index
                 Accessible.name: modelData.slice(1).join(", ")
                 contentItem: RowLayout {
