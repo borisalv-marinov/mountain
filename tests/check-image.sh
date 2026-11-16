@@ -903,7 +903,7 @@ PY
     grep -q '^actionsFace=Face-' "$f" || fail "Task Manager page shows Edit Page: $f"
   done
   grep -q 'gpu/all/usage\|gpu_usage' /usr/share/plasma-systemmonitor/mountain-*.page && fail "Task Manager uses GPU sensors that are missing without a GPU"
-  for f in 1-processes 3-apphistory 6-details; do
+  for f in 3-apphistory 6-details; do # v7.2: Apps is Mountain's list (CPU as a share of all cores in mountain-taskmanager)
     assert_grep '"usage":"textScaled"' /usr/share/plasma-systemmonitor/mountain-$f.page
   done
   d=$(mktemp -d); mkdir -p "$d/autostart"; printf '[Desktop Entry]\nName=T\nExec=true\n' > "$d/autostart/Тест App.desktop"
@@ -982,7 +982,6 @@ check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
   assert_grep 'open-this-pc' /usr/libexec/mountain-explorer
   assert_grep 'mtUnits(model.display)' /usr/share/ksysguard/sensorfaces/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
   assert_grep 'baloorunner=Search Indexer' /usr/libexec/mountain-taskmanager
-  assert_grep '^showToolBar=false' /usr/share/plasma-systemmonitor/mountain-1-processes.page
   # v7 wave 4: Task Manager units/names/rows, toasts follow Plasma's timeout, first-boot, frameless flyouts, icons
   q=/usr/share/ksysguard/sensorfaces
   assert_grep 'no "Background Services" row' $q/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
