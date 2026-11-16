@@ -8,12 +8,14 @@ printf '#!/bin/sh\n[ "$1" = get ] && cat %s/mode || echo "$2" > %s/mode\n' "$T" 
 run() { XDG_CONFIG_HOME=$T/cfg XDG_RUNTIME_DIR=$T MOUNTAIN_PPC=$T/ppc MOUNTAIN_GAMEMODE_ONCE=1 bash "$S" "$@"; }
 ok '[[ $(run status | head -1) == gamemode=on ]]' "on by default"
 run watch; ok '[[ $(cat "$T/mode") == power-saver ]]' "no game: power mode untouched"
-cp "$(command -v sleep)" "$T/wineserver"; "$T/wineserver" 30 & g=$!; sleep 0.3
+printf '#!/bin/sh
+sleep 30
+' > "$T/wineserver"; chmod +x "$T/wineserver"; "$T/wineserver" & g=$!; sleep 0.3 # a script keeps its own name as the process name
 run watch; ok '[[ $(cat "$T/mode") == performance ]]' "game running: full power"
 run watch; ok '[[ $(cat "$T/mountain-gamemode.saved") == power-saver ]]' "remembers the mode from before the game"
 kill $g; wait $g 2>/dev/null
 run watch; ok '[[ $(cat "$T/mode") == power-saver && ! -e $T/mountain-gamemode.saved ]]' "game over: the user's mode is back"
-run off >/dev/null; "$T/wineserver" 30 & g=$!; sleep 0.3
+run off >/dev/null; "$T/wineserver" & g=$!; sleep 0.3
 run watch; ok '[[ $(cat "$T/mode") == power-saver ]]' "Game Mode off: no change while playing"
 run on >/dev/null; run watch; ok '[[ $(cat "$T/mode") == performance ]]' "back on: full power"
 run off >/dev/null; ok '[[ $(cat "$T/mode") == power-saver ]]' "turning off mid-game gives the mode back"
