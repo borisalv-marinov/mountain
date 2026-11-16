@@ -1010,6 +1010,8 @@ check_phase35() { # v7.1 (owner 2026-11-15): stability first, tearing impossible
   assert_grep '^NoiseStrength=0$' $X/etc/xdg/kwinrc
   # stability: a full disk is seen as full (Btrfs reports space late; a stale read snapshotted the fill and pinned it)
   assert_grep '^btrfs filesystem sync "\$src"' $X/usr/libexec/mountain-snapshot
+  # one style: Edge opens straight to its dark window, not Microsoft's bright first-run screen (the Flatpak reads host policies)
+  assert_grep '"HideFirstRunExperience": true' $X/etc/opt/edge/policies/managed/mountain.json
   # stability: app windows are solid (see-through apps made KWin redraw the blur behind them: smearing, half-drawn rows)
   assert_grep '^theme=BlackGlassSolid$' $X/etc/xdg/Kvantum/kvantum.kvconfig
   assert_grep '^theme=BlackGlassSolid$' $X/etc/skel/.config/Kvantum/kvantum.kvconfig
