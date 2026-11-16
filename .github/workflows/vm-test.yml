@@ -1154,7 +1154,8 @@ jobs:
             n=$((n+1)); id=$(basename "$f" .desktop)
             # a scope, not a service: gio launch exits at once and a service would take the app down with it (only D-Bus apps survived)
             t0=$(R "date +%s")
-            R "$LT systemd-run --user --quiet --scope --unit=every-$n gio launch '$f' </dev/null >/dev/null 2>&1" >/dev/null 2>&1
+            # WAYLAND_DISPLAY: without it every app gio starts itself has no screen (only D-Bus-started apps showed)
+            R "$LT WAYLAND_DISPLAY=wayland-0 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE systemd-run --user --quiet --scope --unit=every-$n gio launch '$f' </dev/null >/dev/null 2>&1" >/dev/null 2>&1
             sleep 12; shot "every-$id"
             # added or activated since the launch (apps started from ssh may open without focus, so 'add' counts too)
             act=$(R "journalctl -b --since @$t0 --no-pager -o cat | grep -oE 'MWC[|](add|act)[|](normal|dialog)[|].*' | grep -v 'plasmashell[|]' | tail -1")
