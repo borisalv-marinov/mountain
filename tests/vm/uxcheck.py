@@ -52,6 +52,10 @@ def run(shots, rules):
             if pat.startswith("_") or not re.fullmatch(pat, name):
                 continue
             img = Image.open(os.path.join(shots, f)).convert("RGB")
+            if img.convert("L").getextrema()[1] < 40: # screen asleep or blank: nothing a person could judge, so no check may pass
+                rows.append(("screen is on: %s" % name, "FAIL", "blank screen (display asleep?)"))
+                fails += 1
+                continue
             text = None
             for phrase in checks.get("must_read", []):
                 text = text if text is not None else ocr(img)

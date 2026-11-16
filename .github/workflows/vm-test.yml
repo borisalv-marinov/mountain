@@ -1154,6 +1154,7 @@ jobs:
             n=$((n+1)); id=$(basename "$f" .desktop)
             # a user service like L (full session environment; a scope only had ssh's, so apps had no screen), kept up after gio
             # exits (RemainAfterExit) so the app it started is not killed with it - only D-Bus-started apps survived before
+            QM key ctrl # a key press like a person at the PC: the loop is ~12 min without input, and the screen went to sleep mid-way
             t0=$(R "date +%s")
             R "$LT systemd-run --user --quiet -p RemainAfterExit=yes --unit=every-$n gio launch '$f'" >/dev/null 2>&1
             sleep 12; shot "every-$id"

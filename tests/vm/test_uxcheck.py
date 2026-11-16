@@ -44,4 +44,6 @@ def app(bg):
 
 expect({"every-.*": {"dark_window": True}}, lambda: app((18, 18, 18)), False)
 expect({"every-.*": {"dark_window": True}}, lambda: app((245, 245, 245)), True)
+# a sleeping screen (all black) must fail, not pass as "dark"
+expect({"every-.*": {"dark_window": True}}, lambda: (app((18, 18, 18)), Image.new("RGB", (1280, 800)).save(os.path.join(d, "03-every-x.png"))), True)
 shutil.rmtree(d); sys.exit(rc)
