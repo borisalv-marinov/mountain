@@ -1152,18 +1152,20 @@ jobs:
           n=0
           for f in $APPS; do
             n=$((n+1)); id=$(basename "$f" .desktop)
-            # a scope, not a service: gio launch exits at once and a service would take the app down with it (only D-Bus apps survived)
+            # a user service like L (full session environment; a scope only had ssh's, so apps had no screen), kept up after gio
+            # exits (RemainAfterExit) so the app it started is not killed with it - only D-Bus-started apps survived before
             t0=$(R "date +%s")
-            # WAYLAND_DISPLAY: without it every app gio starts itself has no screen (only D-Bus-started apps showed)
-            R "$LT WAYLAND_DISPLAY=wayland-0 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE systemd-run --user --quiet --scope --unit=every-$n gio launch '$f' </dev/null >/dev/null 2>&1" >/dev/null 2>&1
+            R "$LT systemd-run --user --quiet -p RemainAfterExit=yes --unit=every-$n gio launch '$f'" >/dev/null 2>&1
             sleep 12; shot "every-$id"
             # added or activated since the launch (apps started from ssh may open without focus, so 'add' counts too)
             act=$(R "journalctl -b --since @$t0 --no-pager -o cat | grep -oE 'MWC[|](add|act)[|](normal|dialog)[|].*' | grep -v 'plasmashell[|]' | tail -1")
             if [ -n "$act" ]; then
               IFS='|' read -r _ _ kind cls dfile cap deco op geo pid <<<"$act"
               printf '{"geom": [%s], "class": "%s", "kind": "%s", "deco": "%s"}\n' "$geo" "$cls" "$kind" "$deco" > "$(printf 'shots/%02d-every-%s.json' $SN "$id")"
+            else # no window: keep what the app printed, so the cause is in the report
+              { echo "== $id"; R "journalctl -b --no-pager -o cat _SYSTEMD_USER_UNIT=every-$n.service | tail -5"; } >> perf/every-nowindow.txt 2>&1
             fi
-            R "$LT systemctl --user stop every-$n.scope 'app-flatpak-*.scope'" >/dev/null 2>&1
+            R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
           done
