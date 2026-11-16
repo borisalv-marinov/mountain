@@ -199,7 +199,7 @@ jobs:
           chk "geforcenow reachable" 0 "curl -sI https://play.geforcenow.com | head -1" 'HTTP/[0-9.]+ (200|30[0-9])'
 
           # first-boot flatpaks, up to 25 min
-          FP="dev.vencord.Vesktop com.discordapp.Discord com.microsoft.Edge org.onlyoffice.desktopeditors com.heroicgameslauncher.hgl org.mozilla.firefox"
+          FP="dev.vencord.Vesktop com.discordapp.Discord com.microsoft.Edge com.brave.Browser org.onlyoffice.desktopeditors com.heroicgameslauncher.hgl org.mozilla.firefox"
           M=x
           FPEND=$(( $(date +%s) + 1500 ))
           while [ "$(date +%s)" -lt "$FPEND" ]; do
@@ -207,7 +207,7 @@ jobs:
             M=""; for a in $FP; do echo "$L" | grep -qx "$a" || M="$M $a"; done
             [ -z "$M" ] && break; sleep 15
           done
-          if [ -z "$M" ]; then echo "| flatpaks | PASS | all 6 present |" >> report.md
+          if [ -z "$M" ]; then echo "| flatpaks | PASS | all 7 present |" >> report.md
           else echo "| flatpaks | FAIL | missing:$M |" >> report.md; fi
 
           # desktop: autologin a fresh user, then exercise real use
@@ -554,6 +554,10 @@ jobs:
           QM key alt shift_r; sleep 1; QM key meta_l spc; sleep 1; chk "layouts cycle back to English" 2 "$KL | awk '/uint32/{print \$2}'" '.'
           chk "keyboard layouts" 2 "$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayoutsList | grep -o 'string \"[^\"]*\"' | paste -sd' '" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true
+          # v7.2: a click on ENG opens the Windows language list (no switch on click); Esc closes it
+          sleep 1; QM click $((1052*W/1280)) $((776*H/800)); sleep 2; shot kbd-flyout
+          chk "language button: a click opens the list, does not switch" 0 "$KL | awk '/uint32/{print \$2}'" '^0$'
+          QM key esc; sleep 1
           # Cyrillic names in File Explorer
           R "$(TL 'mkdir -p ~/Документи-тест; cp /usr/share/mountain/wallpaper.png ~/Документи-тест/снимка.png; echo здравей > ~/Документи-тест/бележка.txt')"
           L 'dolphin /home/looktest/Документи-тест'; sleep 7; shot cyrillic-names; K -x dolphin
@@ -842,6 +846,13 @@ jobs:
           chk "End task refuses the session core" 0 "$(TL '/usr/libexec/mountain-taskmanager end $(pgrep -u looktest -x kwin_wayland | head -1) || echo refused')" 'refused'
           R "$(TL '/usr/libexec/mountain-taskmanager end $(pgrep -u looktest -x endtasktest | head -1)')"; sleep 1
           chk "Task Manager: End task ends the process" 0 "pgrep -u looktest -x endtasktest || echo ended" '^ended$'
+          # v7.2 Apps table (Mountain's list): an app that ignores the polite quit (like apps that hide in the tray) ends on ONE End task
+          R "$(TL 'printf "#!/bin/sh\ntrap \"\" TERM\nexec sleep 99998\n" > ~/.local/bin/mtmapp; chmod +x ~/.local/bin/mtmapp')"
+          L systemd-run --user --scope --unit=app-org.mountain.mtmapp-4242 /home/looktest/.local/bin/mtmapp; sleep 2
+          chk "Apps table lists an app in its app scope" 0 "$(TL '/usr/libexec/mountain-taskmanager apps | cut -f2')" 'org\.mountain\.mtmapp'
+          chk "Apps table: the app is not a background process" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2 | grep -c mtmapp || true')" '^0$'
+          R "$(TL '/usr/libexec/mountain-taskmanager end $(/usr/libexec/mountain-taskmanager apps | awk -F"\t" "/mtmapp/ {print \$1}")')"
+          chk "End task (one click) ends an app that ignores quit" 0 "pgrep -u looktest -f 'sleep 99998' || echo ended" '^ended$'
           chk "Phone Link app strings renamed" 0 "python3 -c 'import gettext; print(gettext.GNUTranslations(open(\"/usr/share/locale/en@mountain/LC_MESSAGES/kdeconnect-app.mo\",\"rb\"))._catalog.get(\"About KDE Connect\"))'" '^About Phone Link$'
           K -x endtasktest
           chk "startup test app ran at sign-in" 0 "pgrep -u looktest -f 'mtm-autostart-test 99999' >/dev/null && echo running" '^running$'
@@ -851,7 +862,7 @@ jobs:
           chk "Task Manager services list" 2 "$(TL '/usr/libexec/mountain-taskmanager services | head -4 | tr "\t" " "')" 'Running'
           chk "Task Manager device names" 2 "$(TL '/usr/libexec/mountain-taskmanager device | tr "\t" " " | paste -sd";"')" 'Processor'
           chk "Task Manager pages: no Edit Page in header (actionsFace on every page)" 0 "grep -L '^actionsFace=Face-' /usr/share/plasma-systemmonitor/mountain-*.page | wc -l" '^0$'
-          chk "Task Manager CPU column scaled to 0-100 % of all cores" 0 "grep -c '\"usage\":\"textScaled\"' /usr/share/plasma-systemmonitor/mountain-1-processes.page" '^1$'
+          chk "Task Manager CPU column scaled to 0-100 % of all cores" 0 "grep -c '\"usage\":\"textScaled\"' /usr/share/plasma-systemmonitor/mountain-3-apphistory.page" '^1$'
           chk "Users tab CPU at most 100 %" 0 "$(TL '/usr/libexec/mountain-taskmanager users') | awk -F'\t' 'NR>1 && \$4+0>100 {b=1} END {print b ? \"over\" : \"ok\"}'" '^ok$'
           R "$(TL 'printf "[Desktop Entry]\nType=Application\nName=Тест App\nExec=true\n" > ~/.config/autostart/"Тест App.desktop"')"
           chk "Startup apps: name with a space and Cyrillic is listed" 0 "$(TL '/usr/libexec/mountain-taskmanager startup')" 'Тест App\.desktop'
@@ -990,7 +1001,7 @@ jobs:
           chk "Active Protection: an extracted folder gets one scan and one result" 0 "$LT journalctl --user -u mountain-protect --since '-2min' | grep -c 'checking 6 file'" '^1$'
           R "rm -rf ~looktest/Documents/ext"
           R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d | sudo -u looktest tee eicar.txt >/dev/null"; apwait ~looktest/Documents/ext2/eicar.txt
-          chk "Active Protection: EICAR named .txt in an extracted folder is caught" 2 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
+          chk "Active Protection: EICAR named .txt in an extracted folder is caught" 0 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
           R "$LT journalctl --user -u mountain-protect --since '-6min' --no-pager -o cat; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
           R "rm -rf ~looktest/Documents/ext2"
           chk "Active Protection: no scanner left running at idle" 0 "pgrep -u looktest -x clamscan || echo none" '^none$'
@@ -1033,7 +1044,7 @@ jobs:
           R "$(TL 'mkdir -p ~/Documents; echo secret > ~/Documents/private.txt')"
           chk "Flatpak sandbox: Discord can't read Documents" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.discordapp.Discord /home/looktest/Documents/private.txt 2>&1 | tail -1" 'No such file'
           chk "Flatpak overrides (Discord)" 2 "cat /var/lib/flatpak/overrides/com.discordapp.Discord | paste -sd' '" '.'
-          for app in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
+          for app in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge com.brave.Browser org.mozilla.firefox org.onlyoffice.desktopeditors; do
             chk "Flatpak sandbox: no home folder ($app)" 0 "grep -h '^filesystems=' /var/lib/flatpak/overrides/$app" '!home'
           done
           chk "Heroic (games) keeps its access" 0 "$LT HOME=/home/looktest flatpak run --command=cat com.heroicgameslauncher.hgl /home/looktest/Documents/private.txt 2>&1 | tail -1" '^secret$'

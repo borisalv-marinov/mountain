@@ -43,7 +43,7 @@ highPrioritySensorIds=["network/all/download", "network/all/upload"]
 
 [page]
 actionsFace=Face-880000000004
-icon=speedometer
+icon=speedometer-symbolic
 loadType=
 margin=2
 version=1

@@ -36,7 +36,7 @@ ColumnLayout {
             Layout.rightMargin: 18
             Layout.preferredHeight: 60
             spacing: 14
-            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "preferences-system-bluetooth" }
+            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "preferences-system-bluetooth-symbolic"; fallback: "preferences-system-bluetooth"; isMask: true; color: Kirigami.Theme.textColor }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1
@@ -82,7 +82,7 @@ ColumnLayout {
                 Layout.rightMargin: 18
                 Layout.preferredHeight: 56
                 spacing: 12
-                Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: row.model.Icon || "preferences-system-bluetooth" }
+                Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: (row.model.Icon || "preferences-system-bluetooth") + "-symbolic"; fallback: row.model.Icon || "preferences-system-bluetooth"; isMask: true; color: Kirigami.Theme.textColor }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 1

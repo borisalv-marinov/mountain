@@ -1062,6 +1062,47 @@ PY2
   true
 }
 
+check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps, one icon style, Brave, language list, Game Mode, protection
+  local X=${MOUNTAIN_ROOT:-} f p tm=${MOUNTAIN_ROOT:-}/usr/share/plasma-systemmonitor st=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  # Task Manager: Apps is Mountain's list (End task = polite quit, then forced after 3 s), App history has no Quit, no empty columns
+  assert_grep '^mode=apps$' $tm/mountain-1-processes.page
+  grep -q 'applicationstable' $tm/mountain-1-processes.page && fail "Task Manager Apps still KDE's table (Quit needed two clicks)"
+  assert_grep '^actionsFace=Face-880000000010$' $tm/mountain-3-apphistory.page
+  grep -q 'netInbound' $tm/mountain-3-apphistory.page && fail "App history still has the always-empty Download/Upload columns"
+  assert_grep 'kill -KILL -- "${p\[@\]}"' $X/usr/libexec/mountain-taskmanager
+  assert_grep '  apps) processes apps ;;' $X/usr/libexec/mountain-taskmanager
+  assert_grep 'readonly property bool procs: mode === "processes" || mode === "apps"' $X/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
+  # Startup apps: installed Steam, Discord... are listed (Disabled) like Windows, so the tab is never empty on a real PC
+  assert_grep '^offers="steam.desktop com.valvesoftware.Steam.desktop com.discordapp.Discord.desktop' $X/usr/libexec/mountain-taskmanager
+  # one icon style: every Task Manager tab and every Settings icon is a symbolic (black and white) icon
+  for f in $tm/mountain-*.page; do grep -q '^icon=.*-symbolic$' "$f" || fail "Task Manager tab icon is not black and white: $f"; done
+  assert_grep 'source: row.iconName + "-symbolic"; fallback: row.iconName; isMask: true' $st/SettingRow.qml
+  grep -q '"applications-all"' $st/main.qml && fail "Settings Apps icon is the solid square again"
+  f=$(grep -rhoE '(i|icon|iconName): "[a-z0-9-]+"' $st | sed -E 's/.*"(.*)"/\1/' | sort -u)
+  if [[ -z $X && -d /usr/share/icons/breeze/actions ]]; then # in the image: each name has a symbolic icon in the installed themes (else it falls back to colour or a square)
+    for p in $f; do find /usr/share/icons -name "$p-symbolic.svg*" -print -quit | grep -q . || fail "no black-and-white icon for Settings: $p"; done
+  fi
+  # Brave, set up like Edge: installed on first boot, in Start > Browsers and the Desktop Browsers folder, tight sandbox
+  assert_grep '^Exec=flatpak run com.brave.Browser$' $X/etc/skel/Desktop/Browsers/Brave.desktop
+  assert_grep '<Filename>com.brave.Browser.desktop</Filename>' $X/etc/xdg/menus/applications-merged/mountain.menu
+  assert_grep 'com.brave.Browser org.mozilla.firefox; do tight' $X/usr/libexec/mountain-flatpak-policy
+  [[ -n $X ]] || assert_grep com.brave.Browser /usr/share/bluebuild/default-flatpaks/configuration.yaml
+  # language button: a click opens the Windows list (current language marked, More keyboard settings), it never just switches
+  f=$X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout/contents/ui/main.qml
+  assert_grep 'onClicked: root.expanded = !root.expanded' $f
+  assert_grep 'text: "More keyboard settings"' $f
+  grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
+  [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"
+  # Game Mode: on by default, a light user service (one pgrep every 5 s), a switch in Settings > Gaming
+  [[ -x $X/usr/libexec/mountain-gamemode ]] || fail "mountain-gamemode not executable"
+  assert_grep '^ExecStart=/usr/libexec/mountain-gamemode watch$' $X/usr/lib/systemd/user/mountain-gamemode.service
+  assert_grep 'cmd: "/usr/libexec/mountain-gamemode toggle"' $st/main.qml
+  [[ -n $X ]] || [[ -e /etc/systemd/user/default.target.wants/mountain-gamemode.service || -e /usr/lib/systemd/user/default.target.wants/mountain-gamemode.service ]] || fail "Game Mode service not enabled"
+  # Active Protection: a new folder is an extraction for 2 minutes (the EICAR-as-.txt hole)
+  grep -qF 'printf "$now\t%p\n" >> "$pdir/xdirs"' $X/usr/libexec/mountain-protect || fail "Active Protection: new folders are not treated as extractions"
+  true
+}
+
 # every check_phaseN defined above runs, so a new phase can never be forgotten
 phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
 [[ -n $phases ]] || fail "no check_phase functions found"

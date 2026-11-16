@@ -16,9 +16,9 @@ ColumnLayout {
             host = l[0];
             rows = [
                 { t: "Device name", v: l[0], i: "computer" },
-                { t: "Processor", v: l[2] || "Unknown", i: "cpu" },
+                { t: "Processor", v: l[2] || "Unknown", i: "computer" },
                 { t: "Installed RAM", v: l[3] > 0 ? (l[3] / 1073741824).toFixed(1) + " GB" : "Unknown", i: "media-flash" },
-                { t: "Graphics", v: l[4] || "Unknown", i: "video-display" },
+                { t: "Graphics", v: l[4] || "Unknown", i: "monitor" },
                 { t: "Mountain version", v: l[1] || "Unknown", i: "help-about" }
             ];
         });

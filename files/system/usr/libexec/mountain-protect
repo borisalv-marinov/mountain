@@ -72,8 +72,12 @@ ingit() { # FILE: inside a git work tree (clone, project copy) below a watched f
 
 check() { # FILE...: count, flag unverified, scan the risky ones in a separate sandboxed low-priority unit
   local f r h sig out o one="" all=() sub files=() odd=() new=() found=() props=() rest=() xn=0 res="" tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
+  local now; now=$(date +%s)
   for f; do # a folder moved in: its files, like a new drive's (not in /tmp, where apps and game runtimes unpack folders)
-    if [[ -d $f && ! -L $f && $f != /tmp/* && $f != /var/tmp/* ]]; then mapfile -d '' -t sub < <(find "$f" -maxdepth 2 -type f -print0 2>/dev/null | head -z -n 200); all+=("${sub[@]}")
+    if [[ -d $f && ! -L $f ]] && [[ ($f != /tmp/* && $f != /var/tmp/*) || $f == "$dl"/* || $f == "$desk"/* || $f == "$docs"/* ]]; then mapfile -d '' -t sub < <(find "$f" -maxdepth 2 -type f -print0 2>/dev/null | head -z -n 200); all+=("${sub[@]}")
+      # v7.2: a new folder under Downloads, Desktop or Documents is an extraction for 2 minutes, however its files arrive (an
+      # EICAR named .txt got through when 4 files came in one burst and 2 in the next: neither reached 5)
+      case $f in "$dl"/*|"$desk"/*|"$docs"/*) ingit "$f/x" || find "$f" -maxdepth 2 -type d ! -name '*[[:cntrl:]]*' -printf "$now\t%p\n" >> "$pdir/xdirs" 2>/dev/null ;; esac
     else all+=("$f"); fi
   done
   for f in "${all[@]}"; do
@@ -116,7 +120,6 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   # 5 or more new files in one burst under a subfolder (Ark, Dolphin "Extract here", a folder moved in) are an extraction: all of
   # it is scanned in this one scan, so a .txt or .png from an archive is not skipped, and the result is one calm notification
   # an extraction can span two bursts: for 2 minutes, a new file in a folder that just had one belongs to it
-  local now; now=$(date +%s)
   if ((xn >= 5)); then files+=("${rest[@]}"); for f in "${files[@]}"; do printf '%s\t%s\n' "$now" "${f%/*}"; done | sort -u >> "$pdir/xdirs"
   else for f in "${rest[@]}"; do D=${f%/*} N=$now awk -F'\t' '$1 > ENVIRON["N"] - 120 && $2 == ENVIRON["D"] { f = 1 } END { exit !f }' "$pdir/xdirs" 2>/dev/null && files+=("$f"); done; fi
   [[ -s $pdir/xdirs ]] && N=$now awk -F'\t' '$1 > ENVIRON["N"] - 120' "$pdir/xdirs" > "$pdir/xdirs.new" && mv -f "$pdir/xdirs.new" "$pdir/xdirs"

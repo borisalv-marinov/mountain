@@ -40,7 +40,7 @@ QQC2.AbstractButton {
             visible: row.iconName !== ""
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24
-            source: row.iconName
+            source: row.iconName + "-symbolic"; fallback: row.iconName; isMask: true; color: Kirigami.Theme.textColor // one style: black and white, like the side bar
         }
         ColumnLayout {
             Layout.fillWidth: true

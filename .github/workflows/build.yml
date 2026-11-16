@@ -33,6 +33,8 @@ jobs:
         run: bash tests/test-mountain-ai.sh
       - name: Test Try Mountain keysyms
         run: node try/keysym.test.mjs
+      - name: Test Game Mode
+        run: bash tests/test-gamemode.sh
       - name: Test Task Manager helper
         run: bash tests/test-taskmanager.sh
       - name: Test Restart into Windows detection

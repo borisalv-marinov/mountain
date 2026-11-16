@@ -10,7 +10,7 @@ mode=users
 
 [page]
 actionsFace=Face-880000000014
-icon=system-users
+icon=system-users-symbolic
 loadType=
 margin=2
 version=1

@@ -100,7 +100,7 @@ ColumnLayout {
                 Kirigami.Icon {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
-                    source: connIcon.connectionIcon
+                    source: connIcon.connectionIcon + "-symbolic"; isMask: true; color: Kirigami.Theme.textColor
                     fallback: "network-wired"
                 }
                 ColumnLayout {
@@ -123,7 +123,7 @@ ColumnLayout {
                 Layout.preferredWidth: 1
                 text: "Data usage"
                 description: net.usage || "Not connected"
-                iconName: "network-transmit-receive"
+                iconName: "network-wired"
                 onClicked: app.run("kstart --application org.kde.plasma-systemmonitor")
             }
         }

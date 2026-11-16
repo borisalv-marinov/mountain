@@ -72,6 +72,7 @@ modules:
           - dev.vencord.Vesktop
           - com.discordapp.Discord
           - com.microsoft.Edge
+          - com.brave.Browser
           - org.onlyoffice.desktopeditors
           - com.heroicgameslauncher.hgl
           - org.mozilla.firefox
@@ -95,6 +96,7 @@ modules:
     user:
       enabled:
         - mountain-protect.service # Active Protection: real-time, local-only, light (watcher only; scans on demand)
+        - mountain-gamemode.service # Game Mode: full power while a game runs (one pgrep every 5 s)
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
 

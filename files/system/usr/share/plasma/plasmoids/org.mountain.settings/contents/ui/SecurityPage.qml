@@ -24,7 +24,7 @@ ColumnLayout {
     readonly property int nUnv: Array.isArray(ap.ap_unverified) ? ap.ap_unverified.length : 0
     readonly property int lvAp: a("ap") !== "on" ? 2 : (v("av_defs") === "none" ? 2 : (nUnv > 0 ? 1 : 0)) // same rule as the Active Protection page
     readonly property int lvFw: v("fw") === "on" ? 0 : 2
-    readonly property int lvApp: v("flatpak_tight") === "5/5" ? 0 : 1
+    readonly property int lvApp: ((t) => t.includes("/") && t.split("/")[0] === t.split("/")[1])(v("flatpak_tight")) ? 0 : 1 // every shipped app tightened (n/n)
     readonly property int lvDev: v("selinux") !== "Enforcing" ? 2 : ((v("sb") === "off" || v("encrypted") === "no") ? 1 : 0)
     readonly property int lvSnap: v("snapshots") === "off" ? 1 : 0
     readonly property int lvUpd: v("rollback") === "yes" ? 0 : 1
@@ -189,7 +189,7 @@ ColumnLayout {
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            iconName: "network-firewall"
+            iconName: "firewall-applet"
             title: "Firewall & network protection"
             level: sec.lvFw
             details: sec.v("fw") === "on"
@@ -216,7 +216,7 @@ ColumnLayout {
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            iconName: "cpu"
+            iconName: "computer"
             title: "Device security"
             level: sec.lvDev
             details: "Secure Boot: " + (sec.v("sb") === "on" ? "on" : sec.v("sb") === "off" ? "off" : "not supported")

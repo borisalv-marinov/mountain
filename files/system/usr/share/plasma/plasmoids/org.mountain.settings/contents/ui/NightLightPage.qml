@@ -37,7 +37,7 @@ ColumnLayout {
             Layout.rightMargin: 18
             Layout.preferredHeight: 60
             spacing: 14
-            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "preferences-desktop-display-color" }
+            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "redshift-status-on-symbolic"; fallback: "redshift-status-on"; isMask: true; color: Kirigami.Theme.textColor }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1

@@ -29,7 +29,7 @@ GlassCard {
         Kirigami.Icon {
             Layout.preferredWidth: 24
             Layout.preferredHeight: 24
-            source: "preferences-system-bluetooth"
+            source: "preferences-system-bluetooth-symbolic"; fallback: "preferences-system-bluetooth"; isMask: true; color: Kirigami.Theme.textColor
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -75,7 +75,7 @@ GlassCard {
             Kirigami.Icon {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
-                source: devRow.model.Icon || "preferences-system-bluetooth"
+                source: (devRow.model.Icon || "preferences-system-bluetooth") + "-symbolic"; fallback: devRow.model.Icon || "preferences-system-bluetooth"; isMask: true; color: Kirigami.Theme.textColor
             }
             ColumnLayout {
                 Layout.fillWidth: true

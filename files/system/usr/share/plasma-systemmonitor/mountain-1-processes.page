@@ -1,17 +1,13 @@
 # Mountain Task Manager page (Windows 11 tab). Format: plasma-systemmonitor src/pages/*.page
 
 [Face-880000000001][Appearance]
-chartFace=org.kde.ksysguard.applicationstable
+# v7.2: Mountain's list, so End task works like Windows (KDE's Quit sent one polite signal: apps that hide in the tray lived on)
+chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Apps
 
-[Face-880000000001][org.kde.ksysguard.applicationstable][General]
-sortedColumns=appName,usage,memory
-columnWidths=0.50,0.25,0.25
-columnDisplay={"appName":"text","usage":"textScaled","memory":"text"}
-showToolBar=false
-askWhenKilling=false
-sortColumn=usage
+[Face-880000000001][org.mountain.taskmanager.list][General]
+mode=apps
 
 [Face-880000000002][Appearance]
 chartFace=org.mountain.taskmanager.list
@@ -24,7 +20,7 @@ mode=processes
 [page]
 # v7.1: the page toolbar comes from Mountain's list (no actions): one search box, no KDE "Quit Application"; any actionsFace hides "Edit Page"
 actionsFace=Face-880000000002
-icon=view-process-system
+icon=view-process-system-symbolic
 loadType=
 margin=2
 version=1

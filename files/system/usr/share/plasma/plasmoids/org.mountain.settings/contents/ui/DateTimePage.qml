@@ -42,7 +42,7 @@ ColumnLayout {
         SettingRow {
             text: "Set time automatically"
             description: "Uses the internet to keep the clock right"
-            iconName: "preferences-system-time"
+            iconName: "clock"
             chevron: false
             onClicked: dt.flipAuto()
             trailing: PillSwitch { text: "Set time automatically"; checked: dt.auto; onClicked: dt.flipAuto() }

@@ -30,4 +30,8 @@ computer on the same Wi-Fi.
 
 Not tested in this run: Allow-an-app firewall rows, definitions download (Initialization error: fixed after this run, see `mountain-security update`), and AV scan with the real database (no definitions in the VM). Holes found and fixed are listed under the run that found them.
 
-**Known limit (v7):** files written straight into a brand-new folder in the same instant (for example `unzip` on the command line) can land before the watcher adds that folder, so they are not scanned on arrival. Covered instead: Ark/Dolphin extraction (temp folder moved into place: checked whole), and any archive in Downloads is scanned with its contents on arrival. vm-test row "EICAR named .txt in an extracted folder" is INFO for this reason.
+**Fixed in v7.2 (was a known limit in v7):** files written straight into a brand-new folder before the watcher added it, and a
+folder that fills in small bursts (4 files, then 2: neither burst reached the 5-file "extraction" mark), let an EICAR named .txt
+through. Now any new folder under Downloads, Desktop or Documents counts as an extraction for 2 minutes, so everything that lands in
+it is scanned whatever its name. tests/test-protect.sh covers both cases; the vm-test row "EICAR named .txt in an extracted folder"
+is a real pass/fail check again.

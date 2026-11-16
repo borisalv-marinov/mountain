@@ -14,7 +14,8 @@ Faces.SensorFace {
     readonly property string mode: controller.faceConfiguration.mode || "device"
     readonly property string helper: "/usr/libexec/mountain-taskmanager"
     readonly property string listCmd: mode === "startup" ? "bash " + helper + "-startup" : helper + " " + mode
-    readonly property bool actions: mode === "startup" || mode === "services" || mode === "processes"
+    readonly property bool procs: mode === "processes" || mode === "apps" // Apps and Background processes: same columns, End task
+    readonly property bool actions: mode === "startup" || mode === "services" || procs
     property string error: ""
     property var header: []
     property var rows: [] // every row as parsed; rowModel holds the ones the search shows
@@ -23,9 +24,9 @@ Faces.SensorFace {
     property string filter: ""
 
     // Services and Background processes end in a hidden column: Offer (stop|start|empty) and Locked (can not be ended)
-    readonly property int hiddenCols: mode === "processes" ? 2 : mode === "services" ? 1 : 0 // processes also end in Icon
+    readonly property int hiddenCols: procs ? 2 : mode === "services" ? 1 : 0 // processes also end in Icon
 
-    Layout.minimumHeight: mode === "device" ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * (mode === "processes" ? 14 : 10)
+    Layout.minimumHeight: mode === "device" ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * (procs ? 14 : 10)
     Layout.minimumWidth: Kirigami.Units.gridUnit * 12
 
     function quote(s) {
@@ -102,7 +103,7 @@ Faces.SensorFace {
     Timer {
         interval: root.mode === "services" ? 5000 : 3000 // processes: as often as Users
         repeat: true
-        running: root.visible && !root.busy && !listHover.hovered && (root.mode === "users" || root.mode === "services" || root.mode === "processes")
+        running: root.visible && !root.busy && !listHover.hovered && (root.mode === "users" || root.mode === "services" || root.procs)
         onTriggered: root.refresh()
     }
     Component.onCompleted: refresh()
@@ -222,7 +223,7 @@ Faces.SensorFace {
                 contentItem: RowLayout {
                     spacing: Kirigami.Units.largeSpacing
                     Kirigami.Icon { // Background processes: one icon per process, like Windows (the generic program icon if none)
-                        visible: root.mode === "processes"
+                        visible: root.procs
                         source: line.modelData[5] || ""
                         fallback: "application-x-executable"
                         Layout.preferredWidth: Kirigami.Units.iconSizes.small
@@ -247,7 +248,7 @@ Faces.SensorFace {
                         Layout.preferredWidth: Kirigami.Units.gridUnit * 10
                         readonly property bool on: root.mode === "startup" ? line.modelData[3] === "Enabled" : line.modelData[2] === "Running"
                         QQC2.Button {
-                            visible: root.mode === "processes"
+                            visible: root.procs
                             text: "End task"
                             enabled: !root.busy && line.modelData[4] !== "locked" // the desktop and admin prompts need these
                             onClicked: {

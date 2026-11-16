@@ -6,9 +6,9 @@ showTitle=true
 Title=CPU time per app since you signed in
 
 [Face-880000000009][org.kde.ksysguard.applicationstable][General]
-sortedColumns=appName,totalTime,usage,memory,netInbound,netOutbound
-columnWidths=0.34,0.14,0.13,0.13,0.13,0.13
-columnDisplay={"appName":"text","totalTime":"text","usage":"textScaled","memory":"text","netInbound":"text","netOutbound":"text"}
+sortedColumns=appName,totalTime,usage,memory
+columnWidths=0.46,0.18,0.18,0.18
+columnDisplay={"appName":"text","totalTime":"text","usage":"textScaled","memory":"text"}
 showToolBar=false
 askWhenKilling=true
 sortColumn=totalTime
@@ -38,8 +38,10 @@ Title=Network over time
 highPrioritySensorIds=["network/all/download", "network/all/upload"]
 
 [page]
-actionsFace=Face-880000000009
-icon=office-chart-line
+# v7.2: the toolbar comes from the chart (no actions), so App history has no KDE "Quit Application" (Windows has none there);
+# per-app Download/Upload columns stayed empty (no per-app network counters), the network chart below shows traffic
+actionsFace=Face-880000000010
+icon=office-chart-line-symbolic
 loadType=
 margin=2
 version=1
