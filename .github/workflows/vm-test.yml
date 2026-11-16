@@ -1088,7 +1088,7 @@ jobs:
           # attack (H1): fill the disk to under 10 % free as the user, start the snapshot unit again and again: the clean snapshot stays
           R "printf '%s\n' 'import os, shutil' 'h = os.path.expanduser(\"~\")' 's = shutil.disk_usage(h)' 'fd = os.open(h + \"/rt-fill\", os.O_CREAT | os.O_WRONLY, 0o600)' 'os.posix_fallocate(fd, 0, s.free - s.total // 20)' > /tmp/rt-fill.py && chmod 644 /tmp/rt-fill.py"
           R "$(TL 'python3 /tmp/rt-fill.py')" || true
-          chk "attack: disk filled to under 10 % free" 2 "df --output=pcent /var/home | tail -1" '9[0-9]%'
+          chk "attack: disk filled to under 10 % free" 0 "btrfs filesystem sync /var/home; df --output=pcent /var/home | tail -1" '9[0-9]%'
           for i in 1 2 3; do R "$LT systemctl start --no-ask-password mountain-snapshot.service 2>/dev/null && echo polkit || { systemctl start mountain-snapshot.service; echo root; }" >> perf/snapshot-attack.txt; sleep 61; done
           R "systemctl restart mountain-snapshot.timer"; sleep 20
           chk "attack: snapshot runs while the disk is full" 2 "journalctl -u mountain-snapshot -b -n 6 --no-pager -o cat | paste -sd' '" '.'
