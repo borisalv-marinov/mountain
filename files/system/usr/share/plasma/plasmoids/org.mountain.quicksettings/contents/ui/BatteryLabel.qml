@@ -35,6 +35,6 @@ RowLayout {
     PC3.Label {
         visible: battery.showText
         text: i18nc("battery percentage", "%1%", battery.percent)
-        color: "#F2F3F5"
+        color: "#FFFFFF"
     }
 }

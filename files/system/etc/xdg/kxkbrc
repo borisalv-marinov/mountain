@@ -1,7 +1,7 @@
 [Layout]
 Use=true
 LayoutList=us,bg
-VariantList=,phonetic
+VariantList=,bas_phonetic
 DisplayNames=ENG,БГ
 Options=grp:alt_shift_toggle
 ResetOldOptions=true

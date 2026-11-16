@@ -19,14 +19,14 @@ PlasmoidItem {
 
     // Design tokens (docs/superpowers/plans/2026-11-12-mountain-v5-black-glass.md)
     // cards >= 1.3:1 against the page (Windows 11 dark is ~1.15:1), dim text >= 5:1 on cards
-    readonly property color glassTop: "#303238"
-    readonly property color glassBottom: "#28292E"
-    readonly property color pageColor: "#0B0C0F"
-    readonly property color rim: Qt.rgba(1, 1, 1, 0.23) // card edge at 3:1 against the page (WCAG 1.4.11)
+    readonly property color glassTop: "#2D2D2D"
+    readonly property color glassBottom: "#262626"
+    readonly property color pageColor: "#121212" // v7.1: the same window colour as every app (was blue-black)
+    readonly property color rim: Qt.rgba(1, 1, 1, 0.26) // card edge at 3:1 against the page (WCAG 1.4.11): 3.15 on the #121212 page
     readonly property color rimTop: Qt.rgba(1, 1, 1, 0.38)
     readonly property color innerShadow: Qt.rgba(0, 0, 0, 0.60)
-    readonly property color textColor: "#F2F3F5"
-    readonly property color textDim: "#A4A9B2"
+    readonly property color textColor: "#FFFFFF"
+    readonly property color textDim: "#C5C5C5"
     readonly property color accent: "#5AB0FF"
     readonly property color selection: "#2A6CC4"
     readonly property color hover: Qt.rgba(1, 1, 1, 0.08)

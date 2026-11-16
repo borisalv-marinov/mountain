@@ -1,8 +1,8 @@
 # File Explorer opens 1100x700 (Dolphin's own first size is 640 px wide: one icon column, breadcrumb and search pushed off the toolbar).
 # Apply initially (sizerule=3): the user can still resize; only normal windows (types=1), not dialogs.
 [General]
-count=2
-rules=mountain-explorer-size,mountain-emoji
+count=3
+rules=mountain-explorer-size,mountain-emoji,mountain-settings-identity
 
 [mountain-explorer-size]
 Description=File Explorer default size
@@ -29,3 +29,14 @@ skiptaskbar=true
 skiptaskbarrule=2
 skipswitcher=true
 skipswitcherrule=2
+
+# Settings runs inside plasmawindowed, so the taskbar showed Plasma's name and icon: give it the Settings app's (force).
+# Only the window titled exactly "Settings" (Run, Win+X and Shut Down are plasmawindowed too).
+[mountain-settings-identity]
+Description=Settings shows as Settings on the taskbar
+wmclass=plasmawindowed
+wmclassmatch=2
+title=Settings
+titlematch=1
+desktopfile=org.mountain.settings
+desktopfilerule=2

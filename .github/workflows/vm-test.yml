@@ -16,7 +16,7 @@ jobs:
     name: Boot image in VM
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04 # 26.04 denies bib mounts
-    timeout-minutes: 150 # ~85 min of checks + up to ~25 min of test-only hardware installs (hwsim.sh)
+    timeout-minutes: 180 # ~85 min of checks + up to ~25 min of test-only hardware installs (hwsim.sh) + ~25 min opening every Start app
     permissions:
       contents: read
       packages: read
@@ -28,6 +28,9 @@ jobs:
       IMG: ${{ matrix.image }}
       BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
     steps:
+      - uses: actions/checkout@v4 # tests/vm: user-view checks (OCR, window census, every Start app)
+        with:
+          sparse-checkout: tests/vm
       - name: Enable KVM and install tools
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -38,7 +41,7 @@ jobs:
           echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
           echo "Acquire::Retries \"5\";" | sudo tee /etc/apt/apt.conf.d/80retries
           sudo apt-get update
-          sudo apt-get install -y qemu-utils imagemagick socat skopeo
+          sudo apt-get install -y qemu-utils imagemagick socat skopeo tesseract-ocr python3-pil
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
@@ -363,6 +366,13 @@ jobs:
           sleep 20
           shot desktop
           read W H < <(identify -format '%w %h' "$(ls shots/*-desktop.png)"); export W H
+          # window census: every window that appears from here on, with its kind and look (tests/vm/census.js -> MWC| journal lines)
+          R "cat > /tmp/census.js; chmod 644 /tmp/census.js" < "$GITHUB_WORKSPACE/tests/vm/census.js"
+          CS=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/census.js string:mountain-census" | awk '/int32/{print $2}')
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$CS org.kde.kwin.Script.run" >/dev/null
+          PS0=$(R "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)") # no silent restarts allowed
+          echo "session pids: $PS0"
+          chk "taskbar empty space is Mountain's (right-click = Task Manager)" 0 "grep -c 'plugin=org.mountain.taskbarspace' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^[1-9]'
           chk "looktest session running" 0 "loginctl list-sessions --no-legend | grep looktest" 'looktest'
           RAM=$(R "free -m | awk '/Mem:/{print \$3}'")
           chk "RAM used (desktop)" 0 "free -m | awk '/Mem:/{print \$3\" MB used\"}'" 'MB used'
@@ -540,7 +550,7 @@ jobs:
           chk "shortcut PrtSc (screenshot)" 0 "ls ~looktest/Pictures/Screenshots 2>/dev/null | wc -l" '^[1-9]'; K -x spectacle
           chk "screenshots saved" 2 "ls ~looktest/Pictures/Screenshots 2>/dev/null | wc -l" '.'
           KL="$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayout"
-          QM key meta_l spc; sleep 2; chk "shortcut Win+Space switches to Bulgarian" 0 "$KL | awk '/uint32/{print \$2}'" '^1$'
+          QM key meta_l spc; sleep 0.3; shot kbd-switch; chk "shortcut Win+Space switches to Bulgarian" 0 "$KL | awk '/uint32/{print \$2}'" '^1$'
           QM key alt shift_r; sleep 1; QM key meta_l spc; sleep 1; chk "layouts cycle back to English" 2 "$KL | awk '/uint32/{print \$2}'" '.'
           chk "keyboard layouts" 2 "$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayoutsList | grep -o 'string \"[^\"]*\"' | paste -sd' '" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true
@@ -1078,7 +1088,7 @@ jobs:
           # attack (H1): fill the disk to under 10 % free as the user, start the snapshot unit again and again: the clean snapshot stays
           R "printf '%s\n' 'import os, shutil' 'h = os.path.expanduser(\"~\")' 's = shutil.disk_usage(h)' 'fd = os.open(h + \"/rt-fill\", os.O_CREAT | os.O_WRONLY, 0o600)' 'os.posix_fallocate(fd, 0, s.free - s.total // 20)' > /tmp/rt-fill.py && chmod 644 /tmp/rt-fill.py"
           R "$(TL 'python3 /tmp/rt-fill.py')" || true
-          chk "attack: disk filled to under 10 % free" 2 "df --output=pcent /var/home | tail -1" '9[0-9]%'
+          chk "attack: disk filled to under 10 % free" 0 "btrfs filesystem sync /var/home; df --output=pcent /var/home | tail -1" '9[0-9]%'
           for i in 1 2 3; do R "$LT systemctl start --no-ask-password mountain-snapshot.service 2>/dev/null && echo polkit || { systemctl start mountain-snapshot.service; echo root; }" >> perf/snapshot-attack.txt; sleep 61; done
           R "systemctl restart mountain-snapshot.timer"; sleep 20
           chk "attack: snapshot runs while the disk is full" 2 "journalctl -u mountain-snapshot -b -n 6 --no-pager -o cat | paste -sd' '" '.'
@@ -1130,6 +1140,47 @@ jobs:
           R "$HW teardown" >/dev/null 2>&1 || true
           R "cat /run/hwsim/log 2>/dev/null" > hwsim-log.txt 2>&1 || true
 
+          # v7.1 user view: Start search typed one letter at a time (overdrawn rows show as unreadable text), every Start app opened
+          # (its window must be dark like the system), then stability and tearing guards and the window census
+          K -x kdebugsettings; QM key esc; sleep 1
+          QM key meta_l; sleep 2
+          for c in s e t t i n g s; do QM type $c; sleep 0.5; shot "ux-search-$c$SN"; done
+          QM key esc; sleep 1; QM key esc; sleep 2 # first Esc clears the search, the second closes Start (it covered every app)
+          R "cat > /tmp/start-apps.sh; chmod 755 /tmp/start-apps.sh" < "$GITHUB_WORKSPACE/tests/vm/start-apps.sh"
+          APPS=$(R "bash /tmp/start-apps.sh"); NA=$(echo "$APPS" | grep -c .)
+          echo "| Start apps to open | INFO | $NA |" >> report.md
+          n=0
+          for f in $APPS; do
+            n=$((n+1)); id=$(basename "$f" .desktop)
+            # a user service like L (full session environment; a scope only had ssh's, so apps had no screen), kept up after gio
+            # exits (RemainAfterExit) so the app it started is not killed with it - only D-Bus-started apps survived before
+            QM key ctrl # a key press like a person at the PC: the loop is ~12 min without input, and the screen went to sleep mid-way
+            t0=$(R "date +%s")
+            R "$LT systemd-run --user --quiet -p RemainAfterExit=yes --unit=every-$n gio launch '$f'" >/dev/null 2>&1
+            sleep 12; shot "every-$id"
+            # added or activated since the launch (apps started from ssh may open without focus, so 'add' counts too)
+            act=$(R "journalctl -b --since @$t0 --no-pager -o cat | grep -oE 'MWC[|](add|act)[|](normal|dialog)[|].*' | grep -v 'plasmashell[|]' | tail -1")
+            if [ -n "$act" ]; then
+              IFS='|' read -r _ _ kind cls dfile cap deco op geo pid <<<"$act"
+              printf '{"geom": [%s], "class": "%s", "kind": "%s", "deco": "%s"}\n' "$geo" "$cls" "$kind" "$deco" > "$(printf 'shots/%02d-every-%s.json' $SN "$id")"
+            else # no window: keep what the app printed, so the cause is in the report
+              { echo "== $id"; R "journalctl -b --no-pager -o cat _SYSTEMD_USER_UNIT=every-$n.service | tail -5"; } >> perf/every-nowindow.txt 2>&1
+            fi
+            R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
+            R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
+            sleep 2
+          done
+          chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
+          chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
+          chk "stability: no program crashed during the run" 0 "c=\$(coredumpctl list --no-legend --no-pager 2>/dev/null | grep -oE '/[^ ]+\$' | sort | uniq -c | paste -sd' '); echo \${c:-none}" '^none$'
+          chk "tearing: KWin never lets a window tear" 1 "$LT kreadconfig6 --file kwinrc --group Compositing --key AllowTearing" '^false$'
+          chk "tearing: Wayland session (X11 tears)" 1 "loginctl show-session \$(loginctl list-sessions --no-legend | awk '/looktest/{print \$1; exit}') -p Type" 'Type=wayland'
+          chk "tearing: KWin support info" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /KWin org.kde.KWin.supportInformation | grep -iE 'tearing|atomic|Compositing Type|OpenGL renderer|Refresh' | head -8 | tr -s ' ' | paste -sd';'" '.'
+          R "journalctl -b --no-pager -o cat | grep -o 'MWC|.*'" > perf/windows.txt 2>/dev/null || true
+          echo "| window census | INFO | $(cut -d'|' -f3 perf/windows.txt | sort | uniq -c | tr -s ' ' | paste -sd',') |" >> report.md
+          echo "| windows drawing their own title bar | INFO | $(awk -F'|' '$3=="normal" && $7=="noborder"{print $4}' perf/windows.txt | sort -u | paste -sd' ') |" >> report.md
+          echo "| on-screen pop-ups seen (volume, brightness, keyboard) | INFO | $(awk -F'|' '$3=="osd"{print $6}' perf/windows.txt | sort -u | paste -sd'/') |" >> report.md
+
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
           R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
@@ -1177,6 +1228,15 @@ jobs:
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$CORE_FAIL" = 1 ]; then echo "::error::core check failed"; exit 1; fi
           if grep -q '| FAIL |' report.md; then echo "::error::$(grep -c '| FAIL |' report.md) check(s) failed"; exit 1; fi
+      - name: User-view checks (read the screen like a person)
+        if: always()
+        run: |
+          cd "$HOME/vm"
+          python3 "$GITHUB_WORKSPACE/tests/vm/test_uxcheck.py"
+          rc=0; python3 "$GITHUB_WORKSPACE/tests/vm/uxcheck.py" shots "$GITHUB_WORKSPACE/tests/vm/ux-rules.json" > ux.md || rc=$? # bash -e: keep the rows when a check fails
+          cat ux.md >> report.md
+          { echo; echo "## User-view checks"; echo; echo "| Check | Result | Evidence |"; echo "|---|---|---|"; cat ux.md; } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
       - name: Fix ownership
         if: always()
         run: sudo chown -R "$USER" "$HOME/vm" || true
@@ -1189,6 +1249,7 @@ jobs:
             /home/runner/vm/report.md
             /home/runner/vm/*.png
             /home/runner/vm/shots/*.png
+            /home/runner/vm/shots/*.json
             /home/runner/vm/perf/*.txt
             /home/runner/vm/*.txt
             /home/runner/vm/serial.log

@@ -142,23 +142,27 @@ plasmalogin=Sign-in screen'
 # comm names (15 chars) that must never be ended: ending them signs you out or breaks admin prompts, audio, portals
 locked='^(plasmashell|kwin_.*|ksmserver|startplasma.*|plasma_session|systemd|dbus-.*|Xwayland|kded6|polkit.*|at-spi.*|xdg-desktop-por.*|xdg-document-po.*|xdg-permission-.*|pipewire.*|wireplumber|plasmalogin|sddm.*)$'
 
+# Task Manager row icons (Windows shows one per process); a program without one gets its own name, which Task Manager
+# looks up as an icon and otherwise shows the generic program icon
+icons='kwin_wayland=preferences-system-windows|plasmashell=system-file-manager|kaccess=preferences-desktop-accessibility|at-spi2-registr=preferences-desktop-accessibility|at-spi-bus-laun=preferences-desktop-accessibility|polkit-kde-auth=dialog-password|baloo_file=system-search|baloorunner=system-search|cupsd=printer|inotifywait=security-high|tuned-ppd=battery|pipewire=audio-card|pipewire-pulse=audio-card|wireplumber=audio-card|bash=utilities-terminal|ksmserver=system-log-out|kded6=preferences-system|xdg-desktop-por=preferences-system|kdeconnectd=kdeconnect'
+
 processes() {
-  printf 'id\tName\tCPU\tMemory\tLocked\n'
+  printf 'id\tName\tCPU\tMemory\tLocked\tIcon\n'
   local d own=() a b cg
   for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
   ((${#own[@]})) || return 0
   a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
   cg=$(grep -l '/app-.*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null | sed -E 's|.*/([0-9]+)/cgroup$|\1|')
   { sed 's/^/C /' <<<"$cg"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
-    names=$names locked=$locked awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
-    BEGIN {lk_re = ENVIRON["locked"]; k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
+    names=$names locked=$locked icons=$icons awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
+    BEGIN {lk_re = ENVIRON["locked"]; ki = split(ENVIRON["icons"], im, "|"); for (i = 1; i <= ki; i++) {e = index(im[i], "="); ico[substr(im[i], 1, e - 1)] = substr(im[i], e + 1)}; k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
     $1 == "C" {app[$2] = 1; next}
     {pid = $2; c = $0; sub(/^[A-Z] [0-9]+ \(/, "", c); r = c; sub(/\) [^)]*$/, "", c); sub(/^.*\) /, "", r); split(r, f, " ")
      if ($1 == "A") {t[pid] = f[12] + f[13]; next}
      if (f[1] == "Z" || pid in app) next
      v = (pid in t) ? (f[12] + f[13] - t[pid]) * 100 / (hz * 0.5 * n) : 0; mb = f[22] * pg / 1048576
-     w = (c in nm ? nm[c] : c); if (!(w in cnt)) order[++no] = w; cnt[w]++; if (c ~ lk_re) lk[w] = "locked"; ids[w] = (w in ids ? ids[w] "," : "") pid; cpu[w] += v; mem[w] += mb}
-    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\t%s\n", ids[w], w, (cnt[w] > 1 ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w])), lk[w]}}' |
+     w = (c in nm ? nm[c] : c); if (!(w in cnt)) order[++no] = w; cnt[w]++; if (c ~ lk_re) lk[w] = "locked"; ids[w] = (w in ids ? ids[w] "," : "") pid; if (!(w in ic)) ic[w] = (c in ico ? ico[c] : c); cpu[w] += v; mem[w] += mb}
+    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\t%s\t%s\n", ids[w], w, (cnt[w] > 1 ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w])), lk[w], ic[w]}}' |
     sort -t$'\t' -k2,2 -k1,1n
 }
 

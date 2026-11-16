@@ -85,7 +85,7 @@ PlasmoidItem {
             border.width: btn.activeFocus ? 2 : 1
             border.color: btn.activeFocus ? "#5AB0FF" : Qt.rgba(1, 1, 1, 0.14)
             color: btn.highlighted ? (btn.pressed ? "#0063B1" : btn.hovered ? "#1A86D9" : "#0078D4")
-                                   : (btn.pressed ? "#101114" : btn.hovered ? "#2A2D33" : "#202227")
+                                   : (btn.pressed ? "#262626" : btn.hovered ? "#383838" : "#2D2D2D")
         }
         contentItem: Text {
             id: label
@@ -157,7 +157,6 @@ PlasmoidItem {
                 QQC2.ComboBox {
                     id: field
                     Layout.fillWidth: true
-                    implicitHeight: 32 // the custom background has no size: without this the box collapses to its 4 px border
                     editable: true
                     model: app.history
                     focus: true
@@ -168,12 +167,7 @@ PlasmoidItem {
                     onEditTextChanged: app.error = ""
                     Keys.onEscapePressed: app.close()
                     function selectText() { if (contentItem && contentItem.selectAll) contentItem.selectAll(); }
-                    background: Rectangle {
-                        radius: 4
-                        color: "#0B0C0F"
-                        border.width: field.activeFocus ? 2 : 1
-                        border.color: app.error !== "" ? "#FF99A4" : field.activeFocus ? "#5AB0FF" : Qt.rgba(1, 1, 1, 0.16)
-                    }
+                    // v7.1: the standard dropdown look (arrow included), like every other app; errors show in the line below
                 }
             }
 

@@ -12,7 +12,8 @@ squashEnabled=true
 [Effect-blur]
 # v7 frosted glass: strong blur (more downsampling, so no extra GPU cost) and fine acrylic grain
 BlurStrength=12
-NoiseStrength=4
+# v7.1: grain is redrawn on every repaint (moving dots); stability over glass
+NoiseStrength=0
 
 [Effect-overview]
 # Windows 11 Task view: no hot corner (9 = ElectricNone), windows in an organized grid, minimized ones shown
@@ -22,6 +23,8 @@ IgnoreMinimized=false
 
 [Compositing]
 Enabled=true
+# v7.1: tearing is never allowed, not even for fullscreen games that ask for it (owner: tearing must not be possible)
+AllowTearing=false
 
 [org.kde.kdecoration2]
 library=org.kde.kwin.aurorae.v2

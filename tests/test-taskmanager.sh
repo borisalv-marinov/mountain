@@ -62,12 +62,13 @@ st 106 kaccess 0 7; st 107 at-spi2-registr 0 3; st 108 baloorunner 0 70; st 109 
 # during the half-second sample, kwin uses a quarter of 4 cores and plasmashell more than all of them
 (sleep 0.2; st 101 kwin_wayland $((hz / 2)) 300; st 102 plasmashell $((hz * 9)) 2048) &
 L=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 bash "$S" processes); wait
-ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tCPU\tMemory\tLocked'"'"' ]]' "processes: header"
-ok 'grep -q $'"'"'^101\tDesktop Window Manager\t25.0 %\t300.0 MB\tlocked$'"'"' <<<"$L"' "processes: kwin named, CPU normalised by cores, MB"
-ok 'grep -q $'"'"'^102\tWindows Explorer\t100.0 %\t2.0 GB\tlocked$'"'"' <<<"$L"' "processes: CPU capped at 100 %, GB"
+ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tCPU\tMemory\tLocked\tIcon'"'"' ]]' "processes: header"
+ok 'grep -q $'"'"'^101\tDesktop Window Manager\t25.0 %\t300.0 MB\tlocked\tpreferences-system-windows$'"'"' <<<"$L"' "processes: kwin named, CPU normalised by cores, MB"
+ok 'grep -q $'"'"'^102\tWindows Explorer\t100.0 %\t2.0 GB\tlocked\tsystem-file-manager$'"'"' <<<"$L"' "processes: CPU capped at 100 %, GB"
 ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t'"'"' <<<"$L"' "processes: 15-char comm still named"
 ok 'grep -q $'"'"'^103\tmy (odd) tool\t0.0 %'"'"' <<<"$L"' "processes: unknown names kept, parentheses survive"
-ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB\tlocked$'"'"' <<<"$L"' "processes: same-name rows merged into one, ids kept"
+ok 'grep -q $'"'"'^103	my (odd) tool	.*	my (odd) tool$'"'"' <<<"$L"' "processes: icon column is the program name when no icon is mapped (Task Manager falls back to the generic program icon)"
+ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB\tlocked\tpreferences-desktop-accessibility$'"'"' <<<"$L"' "processes: same-name rows merged into one, ids kept"
 ok 'grep -q $'"'"'^108,109	Search Indexer (2)	'"'"' <<<"$L" && ! grep -q baloorunner <<<"$L"' "processes: baloorunner named, merged"
 ok 'grep -q $'"'"'^110	Print Spooler	'"'"' <<<"$L" && grep -q $'"'"'^111	File System Helper	'"'"' <<<"$L" && grep -q $'"'"'^112	Container Helper	'"'"' <<<"$L" && grep -q $'"'"'^113	Active Protection	'"'"' <<<"$L" && grep -q $'"'"'^114	Power Profiles Service	'"'"' <<<"$L" && grep -q $'"'"'^115	Command Shell	'"'"' <<<"$L"' "processes: service helpers named (cupsd, gvfsd, catatonit, inotifywait, tuned-ppd, bash)"
 ok '! grep -q "^105" <<<"$L"' "processes: apps (app scopes) left out"
@@ -78,8 +79,8 @@ sleep 30 & p=$!
 ok 'bash "$S" end $p 2>/dev/null; ! kill -0 $p 2>/dev/null' "end: ends own process"
 wait $p 2>/dev/null
 # session-critical rows are marked locked (End task disabled) and end refuses them
-ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t[0-9.]* %\t[0-9.]* MB\tlocked$'"'"' <<<"$L"' "processes: polkit agent locked"
-ok 'grep -q $'"'"'^103\tmy (odd) tool\t[0-9.]* %\t[0-9.]* MB\t$'"'"' <<<"$L" && grep -q $'"'"'^110\tPrint Spooler\t[0-9.]* %\t[0-9.]* MB\t$'"'"' <<<"$L"' "processes: ordinary rows not locked"
+ok 'grep -q $'"'"'^104\tConsent UI for administrative apps\t[0-9.]* %\t[0-9.]* MB\tlocked\tdialog-password$'"'"' <<<"$L"' "processes: polkit agent locked"
+ok 'grep -q $'"'"'^103\tmy (odd) tool\t[0-9.]* %\t[0-9.]* MB\t\t[^\t]*$'"'"' <<<"$L" && grep -q $'"'"'^110\tPrint Spooler\t[0-9.]* %\t[0-9.]* MB\t\t[^\t]*$'"'"' <<<"$L"' "processes: ordinary rows not locked"
 for c in polkit-kde-authentication-agent-1 at-spi2-registryd xdg-desktop-portal-kde pipewire-pulse wireplumber plasmalogin dbus-broker kded6 ksmserver; do
   python3 -c 'import ctypes, sys, time; ctypes.CDLL(None).prctl(15, sys.argv[1].encode()[:15], 0, 0, 0); time.sleep(30)' "$c" & p=$!; sleep 0.5 # comm set with prctl(PR_SET_NAME): a copied sleep can be a multi-call binary that exits
   ok '! bash "$S" end $p 2>/dev/null && kill -0 $p 2>/dev/null' "end: refuses $c"; kill $p 2>/dev/null; wait $p 2>/dev/null

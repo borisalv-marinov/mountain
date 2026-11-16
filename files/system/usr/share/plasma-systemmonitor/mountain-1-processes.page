@@ -22,7 +22,8 @@ Title=Background processes
 mode=processes
 
 [page]
-actionsFace=Face-880000000001
+# v7.1: the page toolbar comes from Mountain's list (no actions): one search box, no KDE "Quit Application"; any actionsFace hides "Edit Page"
+actionsFace=Face-880000000002
 icon=view-process-system
 loadType=
 margin=2

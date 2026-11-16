@@ -1,0 +1,19 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "Mountain"
+      }
+    ],
+    "Category": "Windows and Tasks",
+    "Description": "Empty taskbar space: right-click it for Task Manager and Taskbar settings, like Windows",
+    "EnabledByDefault": false,
+    "Icon": "utilities-system-monitor",
+    "Id": "org.mountain.taskbarspace",
+    "License": "GPL-2.0-or-later",
+    "Name": "Taskbar space",
+    "Version": "1.0"
+  },
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

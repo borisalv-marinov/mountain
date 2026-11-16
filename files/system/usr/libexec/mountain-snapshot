@@ -42,6 +42,8 @@ for h in "$src"/*/; do
     elif [ ! -e "$p" ]; then mkdir -p "$(dirname "$p")" && btrfs subvolume create "$p"; fi >/dev/null
   done' sh "$h" "${games[@]}" || true
 done
+# Btrfs reports space late after a big write: flush first, or a just-filled disk reads as roomy and gets snapshotted
+btrfs filesystem sync "$src" >/dev/null 2>&1 || sync
 free=$(df --output=pcent "$src" | tail -1 | tr -dc 0-9)
 low=0; (( 100 - free < 10 )) && low=1
 if [[ ${1:-} != --prune-only ]]; then
