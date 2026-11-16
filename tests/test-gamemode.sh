@@ -8,9 +8,7 @@ printf '#!/bin/sh\n[ "$1" = get ] && cat %s/mode || echo "$2" > %s/mode\n' "$T" 
 run() { XDG_CONFIG_HOME=$T/cfg XDG_RUNTIME_DIR=$T MOUNTAIN_PPC=$T/ppc MOUNTAIN_GAMEMODE_ONCE=1 bash "$S" "$@"; }
 ok '[[ $(run status | head -1) == gamemode=on ]]' "on by default"
 run watch; ok '[[ $(cat "$T/mode") == power-saver ]]' "no game: power mode untouched"
-printf '#!/bin/sh
-sleep 30
-' > "$T/wineserver"; chmod +x "$T/wineserver"; "$T/wineserver" & g=$!; sleep 0.3 # a script keeps its own name as the process name
+printf '#!/bin/sh\nsleep 30\n' > "$T/wineserver"; chmod +x "$T/wineserver"; "$T/wineserver" & g=$!; sleep 0.3 # a script keeps its own name as the process name
 run watch; ok '[[ $(cat "$T/mode") == performance ]]' "game running: full power"
 run watch; ok '[[ $(cat "$T/mountain-gamemode.saved") == power-saver ]]' "remembers the mode from before the game"
 kill $g; wait $g 2>/dev/null
