@@ -1093,7 +1093,7 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
   assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/mountain-keyboardlayout.js
   [[ -e $X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout ]] && fail "a dead override of Plasma's language button is shipped"
-  assert_grep 'onClicked: root.expanded = !root.expanded' $f
+  assert_grep "onClicked: root.expanded = !wasExpanded" $f # the tray forwards each click too: a plain toggle would open and close at once
   assert_grep 'text: "More keyboard settings"' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"
