@@ -37,7 +37,11 @@ PlasmoidItem {
 
     compactRepresentation: MouseArea {
         hoverEnabled: true
-        onClicked: root.expanded = !root.expanded
+        // the tray forwards every press/click to this MouseArea as well, so a plain toggle would open and close at once
+        property bool wasExpanded: false
+        onPressed: wasExpanded = root.expanded
+        onClicked: root.expanded = !wasExpanded
+        Accessible.onPressAction: root.expanded = !root.expanded
         property int wheelDelta: 0
         onWheel: wheel => {
             wheelDelta += (wheel.inverted ? -1 : 1) * (wheel.angleDelta.y ? wheel.angleDelta.y : wheel.angleDelta.x);

@@ -880,10 +880,12 @@ jobs:
           KS="$LT WAYLAND_DISPLAY=wayland-0 kscreen-doctor"
           OUT=$(R "$KS -o" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
           R "$KS output.$OUT.mode.1920x1080@60" >/dev/null 2>&1; sleep 6; shot fhd-desktop
-          L env QT_LOGGING_RULES='kf.kio.*=true;org.kde.dolphin*=true;kf.solid*=true' dolphin; sleep 7; shot fhd-file-explorer
-          # 0 B free hunt: what File Explorer sees (its mounts, every mount's free space) and its own log of the free-space lookup
-          R "p=\$(pgrep -u looktest -x dolphin | head -1); echo pid=\$p; cat /proc/\$p/mountinfo; echo; for m in / /var /etc /sysroot /var/home /var/home/looktest /home/looktest; do stat -f -c '%n type=%T avail=%a blocks=%b bsize=%S' \$m; stat -c '%n st_dev=%D' \$m; done; $LT journalctl --user --since '-1min' --no-pager -o cat | grep -iE 'space|free|mount|statfs|storage|solid' | tail -60" > explorer-space-log.txt 2>&1
-          K -x dolphin
+          # 0 B free hunt: the mount table File Explorer reads, its versions, then the same window once the home folder is its own mount entry
+          R "cat /proc/self/mountinfo; for m in / /var /var/home /var/home/looktest; do stat -f -c '%n type=%T avail=%a blocks=%b' \$m; stat -c '%n st_dev=%D' \$m; done; rpm -q qt6-qtbase kf6-kio-core dolphin" > explorer-space-log.txt 2>&1
+          L dolphin; sleep 7; shot fhd-file-explorer; K -x dolphin
+          R "mount --bind /var/home /var/home && findmnt /var/home" >> explorer-space-log.txt 2>&1
+          L dolphin; sleep 7; shot fhd-file-explorer-homemount; K -x dolphin
+          R "umount -l /var/home" || true
           QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot fhd-menu-context; QM key esc
           R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
