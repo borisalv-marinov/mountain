@@ -1097,6 +1097,10 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   assert_grep 'text: "More keyboard settings"' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"
+  # accounts from before v7.1 get Mountain's taskbar space (right-click = Task Manager) once, before the taskbar loads
+  assert_grep 's/^plugin=org\\.kde\\.plasma\\.panelspacer\$/plugin=org.mountain.taskbarspace/' $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh
+  # taskbar alignment moves Mountain's taskbar space too (it only moved Plasma's spacer)
+  grep -qF "x.type === 'org.mountain.taskbarspace'" $X/usr/libexec/mountain-personalize || fail "taskbar alignment ignores Mountain's taskbar space"
   # Game Mode: on by default, a light user service (one pgrep every 5 s), a switch in Settings > Gaming
   [[ -x $X/usr/libexec/mountain-gamemode ]] || fail "mountain-gamemode not executable"
   assert_grep '^ExecStart=/usr/libexec/mountain-gamemode watch$' $X/usr/lib/systemd/user/mountain-gamemode.service

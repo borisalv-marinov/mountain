@@ -605,7 +605,9 @@ jobs:
           chk "Shut Down dialog: Esc closes" 0 "pgrep -u looktest -f 'plasmawindowed org.mountain.shutdown' >/dev/null && echo open || echo closed" '^closed$'
           chk "dialogs placed by KWin (no errors)" 2 "journalctl --user -M looktest@ -b --no-pager 2>/dev/null | grep -i 'mountain-altf4\|org.mountain.\(run\|winx\|shutdown\)' | tail -5" '.'
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align left"; sleep 3; shot taskbar-left
+          chk "Taskbar alignment: Left (Mountain's taskbar space)" 0 "$LT /usr/libexec/mountain-personalize align status" '^align=left$'
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize align center"; sleep 3
+          chk "Taskbar alignment: back to Center" 0 "$LT /usr/libexec/mountain-personalize align status" '^align=center$'
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass off"; sleep 3; QM key meta_l; sleep 3; shot start-menu-glass-off; QM key esc
           R "$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-personalize glass on"; sleep 2
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot menu-context; QM key esc; sleep 1
