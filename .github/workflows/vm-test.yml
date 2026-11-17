@@ -883,8 +883,11 @@ jobs:
           R "$KS output.$OUT.mode.1920x1080@60" >/dev/null 2>&1; sleep 6; shot fhd-desktop
           # 0 B free hunt: the mount table File Explorer reads, its versions, then the same window once the home folder is its own mount entry
           R "cat /proc/self/mountinfo; for m in / /var /var/home /var/home/looktest; do stat -f -c '%n type=%T avail=%a blocks=%b' \$m; stat -c '%n st_dev=%D' \$m; done; rpm -q qt6-qtbase kf6-kio-core dolphin" > explorer-space-log.txt 2>&1
-          L dolphin; sleep 7; shot fhd-file-explorer; K -x dolphin
-          # File Explorer's own lookup (mount id -> mount point -> free space), step by step, as the user (a home bind mount did not help)
+          L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 dolphin; sleep 7; shot fhd-file-explorer
+          # the status bar's free space is the home drive's (it said "0 B free": the read-only system image), read as the screen reader does
+          chk "File Explorer shows the home drive's free space" 0 "$LT python3 /tmp/names.py dolphin 5 | grep -m1 ' free\$' || echo none" '^[0-9.]+ ?[GMT]i?B free$'
+          K -x dolphin
+          # File Explorer's own lookup (mount id -> mount point -> free space), step by step, for the log
           R "cat > /tmp/mountprobe.py && chmod 644 /tmp/mountprobe.py" < "$GITHUB_WORKSPACE/tests/vm/mountprobe.py"
           R "$(TL 'python3 /tmp/mountprobe.py')" >> explorer-space-log.txt 2>&1 || true
           QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1

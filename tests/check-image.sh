@@ -1063,6 +1063,15 @@ PY2
 
 check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps, one icon style, Brave, language list, Game Mode, protection
   local X=${MOUNTAIN_ROOT:-} f p tm=${MOUNTAIN_ROOT:-}/usr/share/plasma-systemmonitor st=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  # File Explorer "0 B free": Dolphin starts with the library that turns away statmount()'s empty mount point (files/scripts/explorer-free-space.sh)
+  if [[ -z $X ]]; then
+    assert_grep 'LD_PRELOAD=/usr/lib64/mountain-nostatmount.so' /usr/bin/dolphin
+    [[ -x /usr/libexec/mountain-dolphin/dolphin ]] || fail "File Explorer's own binary missing"
+    python3 -c "import ctypes; ctypes.CDLL('libc.so.6'); l = ctypes.CDLL('/usr/lib64/mountain-nostatmount.so', use_errno=True); assert l.syscall(457, 0, 0, 0, 0) == -1 and ctypes.get_errno() == 38" ||
+      fail "File Explorer's free-space library does not turn statmount() away"
+  else
+    assert_grep 'SYS_statmount' files/scripts/explorer-free-space.sh
+  fi
   # Task Manager: Apps is Mountain's list (End task = polite quit, then forced after 3 s), App history has no Quit, no empty columns
   assert_grep '^mode=apps$' $tm/mountain-1-processes.page
   grep -q 'applicationstable' $tm/mountain-1-processes.page && fail "Task Manager Apps still KDE's table (Quit needed two clicks)"
@@ -1093,7 +1102,8 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
   assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/mountain-keyboardlayout.js
   [[ -e $X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout ]] && fail "a dead override of Plasma's language button is shipped"
-  assert_grep "onClicked: root.expanded = !wasExpanded" $f # the tray forwards each click too: a plain toggle would open and close at once
+  assert_grep 'onClicked: list.visible = !wasOpen' $f # the list is the applet's own pop-up; the tray forwards each click too, so it toggles by what was open at the press
+  assert_grep 'PlasmaCore.Dialog {' $f
   assert_grep 'text: "More keyboard settings"' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"

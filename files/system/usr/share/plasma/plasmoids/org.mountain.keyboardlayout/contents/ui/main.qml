@@ -1,8 +1,10 @@
 /*
     Mountain: the taskbar's language button (ENG / БГ) works like Windows 11: a click opens a list of your languages
     (the current one marked) with "More keyboard settings"; Plasma's own button switched to the next layout on a click.
-    Win+Space and Alt+Shift still switch straight away; the wheel still cycles. Mountain's own tray applet in place of Plasma's (whose QML is compiled into its plugin, so a replaced file is ignored),
+    Win+Space and Alt+Shift still switch straight away; the wheel still cycles. Mountain's own tray applet in place of Plasma's,
     same model (org.kde.plasma.workspace.keyboardlayout) and same config; tests/check-image.sh checks the imports exist.
+    Built like Plasma's (the button is the full representation, drawn in the tray); the list is this applet's own pop-up
+    window, because the tray's expand-into-its-popup path never showed it (two VM runs).
     Based on Plasma 6.5 applets/keyboardlayout (Andrey Butirsky). SPDX-License-Identifier: GPL-2.0-or-later
 */
 import QtQuick
@@ -26,7 +28,8 @@ PlasmoidItem {
                    : inEmbeddedContainment ? PlasmaCore.Types.HiddenStatus : PlasmaCore.Types.PassiveStatus
     toolTipMainText: "Input language"
     toolTipSubText: current.longName + "\nWin+Space to switch"
-    preferredRepresentation: compactRepresentation
+    preferredRepresentation: fullRepresentation
+    Plasmoid.onActivated: list.visible = !list.visible
 
     P5Support.DataSource {
         id: exec
@@ -35,19 +38,24 @@ PlasmoidItem {
         onNewData: source => disconnectSource(source)
     }
 
-    compactRepresentation: MouseArea {
+    fullRepresentation: MouseArea {
+        id: button
         hoverEnabled: true
-        // the tray forwards every press/click to this MouseArea as well, so a plain toggle would open and close at once
-        property bool wasExpanded: false
-        onPressed: wasExpanded = root.expanded
-        onClicked: root.expanded = !wasExpanded
-        Accessible.onPressAction: root.expanded = !root.expanded
+        // the tray forwards every press/click to this MouseArea as well; a click on the open list's button closes it
+        // (the press already hid it by taking the focus away), so remember what was open at the press
+        property bool wasOpen: false
+        onPressed: wasOpen = list.visible
+        onClicked: list.visible = !wasOpen
+        Accessible.role: Accessible.Button
+        Accessible.name: root.current.longName
+        Accessible.onPressAction: list.visible = !list.visible
         property int wheelDelta: 0
         onWheel: wheel => {
             wheelDelta += (wheel.inverted ? -1 : 1) * (wheel.angleDelta.y ? wheel.angleDelta.y : wheel.angleDelta.x);
             while (wheelDelta >= 120) { wheelDelta -= 120; kbd.switchToPreviousLayout(); }
             while (wheelDelta <= -120) { wheelDelta += 120; kbd.switchToNextLayout(); }
         }
+        Component.onCompleted: list.visualParent = button
         PlasmaComponents3.Label {
             anchors.centerIn: parent
             width: Math.min(parent.width, parent.height)
@@ -62,16 +70,19 @@ PlasmoidItem {
     }
 
     // the Windows 11 language flyout: one row per language, the current one marked
-    fullRepresentation: PlasmaExtras.Representation {
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 16
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 18
-        Layout.preferredHeight: column.implicitHeight + Kirigami.Units.largeSpacing * 2
-        collapseMarginsHint: true
+    PlasmaCore.Dialog {
+        id: list
+        location: Plasmoid.location
+        type: PlasmaCore.Dialog.PopupMenu
+        hideOnWindowDeactivate: true
+        flags: Qt.WindowStaysOnTopHint
+        onVisibleChanged: if (visible) column.forceActiveFocus()
 
-        ColumnLayout {
+        mainItem: ColumnLayout {
             id: column
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Kirigami.Units.smallSpacing }
+            width: Kirigami.Units.gridUnit * 18
             spacing: 2
+            Keys.onEscapePressed: list.visible = false
 
             Repeater {
                 model: kbd.layoutsList
@@ -106,7 +117,7 @@ PlasmoidItem {
                     }
                     onClicked: {
                         kbd.layout = index;
-                        root.expanded = false;
+                        list.visible = false;
                     }
                 }
             }
@@ -116,7 +127,7 @@ PlasmoidItem {
                 text: "More keyboard settings"
                 onClicked: {
                     exec.connectSource("/usr/libexec/mountain-settings-open typing >/dev/null 2>&1 &");
-                    root.expanded = false;
+                    list.visible = false;
                 }
             }
         }
