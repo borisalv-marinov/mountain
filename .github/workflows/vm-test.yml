@@ -1001,10 +1001,12 @@ jobs:
           # v7: an extracted folder (5 or more new files in a subfolder) gets one scan and one result, text files included
           R "sudo -u looktest mkdir -p ~looktest/Documents/ext; for i in 1 2 3 4 5 6; do echo note\$i | sudo -u looktest tee ~looktest/Documents/ext/f\$i.txt >/dev/null; done"; sleep 20
           chk "Active Protection: an extracted folder gets one scan and one result" 0 "$LT journalctl --user -u mountain-protect --since '-2min' | grep -c 'checking 6 file'" '^1$'
+          # one scan at a time: the next folder's check waits behind this scan (the VM loads the full ClamAV database per scan, slowly)
+          for _ in $(seq 60); do R "$LT journalctl --user -u mountain-protect --since '-5min' --no-pager -o cat | grep -A1 'checking 6 file' | grep -q '^result:'" && break; sleep 3; done
           R "rm -rf ~looktest/Documents/ext"
           R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d | sudo -u looktest tee eicar.txt >/dev/null"; apwait ~looktest/Documents/ext2/eicar.txt
           chk "Active Protection: EICAR named .txt in an extracted folder is caught" 0 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
-          R "$LT journalctl --user -u mountain-protect --since '-6min' --no-pager -o cat; $LT systemctl --user status mountain-protect --no-pager -l; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
+          R "$LT journalctl --user -u mountain-protect --since '-8min' --no-pager -o short-precise; $LT systemctl --user status mountain-protect --no-pager -l; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
           R "rm -rf ~looktest/Documents/ext2"
           chk "Active Protection: no scanner left running at idle" 0 "pgrep -u looktest -x clamscan || echo none" '^none$'
           APM=$(R "$LT systemctl --user show mountain-protect.service -p MemoryCurrent --value")
