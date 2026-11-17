@@ -557,6 +557,7 @@ jobs:
           chk "keyboard layouts" 2 "$LT dbus-send --session --print-reply --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.getLayoutsList | grep -o 'string \"[^\"]*\"' | paste -sd' '" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true
           # v7.2: a click on ENG opens the Windows language list (no switch on click); Esc closes it
+          R "grep -nE 'keyboardlayout|extraItems|knownItems|hiddenItems|shownItems' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc ~looktest/.config/plasmashellrc; $LT journalctl --user -b --no-pager -o cat | grep -iE 'keyboardlayout|systemtray' | tail -30" > kbd-log.txt 2>&1 || true
           sleep 1; QM click $((1020*W/1280)) $((776*H/800)); sleep 2; shot kbd-flyout
           chk "language button: a click opens the list, does not switch" 0 "$KL | awk '/uint32/{print \$2}'" '^0$'
           QM key esc; sleep 1
@@ -883,9 +884,9 @@ jobs:
           # 0 B free hunt: the mount table File Explorer reads, its versions, then the same window once the home folder is its own mount entry
           R "cat /proc/self/mountinfo; for m in / /var /var/home /var/home/looktest; do stat -f -c '%n type=%T avail=%a blocks=%b' \$m; stat -c '%n st_dev=%D' \$m; done; rpm -q qt6-qtbase kf6-kio-core dolphin" > explorer-space-log.txt 2>&1
           L dolphin; sleep 7; shot fhd-file-explorer; K -x dolphin
-          R "mount --bind /var/home /var/home && findmnt /var/home" >> explorer-space-log.txt 2>&1
-          L dolphin; sleep 7; shot fhd-file-explorer-homemount; K -x dolphin
-          R "umount -l /var/home" || true
+          # File Explorer's own lookup (mount id -> mount point -> free space), step by step, as the user (a home bind mount did not help)
+          R "cat > /tmp/mountprobe.py && chmod 644 /tmp/mountprobe.py" < "$GITHUB_WORKSPACE/tests/vm/mountprobe.py"
+          R "$(TL 'python3 /tmp/mountprobe.py')" >> explorer-space-log.txt 2>&1 || true
           QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot fhd-menu-context; QM key esc
           R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
