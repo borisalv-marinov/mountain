@@ -1104,7 +1104,7 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   [[ -e $X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout ]] && fail "a dead override of Plasma's language button is shipped"
   assert_grep 'onClicked: list.visible = !wasOpen' $f # the list is the applet's own pop-up; the tray forwards each click too, so it toggles by what was open at the press
   assert_grep 'PlasmaCore.Dialog {' $f
-  assert_grep ': PlasmaCore.Types.BottomEdge' $f # the list opens above the button, not behind the taskbar
+  assert_grep 'height: (kbd.layoutsList.length + 1) \* rowHeight' $f # the list opens above the button, not behind the taskbar
   assert_grep 'text: "More keyboard settings"' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"

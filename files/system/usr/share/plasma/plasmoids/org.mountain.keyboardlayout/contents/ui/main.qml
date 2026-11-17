@@ -82,8 +82,12 @@ PlasmoidItem {
 
         mainItem: ColumnLayout {
             id: column
+            // a size known before the list first shows: a layout only measures itself once its window is on screen, so
+            // Plasma placed the list while it was one row tall and it grew down behind the taskbar (VM runs 17 Nov)
+            readonly property real rowHeight: Kirigami.Units.gridUnit * 2
             width: Kirigami.Units.gridUnit * 18
-            spacing: 2
+            height: (kbd.layoutsList.length + 1) * rowHeight + 9
+            spacing: 0
             Keys.onEscapePressed: list.visible = false
 
             Repeater {
@@ -93,6 +97,7 @@ PlasmoidItem {
                     required property var modelData
                     required property int index
                     Layout.fillWidth: true
+                    Layout.preferredHeight: column.rowHeight
                     highlighted: index === kbd.layout
                     Accessible.name: modelData.longName
                     contentItem: RowLayout {
@@ -123,9 +128,10 @@ PlasmoidItem {
                     }
                 }
             }
-            Kirigami.Separator { Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+            Kirigami.Separator { Layout.fillWidth: true; Layout.preferredHeight: 1; Layout.topMargin: 4; Layout.bottomMargin: 4 }
             PlasmaComponents3.ItemDelegate {
                 Layout.fillWidth: true
+                Layout.preferredHeight: column.rowHeight
                 text: "More keyboard settings"
                 onClicked: {
                     exec.connectSource("/usr/libexec/mountain-settings-open typing >/dev/null 2>&1 &");
