@@ -1063,14 +1063,14 @@ PY2
 
 check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps, one icon style, Brave, language list, Game Mode, protection
   local X=${MOUNTAIN_ROOT:-} f p tm=${MOUNTAIN_ROOT:-}/usr/share/plasma-systemmonitor st=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
-  # File Explorer "0 B free": Dolphin starts with the library that turns away statmount()'s empty mount point (files/scripts/explorer-free-space.sh)
+  # File Explorer "0 B free": Dolphin starts with the library that answers statvfs() on the read-only system image with the writable disk (files/scripts/explorer-free-space.sh)
   if [[ -z $X ]]; then
-    assert_grep 'LD_PRELOAD=/usr/lib64/mountain-nostatmount.so' /usr/bin/dolphin
+    assert_grep 'LD_PRELOAD=/usr/lib64/mountain-freespace.so' /usr/bin/dolphin
     [[ -x /usr/libexec/mountain-dolphin/dolphin ]] || fail "File Explorer's own binary missing"
-    python3 -c "import ctypes; ctypes.CDLL('libc.so.6'); l = ctypes.CDLL('/usr/lib64/mountain-nostatmount.so', use_errno=True); assert l.syscall(457, 0, 0, 0, 0) == -1 and ctypes.get_errno() == 38" ||
-      fail "File Explorer's free-space library does not turn statmount() away"
+    python3 -c "import ctypes, os; l = ctypes.CDLL('/usr/lib64/mountain-freespace.so'); b = ctypes.create_string_buffer(256); assert l.statvfs(b'/tmp', b) == 0 and ctypes.c_ulong.from_buffer(b, 16).value == os.statvfs('/tmp').f_blocks" ||
+      fail "File Explorer's free-space library does not pass statvfs() through"
   else
-    assert_grep 'SYS_statmount' files/scripts/explorer-free-space.sh
+    assert_grep 'real("/var", &var)' files/scripts/explorer-free-space.sh
   fi
   # Task Manager: Apps is Mountain's list (End task = polite quit, then forced after 3 s), App history has no Quit, no empty columns
   assert_grep '^mode=apps$' $tm/mountain-1-processes.page
@@ -1104,6 +1104,7 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   [[ -e $X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout ]] && fail "a dead override of Plasma's language button is shipped"
   assert_grep 'onClicked: list.visible = !wasOpen' $f # the list is the applet's own pop-up; the tray forwards each click too, so it toggles by what was open at the press
   assert_grep 'PlasmaCore.Dialog {' $f
+  assert_grep ': PlasmaCore.Types.BottomEdge' $f # the list opens above the button, not behind the taskbar
   assert_grep 'text: "More keyboard settings"' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"

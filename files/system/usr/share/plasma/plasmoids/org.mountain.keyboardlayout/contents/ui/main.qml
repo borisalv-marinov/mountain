@@ -72,7 +72,9 @@ PlasmoidItem {
     // the Windows 11 language flyout: one row per language, the current one marked
     PlasmaCore.Dialog {
         id: list
-        location: Plasmoid.location
+        // in the tray the applet's own location is not a screen edge, so Plasma put the list at the screen's bottom,
+        // behind the taskbar; an edge puts it above (or beside) the button
+        location: Plasmoid.location >= PlasmaCore.Types.TopEdge && Plasmoid.location <= PlasmaCore.Types.RightEdge ? Plasmoid.location : PlasmaCore.Types.BottomEdge
         type: PlasmaCore.Dialog.PopupMenu
         hideOnWindowDeactivate: true
         flags: Qt.WindowStaysOnTopHint
