@@ -41,6 +41,8 @@ jobs:
         run: bash tests/test-windows-boot.sh
       - name: Test Active Protection rules
         run: bash tests/test-protect.sh
+      - name: Test Active Protection watcher end to end
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools >/dev/null && bash tests/test-protect-daemon.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
       - name: vm-test carries the current hwsim.sh

@@ -172,7 +172,9 @@ jobs:
           # the installer makes /var/home a Btrfs subvolume (Previous versions need it); bootc-image-builder does not, so do it here
           # wait for boot to settle first: moving /var/home while first-boot jobs write into it failed silently (no snapshots)
           R "timeout 300 systemctl is-system-running --wait >/dev/null 2>&1; true"
-          R "btrfs subvolume show /var/home >/dev/null 2>&1 || { mv /var/home /var/home.old && btrfs subvolume create /var/home && cp -a /var/home.old/. /var/home/ && rm -rf /var/home.old && restorecon -R /var/home; }; stat -c %i /var/home"
+          # as its own unit on the VM: a dropped ssh connection ("Connection reset by peer") once cut the move off halfway
+          for _ in 1 2 3; do R "btrfs subvolume show /var/home >/dev/null 2>&1 || systemctl -q is-active mt-homesv || systemd-run --quiet --unit=mt-homesv bash -c 'mv /var/home /var/home.old && btrfs subvolume create /var/home && cp -a /var/home.old/. /var/home/ && rm -rf /var/home.old && restorecon -R /var/home'" && break; sleep 10; done
+          for _ in $(seq 150); do R "! systemctl -q is-active mt-homesv" && break; sleep 2; done
           chk "/var/home is a Btrfs subvolume (Previous versions need it)" 1 "stat -c %i /var/home" '^256$'
 
           chk "os-release" 1 "grep PRETTY_NAME /etc/os-release" 'Mountain \(based on Bazzite\)'
@@ -851,7 +853,7 @@ jobs:
           L systemd-run --user --scope --unit=app-org.mountain.mtmapp-4242 /home/looktest/.local/bin/mtmapp; sleep 2
           chk "Apps table lists an app in its app scope" 0 "$(TL '/usr/libexec/mountain-taskmanager apps | cut -f2')" 'org\.mountain\.mtmapp'
           chk "Apps table: the app is not a background process" 0 "$(TL '/usr/libexec/mountain-taskmanager processes | cut -f2 | grep -c mtmapp || true')" '^0$'
-          R "$(TL '/usr/libexec/mountain-taskmanager end $(/usr/libexec/mountain-taskmanager apps | awk -F"\t" "/mtmapp/ {print \$1}")')"
+          R "$(TL '/usr/libexec/mountain-taskmanager end $(/usr/libexec/mountain-taskmanager apps | grep mtmapp | cut -f1)')"
           chk "End task (one click) ends an app that ignores quit" 0 "pgrep -u looktest -f 'sleep 99998' || echo ended" '^ended$'
           chk "Phone Link app strings renamed" 0 "python3 -c 'import gettext; print(gettext.GNUTranslations(open(\"/usr/share/locale/en@mountain/LC_MESSAGES/kdeconnect-app.mo\",\"rb\"))._catalog.get(\"About KDE Connect\"))'" '^About Phone Link$'
           K -x endtasktest
@@ -1002,7 +1004,7 @@ jobs:
           R "rm -rf ~looktest/Documents/ext"
           R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d | sudo -u looktest tee eicar.txt >/dev/null"; apwait ~looktest/Documents/ext2/eicar.txt
           chk "Active Protection: EICAR named .txt in an extracted folder is caught" 0 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
-          R "$LT journalctl --user -u mountain-protect --since '-6min' --no-pager -o cat; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
+          R "$LT journalctl --user -u mountain-protect --since '-6min' --no-pager -o cat; $LT systemctl --user status mountain-protect --no-pager -l; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
           R "rm -rf ~looktest/Documents/ext2"
           chk "Active Protection: no scanner left running at idle" 0 "pgrep -u looktest -x clamscan || echo none" '^none$'
           APM=$(R "$LT systemctl --user show mountain-protect.service -p MemoryCurrent --value")
