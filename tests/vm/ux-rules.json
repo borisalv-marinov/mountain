@@ -3,9 +3,12 @@
   "dialog-shutdown": {"must_read": ["Shut down"]},
   "file-explorer|explorer-home|fhd-file-explorer": {"must_not_read": ["0 B free"]},
   "taskbar-context-menu": {"must_read": ["Task Manager"], "must_not_read": ["Add or Manage Widgets", "Panel Configuration"]},
-  "taskmanager-processes|taskmanager": {"must_not_read": ["Quit Application"]},
+  "taskmanager-processes|taskmanager": {"must_read": ["End task"], "must_not_read": ["Quit Application"]},
+  "taskmanager-apphistory": {"must_read": ["App history"], "must_not_read": ["Quit Application"]},
   "app-notepad": {"must_not_read": ["Recent files"]},
   "kbd-switch": {"must_not_read": ["traditional phonetic"]},
+  "kbd-flyout": {"must_read": ["ENG", "Bulgarian", "More keyboard settings"], "must_not_read": ["traditional phonetic"]},
   "start-search-.*|search-settings|ux-search-.*": {"ocr_quality": true},
-  "every-.*": {"dark_window": true}
+  "every-(?!com[.]brave[.]Browser$).*": {"dark_window": true},
+  "_brave": "Brave's frame is dark; its first-run page is purple web artwork, not the theme"
 }

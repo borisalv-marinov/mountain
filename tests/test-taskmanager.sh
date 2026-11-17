@@ -43,6 +43,18 @@ ok 'grep -q $'"'"'^steam.desktop\tSteam\tValve\tEnabled\tNot measured$'"'"' <<<"
 run startup-set chat.desktop off
 ok 'runs | grep -q $'"'"'^chat.desktop\tChat\t\tDisabled\tNone$'"'"'' "startup: disabled has no impact"
 run startup-set chat.desktop on
+# installed apps Windows would list (Steam, Discord...) show as Disabled even with no autostart entry; on copies the launcher
+mkdir -p "$T/apps"; printf '[Desktop Entry]\nName=Discord\nExec=/usr/bin/flatpak run com.discordapp.Discord\n' > "$T/apps/com.discordapp.Discord.desktop"
+printf '[Desktop Entry]\nName=Steam\nExec=steam %%U\n' > "$T/apps/com.valvesoftware.Steam.desktop"
+runa() { MOUNTAIN_APPS_DIRS=$T/apps run "$@"; }
+ok 'runa startup | grep -q $'"'"'^com.discordapp.Discord.desktop\tDiscord\tDisabled'"'"'' "startup: installed Discord offered as Disabled"
+runa startup-set com.discordapp.Discord.desktop on
+ok 'grep -qx "X-Mountain-Added=true" "$T/home/.config/autostart/com.discordapp.Discord.desktop" && runa startup | grep -q $'"'"'^com.discordapp.Discord.desktop\tDiscord\tEnabled'"'"'' "startup: on copies the launcher, shows Enabled"
+runa startup-set com.discordapp.Discord.desktop off
+ok '[[ ! -e $T/home/.config/autostart/com.discordapp.Discord.desktop ]] && runa startup | grep -q "^com.discordapp.Discord.desktop.*Disabled"' "startup: off removes the copy, offered again"
+runa startup-set com.valvesoftware.Steam.desktop on
+ok 'grep -qx "Exec=steam -silent %U" "$T/home/.config/autostart/com.valvesoftware.Steam.desktop"' "startup: Steam starts in the tray"
+ok '[[ $(runa startup | grep -c "^steam.desktop") == 1 ]]' "startup: an app already in autostart is not offered twice"
 # pages: only sensors every PC has (anything else shows "This page is missing some sensors")
 P=$(dirname "$0")/../files/system/usr/share/plasma-systemmonitor
 bad=$(grep -ho 'SensorIds=.*\|totalSensors=.*' "$P"/*.page | grep -o '"[^"]*"' | tr -d '"' | sort -u |

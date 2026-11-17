@@ -53,20 +53,20 @@ PlasmoidItem {
     readonly property var categories: [
         { id: "home", name: "Home", icon: "go-home", items: [] },
         { id: "system", name: "System", icon: "preferences-system", items: [
-            { t: "Display", d: "Monitors, brightness, resolution, scale", i: "preferences-desktop-display", page: "display", k: "screen monitor resolution refresh hdr" },
-            { t: "Sound", d: "Volume, output and input devices", i: "preferences-desktop-sound", page: "sound", k: "audio speaker microphone headphones" },
-            { t: "Notifications", d: "Alerts from apps and system, do not disturb", i: "preferences-desktop-notification-bell", page: "notifications", k: "alerts do not disturb" },
-            { t: "Power & battery", d: "Sleep, screen off, battery saver", i: "battery", page: "power", k: "power sleep suspend energy" },
+            { t: "Display", d: "Monitors, brightness, resolution, scale", i: "monitor", page: "display", k: "screen monitor resolution refresh hdr" },
+            { t: "Sound", d: "Volume, output and input devices", i: "audio-speakers", page: "sound", k: "audio speaker microphone headphones" },
+            { t: "Notifications", d: "Alerts from apps and system, do not disturb", i: "preferences-desktop-notification", page: "notifications", k: "alerts do not disturb" },
+            { t: "Power & battery", d: "Sleep, screen off, battery saver", i: "battery-080", page: "power", k: "power sleep suspend energy" },
             { t: "Storage", d: "Drives and partitions", i: "drive-harddisk", page: "storage", k: "disk drive space ssd" },
             { t: "Recovery", d: "Go back to the previous version, reset this PC", i: "document-revert", page: "updates", k: "recovery reset go back rollback restore" },
             { t: "About", d: "Device specifications, PC name", i: "help-about", page: "about", k: "pc name hostname rename specs version" }
         ] },
-        { id: "devices", name: "Bluetooth & devices", icon: "bluetooth", items: [
+        { id: "devices", name: "Bluetooth & devices", icon: "network-bluetooth", items: [
             { t: "Bluetooth", d: "Pair and manage Bluetooth devices", i: "preferences-system-bluetooth", page: "bluetooth", k: "bluetooth pair headphones" },
             { t: "Mouse & touchpad", d: "Pointer speed, scrolling, buttons, taps", i: "input-mouse", page: "mouse", k: "mouse touchpad trackpad pointer cursor speed natural scrolling left handed tap" },
             { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", page: "typing", k: "layout typing keys" },
             { t: "Printers & scanners", d: "Your printers and test page; network printers are added automatically", i: "printer", page: "printers", k: "print" },
-            { t: "Scanner", d: "Scan a document or photo", i: "scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
+            { t: "Scanner", d: "Scan a document or photo", i: "preferences-devices-scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
             { t: "Phone Link", d: "Your phone's messages, files and notifications on this PC", i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad joystick controller" }
         ] },
@@ -77,41 +77,42 @@ PlasmoidItem {
             { t: "Mobile hotspot", d: "Share your internet connection", i: "network-wireless-hotspot", page: "network", net: "hotspot", k: "hotspot tethering share" },
             { t: "Airplane mode", d: "Stop all wireless communication", i: "network-flightmode-on", page: "network", net: "airplane", k: "airplane flight mode radio" }
         ] },
-        { id: "personalization", name: "Personalization", icon: "preferences-desktop-theme", items: [
-            { t: "Background", d: "Picture, solid color, slideshow", i: "preferences-desktop-wallpaper", page: "background", k: "wallpaper background picture" },
-            { t: "Colors", d: "Dark and light mode, accent color", i: "preferences-desktop-color", page: "colors", k: "dark light accent color colour" },
+        { id: "personalization", name: "Personalization", icon: "draw-brush", items: [
+            { t: "Background", d: "Picture, solid color, slideshow", i: "edit-image", page: "background", k: "wallpaper background picture" },
+            { t: "Colors", d: "Dark and light mode, accent color", i: "color-management", page: "colors", k: "dark light accent color colour" },
             { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", page: "lockscreen", k: "lock wallpaper" },
-            { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "preferences-desktop-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
-            { t: "Taskbar alignment", d: "Click to switch between center and left", i: "preferences-desktop", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
+            { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "special-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
+            { t: "Taskbar alignment", d: "Click to switch between center and left", i: "align-horizontal-center", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
             { t: "Start menu: more pins", d: "Four rows of pinned apps, fewer recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
             { t: "Start menu: default", d: "Three rows of pins and recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu default", k: "start menu layout default" },
             { t: "Start menu: more recommendations", d: "Two rows of pins, more recent files", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu recommended", k: "start menu layout recommended recent" },
             { t: "Top bar", d: "Click to add or remove a top bar with CPU and memory", i: "view-split-top-bottom", cmd: "/usr/libexec/mountain-topbar toggle", k: "top bar panel" }
         ] },
-        { id: "apps", name: "Apps", icon: "applications-all", items: [
-            { t: "Default apps", d: "Browser, mail, music, video", i: "preferences-desktop-default-applications", page: "defaultapps", k: "default browser" },
-            { t: "Startup apps", d: "Apps that start when you sign in", i: "preferences-system-startup", page: "startup", k: "autostart startup login" },
-            { t: "App Store", d: "Install and remove apps", i: "plasmadiscover", cmd: "kstart --application io.github.kolunmi.Bazaar", k: "install store bazaar flatpak" }
+        { id: "apps", name: "Apps", icon: "view-app-grid", items: [
+            { t: "Default apps", d: "Browser, mail, music, video", i: "starred", page: "defaultapps", k: "default browser" },
+            { t: "Startup apps", d: "Apps that start when you sign in", i: "system-run", page: "startup", k: "autostart startup login" },
+            { t: "App Store", d: "Install and remove apps", i: "get-hot-new-stuff", cmd: "kstart --application io.github.kolunmi.Bazaar", k: "install store bazaar flatpak" }
         ] },
         { id: "accounts", name: "Accounts", icon: "system-users", items: [
             { t: "Your info", d: "Name and account picture", i: "user-identity", page: "youraccount", k: "account picture avatar name" },
-            { t: "Sign-in options", d: "Password", i: "preferences-desktop-user-password", page: "youraccount", k: "password sign in login" }
+            { t: "Sign-in options", d: "Password", i: "lock", page: "youraccount", k: "password sign in login" }
         ] },
-        { id: "time", name: "Time & language", icon: "preferences-system-time", items: [
-            { t: "Date & time", d: "Time zone, clock", i: "preferences-system-time", page: "datetime", k: "clock time zone date" },
+        { id: "time", name: "Time & language", icon: "clock", items: [
+            { t: "Date & time", d: "Time zone, clock", i: "clock", page: "datetime", k: "clock time zone date" },
             { t: "Language & region", d: "Language, formats, region", i: "preferences-desktop-locale", page: "language", k: "language region locale format add a language display" },
-            { t: "Typing", d: "Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches", i: "preferences-desktop-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български" }
+            { t: "Typing", d: "Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches", i: "input-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български" }
         ] },
         { id: "gaming", name: "Gaming", icon: "input-gamepad", items: [
+            { t: "Game Mode", d: "Full power while a game runs, your power mode back after (on by default): click to turn on or off", i: "speedometer", cmd: "/usr/libexec/mountain-gamemode toggle", k: "game mode performance full power fps boost" },
             { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad controller joystick" },
             { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
-            { t: "GTA Online and FiveM", d: "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming", i: "dialog-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
-            { t: "Check game support", d: "See if a game runs on Mountain (opens two game-support websites)", i: "help-browser", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
-            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance", i: "speedometer", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
-            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "preferences-desktop-display", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
+            { t: "GTA Online and FiveM", d: "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming", i: "state-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
+            { t: "Check game support", d: "See if a game runs on Mountain (opens two game-support websites)", i: "help-contents", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
+            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance", i: "view-visible", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
+            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "monitor", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: "Accessibility", icon: "preferences-desktop-accessibility", items: [
-            { t: "Night light", d: "Warmer colors at night", i: "preferences-desktop-display-color", page: "nightlight", k: "night light blue light" }
+            { t: "Night light", d: "Warmer colors at night", i: "redshift-status-on", page: "nightlight", k: "night light blue light" }
         ] },
         { id: "privacy", name: "Privacy & security", icon: "security-high", items: [
             { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", page: "lockscreen", k: "lock password security" },

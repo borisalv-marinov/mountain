@@ -10,7 +10,7 @@ mode=services
 
 [page]
 actionsFace=Face-880000000016
-icon=preferences-system-services
+icon=configure-symbolic
 loadType=
 margin=2
 version=1

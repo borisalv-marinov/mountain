@@ -10,7 +10,7 @@ mode=startup
 
 [page]
 actionsFace=Face-880000000013
-icon=preferences-system-startup
+icon=system-run-symbolic
 loadType=
 margin=2
 version=1

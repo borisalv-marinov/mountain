@@ -11,7 +11,7 @@ tight() {
   else echo "mountain-flatpak-policy: could not tighten ${*: -1}" >&2; rc=1; fi # the unit fails, so it shows in systemctl --failed
 }
 rc=0
-for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox; do tight "$a"; done
+for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge com.brave.Browser org.mozilla.firefox; do tight "$a"; done
 tight --filesystem=xdg-documents --filesystem=xdg-desktop org.onlyoffice.desktopeditors
 # one look for every Flatpak app: they read the same GTK settings (dark, font, icons) as the rest of the system (read-only)
 flatpak override --system --filesystem=xdg-config/gtk-3.0:ro --filesystem=xdg-config/gtk-4.0:ro || { echo "mountain-flatpak-policy: could not share the GTK look" >&2; rc=1; }

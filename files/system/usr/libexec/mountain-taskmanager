@@ -2,7 +2,7 @@
 # Data and actions behind Task Manager's Startup apps, Users, Services and device-name lists
 # (face org.mountain.taskmanager.list). Output: tab-separated, a header line, then rows whose first field is an id.
 #   mountain-taskmanager startup | startup-set FILE on|off | users | services | service start|stop|restart UNIT | device
-#   | processes | end PID
+#   | processes | apps | end PID
 set -uo pipefail
 sys_dir=${MOUNTAIN_AUTOSTART_SYSTEM:-/etc/xdg/autostart}
 usr_dir=${XDG_CONFIG_HOME:-$HOME/.config}/autostart
@@ -11,6 +11,11 @@ core=" at-spi-dbus-bus gmenudbusmenuproxy kaccess org.kde.plasmashell org.kde.pl
  polkit-kde-authentication-agent-1 powerdevil xembedsniproxy xapp-sn-watcher xdg-user-dirs mountain-user-setup spice-vdagent
  vboxclient vmware-user org.kde.foreground-booster geoclue-demo-agent "
 core=${core//$'\n'/ } # one line, so every name is matched as " name "
+
+# installed apps Windows would list in Startup apps (they register there): shown as Disabled until switched on
+offers="steam.desktop com.valvesoftware.Steam.desktop com.discordapp.Discord.desktop com.spotify.Client.desktop org.telegram.desktop.desktop com.heroicgameslauncher.hgl.desktop net.lutris.Lutris.desktop"
+apps_dirs=${MOUNTAIN_APPS_DIRS:-${XDG_DATA_HOME:-$HOME/.local/share}/applications $HOME/.local/share/flatpak/exports/share/applications /var/lib/flatpak/exports/share/applications /usr/share/applications}
+app_file() { local d; for d in $apps_dirs; do [[ -f $d/$1 ]] && { echo "$d/$1"; return 0; }; done; return 1; }
 
 key() { sed -n "/^\[Desktop Entry\]/,/^\[/{s/^$1=//p}" "$2" 2>/dev/null | head -1; }
 
@@ -31,6 +36,11 @@ startup() {
     if [[ $(key Hidden "$f") == true || $(key X-GNOME-Autostart-enabled "$f") == false ]]; then s=Disabled; else s=Enabled; fi
     printf '%s\t%s\t%s\t%s\n' "$b" "$name" "$s" "$(key Exec "$src")"
   done
+  for b in $offers; do
+    [[ -e $usr_dir/$b || -e $sys_dir/$b ]] && continue
+    src=$(app_file "$b") || continue
+    name=$(key Name "$src"); printf '%s\t%s\tDisabled\t%s\n' "$b" "${name:-${b%.desktop}}" "$(key Exec "$src")"
+  done
 }
 
 startup_set() { # FILE on|off: a user override with Hidden=true is the XDG way to switch an autostart entry off
@@ -40,7 +50,8 @@ startup_set() { # FILE on|off: a user override with Hidden=true is the XDG way t
   [[ $want == on || $want == off ]] || { echo "say on or off" >&2; return 2; }
   u=$usr_dir/$b; mkdir -p "$usr_dir"
   if [[ $want == off ]]; then
-    if [[ -e $u ]]; then
+    if [[ $(key X-Mountain-Added "$u") == true ]]; then rm -f "$u"
+    elif [[ -e $u ]]; then
       sed -i '/^Hidden=/d' "$u"; sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nHidden=true/' "$u"
     elif [[ -e $sys_dir/$b ]]; then
       printf '[Desktop Entry]\nHidden=true\nX-Mountain-Override=true\n' > "$u"
@@ -48,6 +59,10 @@ startup_set() { # FILE on|off: a user override with Hidden=true is the XDG way t
   else
     if [[ $(key X-Mountain-Override "$u") == true ]]; then rm -f "$u"
     elif [[ -e $u ]]; then sed -i '/^Hidden=true/d; /^X-GNOME-Autostart-enabled=false/d' "$u"
+    elif [[ " $offers " == *" $b "* ]] && src=$(app_file "$b"); then
+      # a copy of the app's launcher; Steam starts in the tray (-silent), as it does on Windows
+      sed '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nX-Mountain-Added=true/; /^Hidden=/d' "$src" > "$u"
+      [[ $b == steam.desktop || $b == com.valvesoftware.Steam.desktop ]] && sed -i -E '/^Exec=/{/-silent/!s/^(Exec=[^ ]+)/\1 -silent/}' "$u"
     else echo "no such startup app: $b" >&2; return 1; fi
   fi
 }
@@ -146,38 +161,56 @@ locked='^(plasmashell|kwin_.*|ksmserver|startplasma.*|plasma_session|systemd|dbu
 # looks up as an icon and otherwise shows the generic program icon
 icons='kwin_wayland=preferences-system-windows|plasmashell=system-file-manager|kaccess=preferences-desktop-accessibility|at-spi2-registr=preferences-desktop-accessibility|at-spi-bus-laun=preferences-desktop-accessibility|polkit-kde-auth=dialog-password|baloo_file=system-search|baloorunner=system-search|cupsd=printer|inotifywait=security-high|tuned-ppd=battery|pipewire=audio-card|pipewire-pulse=audio-card|wireplumber=audio-card|bash=utilities-terminal|ksmserver=system-log-out|kded6=preferences-system|xdg-desktop-por=preferences-system|kdeconnectd=kdeconnect'
 
-processes() {
+processes() { # [apps]: background processes (default), or the Apps table: processes in app scopes, one row per app
   printf 'id\tName\tCPU\tMemory\tLocked\tIcon\n'
-  local d own=() a b cg
+  local d own=() a b cg nm="" id f want=${1:-background}
   for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
   ((${#own[@]})) || return 0
   a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
-  cg=$(grep -l '/app-.*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null | sed -E 's|.*/([0-9]+)/cgroup$|\1|')
-  { sed 's/^/C /' <<<"$cg"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
-    names=$names locked=$locked icons=$icons awk -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
+  # pid and app id from the scope Plasma starts each app in: app-[flatpak-]ID-RANDOM.scope ('-' in ID is \x2d);
+  # autostart services (app-ID@autostart.service) stay background processes
+  cg=$(grep -H '/app-[^/]*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null |
+    sed -E 's|.*/([0-9]+)/cgroup:.*/app-([^/]*)\.scope$|\1 \2|; s/ flatpak-/ /; s/ (.*)-[^-]*$/ \1/; s/[\]x2d/-/g')
+  if [[ $want == apps ]]; then # app names and icons from their launchers, like Windows
+    while read -r id; do
+      [[ -n $id ]] || continue
+      if f=$(app_file "$id.desktop"); then nm+="N $id"$'\t'"$(key Name "$f")"$'\t'"$(key Icon "$f")"$'\n'; fi
+    done < <(awk '{print $2}' <<<"$cg" | sort -u)
+  fi
+  { sed 's/^/C /' <<<"$cg"; printf '%s' "$nm"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
+    names=$names locked=$locked icons=$icons awk -v want="$want" -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
     BEGIN {lk_re = ENVIRON["locked"]; ki = split(ENVIRON["icons"], im, "|"); for (i = 1; i <= ki; i++) {e = index(im[i], "="); ico[substr(im[i], 1, e - 1)] = substr(im[i], e + 1)}; k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
-    $1 == "C" {app[$2] = 1; next}
+    $1 == "C" {app[$2] = $3; next}
+    $1 == "N" {split($0, q, "\t"); an[$2] = q[2]; ai[$2] = q[3]; next}
     {pid = $2; c = $0; sub(/^[A-Z] [0-9]+ \(/, "", c); r = c; sub(/\) [^)]*$/, "", c); sub(/^.*\) /, "", r); split(r, f, " ")
      if ($1 == "A") {t[pid] = f[12] + f[13]; next}
-     if (f[1] == "Z" || pid in app) next
+     if (f[1] == "Z" || (pid in app) != (want == "apps")) next
      v = (pid in t) ? (f[12] + f[13] - t[pid]) * 100 / (hz * 0.5 * n) : 0; mb = f[22] * pg / 1048576
-     w = (c in nm ? nm[c] : c); if (!(w in cnt)) order[++no] = w; cnt[w]++; if (c ~ lk_re) lk[w] = "locked"; ids[w] = (w in ids ? ids[w] "," : "") pid; if (!(w in ic)) ic[w] = (c in ico ? ico[c] : c); cpu[w] += v; mem[w] += mb}
-    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\t%s\t%s\n", ids[w], w, (cnt[w] > 1 ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w])), lk[w], ic[w]}}' |
+     if (want == "apps") {a = app[pid]; w = (an[a] != "" ? an[a] : a); x = (ai[a] != "" ? ai[a] : a)}
+     else {w = (c in nm ? nm[c] : c); x = (c in ico ? ico[c] : c); if (c ~ lk_re) lk[w] = "locked"}
+     if (!(w in cnt)) order[++no] = w; cnt[w]++; ids[w] = (w in ids ? ids[w] "," : "") pid; if (!(w in ic)) ic[w] = x; cpu[w] += v; mem[w] += mb}
+    END {for (i = 1; i <= no; i++) {w = order[i]; printf "%s\t%s%s\t%.1f %%\t%s\t%s\t%s\n", ids[w], w, (cnt[w] > 1 && want != "apps" ? " (" cnt[w] ")" : ""), (cpu[w] > 100 ? 100 : cpu[w]), (mem[w] >= 1024 ? sprintf("%.1f GB", mem[w] / 1024) : sprintf("%.1f MB", mem[w])), lk[w], ic[w]}}' |
     sort -t$'\t' -k2,2 -k1,1n
 }
 
-end_task() { # PID[,PID...] (a merged row): each only a process of this user, never the session core; TERM, then KILL after 3 s like Windows
-  local p rc=0; for p in ${1//,/ }; do end_one "$p" || rc=$?; done; return $rc
-}
-end_one() {
-  local pid=${1:-} c
-  [[ $pid =~ ^[1-9][0-9]{0,9}$ ]] || { echo "bad process id: $pid" >&2; return 2; }
-  ((EUID != 0)) && [[ -O /proc/$pid ]] || { echo "not your process: $pid" >&2; return 1; }
-  c=$(cat "/proc/$pid/comm" 2>/dev/null)
-  [[ $c =~ $locked ]] && { echo "Ending $c would sign you out or break the desktop." >&2; return 1; }
-  kill -TERM -- "$pid" || return 1
-  for _ in 1 2 3 4 5 6; do kill -0 -- "$pid" 2>/dev/null || return 0; sleep 0.5; done
-  kill -KILL -- "$pid" 2>/dev/null; return 0
+# End task, like Windows: PID[,PID...] (a whole app or merged row), each only a process of this user and never the session core;
+# TERM to all of them at once, then KILL whatever is still running after 3 s (one TERM alone let apps that hide in the tray live on)
+end_task() {
+  local p c pids=() rc=0
+  for p in ${1//,/ }; do
+    [[ $p =~ ^[1-9][0-9]{0,9}$ ]] || { echo "bad process id: $p" >&2; return 2; }
+    ((EUID != 0)) && [[ -O /proc/$p ]] || { echo "not your process: $p" >&2; rc=1; continue; }
+    c=$(cat "/proc/$p/comm" 2>/dev/null)
+    [[ $c =~ $locked ]] && { echo "Ending $c would sign you out or break the desktop." >&2; rc=1; continue; }
+    pids+=("$p")
+  done
+  ((${#pids[@]})) || return $rc
+  kill -TERM -- "${pids[@]}" 2>/dev/null
+  for _ in 1 2 3 4 5 6; do
+    p=(); for c in "${pids[@]}"; do kill -0 -- "$c" 2>/dev/null && p+=("$c"); done
+    ((${#p[@]})) || return $rc; sleep 0.5
+  done
+  kill -KILL -- "${p[@]}" 2>/dev/null; return $rc
 }
 
 case ${1:-} in
@@ -188,6 +221,7 @@ case ${1:-} in
   service) service "${2:-}" "${3:-}" ;;
   device) device ;;
   processes) processes ;;
+  apps) processes apps ;;
   end) end_task "${2:-}" ;;
-  *) echo "usage: mountain-taskmanager startup|startup-set FILE on|off|users|services|service VERB UNIT|device|processes|end PID" >&2; exit 2 ;;
+  *) echo "usage: mountain-taskmanager startup|startup-set FILE on|off|users|services|service VERB UNIT|device|processes|apps|end PID" >&2; exit 2 ;;
 esac

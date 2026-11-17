@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Brave
+Exec=flatpak run com.brave.Browser
+Icon=com.brave.Browser

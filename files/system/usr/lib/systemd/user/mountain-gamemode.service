@@ -1,0 +1,15 @@
+[Unit]
+Description=Mountain Game Mode (full power while a game runs, your power mode back after)
+After=graphical-session.target
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/libexec/mountain-gamemode watch
+Restart=on-failure
+RestartSec=10
+Nice=19
+MemoryHigh=20M
+CPUQuota=2%
+
+[Install]
+WantedBy=default.target

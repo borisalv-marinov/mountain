@@ -85,6 +85,12 @@ ok '[[ ! -e $H/Documents/ez/bad.txt && -e $D/mountain/quarantine/bad.txt ]] && !
 mkdir -p "$H/Documents/ew"; for i in 1 2 3 4 5; do echo fine$i > "$H/Documents/ew/f$i.txt"; done
 rl; pc "$H"/Documents/ew/*; echo EVIL > "$H/Documents/ew/late.txt"; rl; pc "$H/Documents/ew/late.txt"
 ok '[[ ! -e $H/Documents/ew/late.txt && -e $D/mountain/quarantine/late.txt ]]' "a threat arriving in the next burst of the same extraction is still scanned"
+# v7.2: a new folder whose files arrive in small bursts (4, then 2) is still an extraction: the EICAR-as-.txt hole
+mkdir -p "$H/Documents/ev"; for i in 1 2 3 4; do echo fine$i > "$H/Documents/ev/f$i.txt"; done
+rl; pc "$H/Documents/ev"; echo fine5 > "$H/Documents/ev/f5.txt"; echo EVIL > "$H/Documents/ev/late.txt"; rl; pc "$H/Documents/ev/f5.txt" "$H/Documents/ev/late.txt"
+ok '[[ ! -e $H/Documents/ev/late.txt && -e $D/mountain/quarantine/late.txt ]]' "a threat named .txt in a new folder is caught even when the folder fills in small bursts"
+mkdir -p "$H/Documents/eu/sub"; rl; pc "$H/Documents/eu"; echo EVIL > "$H/Documents/eu/sub/deep.txt"; rl; pc "$H/Documents/eu/sub/deep.txt"
+ok '[[ ! -e $H/Documents/eu/sub/deep.txt && -e $D/mountain/quarantine/deep.txt ]]' "...and in a subfolder of the new folder"
 mkdir -p "$H/Documents/proj/.git"; for i in 1 2 3 4 5 6; do echo fine$i > "$H/Documents/proj/f$i.txt"; done
 rl; pc "$H"/Documents/proj/*.txt
 ok '[[ ! -e $B/systemd-run.log && ! -e $B/notify-send.log ]]' "a git clone / project copy (6 files under a .git folder) is not an extracted archive: no scan, no notice"

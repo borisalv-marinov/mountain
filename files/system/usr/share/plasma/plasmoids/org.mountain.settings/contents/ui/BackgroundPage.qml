@@ -119,7 +119,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.margins: 12
             spacing: 14
-            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "preferences-desktop-wallpaper" }
+            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "edit-image-symbolic"; fallback: "edit-image"; isMask: true; color: Kirigami.Theme.textColor }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1
@@ -262,7 +262,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.margins: 12
             spacing: 14
-            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "zoom-fit-best" }
+            Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "zoom-fit-best-symbolic"; fallback: "zoom-fit-best"; isMask: true; color: Kirigami.Theme.textColor }
             GText { Layout.fillWidth: true; text: "Choose a fit for your desktop image" }
             Flow {
                 Layout.preferredWidth: Math.min(5 * 78, bg.width * 0.6)

@@ -65,6 +65,9 @@ rsn_pairwise=CCMP
 wpa_passphrase=$PSK
 EOF
   bg hostapd hostapd $D/hostapd.conf
+  # the fake radio sometimes refuses the channel right after leaving NetworkManager ("Could not set channel for kernel
+  # driver"): this is test hardware, so reset the radio and start the access point once more
+  waitfor 10 grep -q AP-ENABLED $LOG || { pkill -x hostapd; ip link set "$AP" down; sleep 3; ip link set "$AP" up; bg hostapd hostapd $D/hostapd.conf; }
   echo "$STA" >$D/sta
   # NM must list the AP; rescan until it does (bounded)
   waitfor 40 bash -c "nmcli device wifi rescan ifname $STA >/dev/null 2>&1; nmcli -t -f SSID device wifi list ifname $STA | grep -qx $SSID" \

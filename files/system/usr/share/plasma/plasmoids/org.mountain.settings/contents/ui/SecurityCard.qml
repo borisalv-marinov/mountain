@@ -25,7 +25,7 @@ GlassCard {
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
             Layout.alignment: Qt.AlignTop
-            source: card.iconName
+            source: card.iconName + "-symbolic"; fallback: card.iconName
             isMask: true // monochrome, like every other icon on the page
             color: Kirigami.Theme.textColor
         }

@@ -31,6 +31,7 @@
     <Include>
       <Filename>org.mozilla.firefox.desktop</Filename>
       <Filename>com.microsoft.Edge.desktop</Filename>
+      <Filename>com.brave.Browser.desktop</Filename>
     </Include>
   </Menu>
   <Menu>

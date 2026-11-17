@@ -66,9 +66,9 @@ status() {
   status_av | grep '^dl_watch='
   tail -8 "$state/scan-history" 2>/dev/null | sed 's/^/av_history=/'
   find "$quarantine" -maxdepth 1 -type f -printf 'av_q=%f\n' 2>/dev/null | head -20
-  v=0; for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge org.mozilla.firefox org.onlyoffice.desktopeditors; do
+  v=0; for a in com.discordapp.Discord dev.vencord.Vesktop com.microsoft.Edge com.brave.Browser org.mozilla.firefox org.onlyoffice.desktopeditors; do
     grep -qs '!home' "/var/lib/flatpak/overrides/$a" && v=$((v+1))
-  done; echo "flatpak_tight=$v/5"
+  done; echo "flatpak_tight=$v/6"
   v=$(mokutil --sb-state 2>/dev/null | head -1); case $v in *enabled*) echo sb=on ;; *disabled*) echo sb=off ;; *) echo sb=unsupported ;; esac
   [[ -e /sys/class/tpm/tpm0 ]] && echo tpm=yes || echo tpm=no
   echo "selinux=$(getenforce 2>/dev/null || echo unknown)"

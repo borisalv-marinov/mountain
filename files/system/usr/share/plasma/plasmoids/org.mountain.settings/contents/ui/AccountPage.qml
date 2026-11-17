@@ -22,7 +22,7 @@ ColumnLayout {
         SettingRow {
             text: "Change your password"
             description: "Opens a window where you type the old and new password"
-            iconName: "preferences-desktop-user-password"
+            iconName: "lock"
             divider: true
             onClicked: app.run("konsole -e passwd")
         }

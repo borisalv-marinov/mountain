@@ -903,7 +903,7 @@ PY
     grep -q '^actionsFace=Face-' "$f" || fail "Task Manager page shows Edit Page: $f"
   done
   grep -q 'gpu/all/usage\|gpu_usage' /usr/share/plasma-systemmonitor/mountain-*.page && fail "Task Manager uses GPU sensors that are missing without a GPU"
-  for f in 1-processes 3-apphistory 6-details; do
+  for f in 3-apphistory 6-details; do # v7.2: Apps is Mountain's list (CPU as a share of all cores in mountain-taskmanager)
     assert_grep '"usage":"textScaled"' /usr/share/plasma-systemmonitor/mountain-$f.page
   done
   d=$(mktemp -d); mkdir -p "$d/autostart"; printf '[Desktop Entry]\nName=T\nExec=true\n' > "$d/autostart/Тест App.desktop"
@@ -982,7 +982,6 @@ check_phase34() { # v7: frosted glass, native Settings pages, Security, This PC
   assert_grep 'open-this-pc' /usr/libexec/mountain-explorer
   assert_grep 'mtUnits(model.display)' /usr/share/ksysguard/sensorfaces/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
   assert_grep 'baloorunner=Search Indexer' /usr/libexec/mountain-taskmanager
-  assert_grep '^showToolBar=false' /usr/share/plasma-systemmonitor/mountain-1-processes.page
   # v7 wave 4: Task Manager units/names/rows, toasts follow Plasma's timeout, first-boot, frameless flyouts, icons
   q=/usr/share/ksysguard/sensorfaces
   assert_grep 'no "Background Services" row' $q/org.kde.ksysguard.applicationstable/contents/ui/ApplicationsTableView.qml
@@ -1059,6 +1058,67 @@ PY2
   python3 -c 'import re,sys; g=re.findall(r"<g id=.itemview-(?:toggled|pressed)[^>]*>.*?</g>", open(sys.argv[1]).read()); assert g and not [x for x in g if "#2A6CC4" in x]' $X/usr/share/Kvantum/BlackGlass/BlackGlass.svg || fail "Kvantum selected rows still solid blue"
   assert_grep 'Kirigami.Theme.highlightColor: Qt.rgba(1, 1, 1, 0.10)' $X/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
   assert_grep 'fallback: "application-x-executable"' $X/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
+  true
+}
+
+check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps, one icon style, Brave, language list, Game Mode, protection
+  local X=${MOUNTAIN_ROOT:-} f p tm=${MOUNTAIN_ROOT:-}/usr/share/plasma-systemmonitor st=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  # File Explorer "0 B free": Dolphin starts with the library that answers statvfs() on the read-only system image with the writable disk (files/scripts/explorer-free-space.sh)
+  if [[ -z $X ]]; then
+    assert_grep 'LD_PRELOAD=/usr/lib64/mountain-freespace.so' /usr/bin/dolphin
+    [[ -x /usr/libexec/mountain-dolphin/dolphin ]] || fail "File Explorer's own binary missing"
+    python3 -c "import ctypes, os; l = ctypes.CDLL('/usr/lib64/mountain-freespace.so'); b = ctypes.create_string_buffer(256); assert l.statvfs(b'/tmp', b) == 0 and ctypes.c_ulong.from_buffer(b, 16).value == os.statvfs('/tmp').f_blocks" ||
+      fail "File Explorer's free-space library does not pass statvfs() through"
+  else
+    assert_grep 'real("/var", &var)' files/scripts/explorer-free-space.sh
+  fi
+  # Task Manager: Apps is Mountain's list (End task = polite quit, then forced after 3 s), App history has no Quit, no empty columns
+  assert_grep '^mode=apps$' $tm/mountain-1-processes.page
+  grep -q 'applicationstable' $tm/mountain-1-processes.page && fail "Task Manager Apps still KDE's table (Quit needed two clicks)"
+  assert_grep '^actionsFace=Face-880000000010$' $tm/mountain-3-apphistory.page
+  grep -q 'netInbound' $tm/mountain-3-apphistory.page && fail "App history still has the always-empty Download/Upload columns"
+  assert_grep 'kill -KILL -- "${p\[@\]}"' $X/usr/libexec/mountain-taskmanager
+  assert_grep '  apps) processes apps ;;' $X/usr/libexec/mountain-taskmanager
+  assert_grep 'readonly property bool procs: mode === "processes" || mode === "apps"' $X/usr/share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml
+  # Startup apps: installed Steam, Discord... are listed (Disabled) like Windows, so the tab is never empty on a real PC
+  assert_grep '^offers="steam.desktop com.valvesoftware.Steam.desktop com.discordapp.Discord.desktop' $X/usr/libexec/mountain-taskmanager
+  # one icon style: every Task Manager tab and every Settings icon is a symbolic (black and white) icon
+  for f in $tm/mountain-*.page; do grep -q '^icon=.*-symbolic$' "$f" || fail "Task Manager tab icon is not black and white: $f"; done
+  assert_grep 'source: row.iconName + "-symbolic"; fallback: row.iconName; isMask: true' $st/SettingRow.qml
+  grep -q '"applications-all"' $st/main.qml && fail "Settings Apps icon is the solid square again"
+  f=$(grep -rhoE '(i|icon|iconName): "[a-z0-9-]+"' $st | sed -E 's/.*"(.*)"/\1/' | sort -u)
+  if [[ -z $X && -d /usr/share/icons/breeze/actions ]]; then # in the image: each name has a symbolic icon in the installed themes (else it falls back to colour or a square)
+    for p in $f; do find /usr/share/icons -name "$p-symbolic.svg*" -print -quit | grep -q . || fail "no black-and-white icon for Settings: $p"; done
+  fi
+  # Brave, set up like Edge: installed on first boot, in Start > Browsers and the Desktop Browsers folder, tight sandbox
+  assert_grep '^Exec=flatpak run com.brave.Browser$' $X/etc/skel/Desktop/Browsers/Brave.desktop
+  assert_grep '<Filename>com.brave.Browser.desktop</Filename>' $X/etc/xdg/menus/applications-merged/mountain.menu
+  assert_grep 'com.brave.Browser org.mozilla.firefox; do tight' $X/usr/libexec/mountain-flatpak-policy
+  [[ -n $X ]] || assert_grep com.brave.Browser /usr/share/bluebuild/default-flatpaks/configuration.yaml
+  # language button: a click opens the Windows list (current language marked, More keyboard settings), it never just switches
+  # Mountain's own tray applet: Plasma's QML is compiled into its plugin, so a replaced file on disk was ignored
+  f=$X/usr/share/plasma/plasmoids/org.mountain.keyboardlayout/contents/ui/main.qml
+  assert_grep '"X-Plasma-NotificationArea": "true"' $X/usr/share/plasma/plasmoids/org.mountain.keyboardlayout/metadata.json
+  assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/mountain-keyboardlayout.js
+  [[ -e $X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout ]] && fail "a dead override of Plasma's language button is shipped"
+  assert_grep 'onClicked: list.visible = !wasOpen' $f # the list is the applet's own pop-up; the tray forwards each click too, so it toggles by what was open at the press
+  assert_grep 'PlasmaCore.Dialog {' $f
+  assert_grep 'height: (kbd.layoutsList.length + 1) \* rowHeight' $f # the list opens above the button, not behind the taskbar
+  assert_grep 'text: "More keyboard settings"' $f
+  grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
+  [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"
+  # accounts from before v7.1 get Mountain's taskbar space (right-click = Task Manager) once, before the taskbar loads
+  assert_grep 's/^plugin=org\\.kde\\.plasma\\.panelspacer\$/plugin=org.mountain.taskbarspace/' $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh
+  # taskbar alignment moves Mountain's taskbar space too (it only moved Plasma's spacer)
+  grep -qF "x.type === 'org.mountain.taskbarspace'" $X/usr/libexec/mountain-personalize || fail "taskbar alignment ignores Mountain's taskbar space"
+  # Game Mode: on by default, a light user service (one pgrep every 5 s), a switch in Settings > Gaming
+  [[ -x $X/usr/libexec/mountain-gamemode ]] || fail "mountain-gamemode not executable"
+  assert_grep '^ExecStart=/usr/libexec/mountain-gamemode watch$' $X/usr/lib/systemd/user/mountain-gamemode.service
+  assert_grep 'cmd: "/usr/libexec/mountain-gamemode toggle"' $st/main.qml
+  [[ -n $X ]] || [[ -e /etc/systemd/user/default.target.wants/mountain-gamemode.service || -e /usr/lib/systemd/user/default.target.wants/mountain-gamemode.service ]] || fail "Game Mode service not enabled"
+  # Active Protection: a new folder is an extraction for 2 minutes (the EICAR-as-.txt hole)
+  grep -qF 'printf "$now\t%p\n" >> "$pdir/xdirs"' $X/usr/libexec/mountain-protect || fail "Active Protection: new folders are not treated as extractions"
   true
 }
 

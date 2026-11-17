@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Game Mode, like Windows: full power (the "Best performance" power mode) while a game runs, your own power mode back
+# when it ends. On by default; Settings > Gaming > Game Mode turns it off or on.
+#   mountain-gamemode watch | on | off | toggle | status
+# A game = a Steam game (its "reaper SteamLaunch AppId=" wrapper), or Wine/Proton (Heroic, Lutris) or gamescope running.
+set -uo pipefail
+conf=${XDG_CONFIG_HOME:-$HOME/.config}/mountain-gamemode # "off" when you turned it off
+saved=${XDG_RUNTIME_DIR:-/tmp}/mountain-gamemode.saved     # your power mode from before the game
+ppc=${MOUNTAIN_PPC:-powerprofilesctl}
+enabled() { [[ $(cat "$conf" 2>/dev/null) != off ]]; }
+playing() { pgrep -u "$UID" -f 'SteamLaunch AppId=[1-9]' >/dev/null || pgrep -u "$UID" -x '(wineserver|gamescope|gamescope-wl)' >/dev/null; }
+restore() { [[ -f $saved ]] || return 0; $ppc set "$(cat "$saved")" 2>/dev/null || $ppc set balanced; rm -f "$saved"; }
+say() { notify-send -a "Game Mode" -i input-gamepad "Game Mode" "$1" 2>/dev/null || true; }
+
+case ${1:-status} in
+  watch) # every 5 s, one pgrep: light enough to run all the time
+    restore # a watcher that stopped mid-game left full power on
+    while :; do
+      if enabled && playing; then
+        [[ -f $saved ]] || { m=$($ppc get 2>/dev/null) && [[ -n $m ]] && echo "$m" > "$saved" && $ppc set performance; }
+      else restore; fi
+      [[ -n ${MOUNTAIN_GAMEMODE_ONCE:-} ]] && break # tests: one round
+      sleep 5
+    done ;;
+  on) mkdir -p "${conf%/*}"; echo on > "$conf"; say "On: full power while you play" ;;
+  off) mkdir -p "${conf%/*}"; echo off > "$conf"; restore; say "Off" ;;
+  toggle) if enabled; then "$0" off; else "$0" on; fi ;;
+  status) enabled && echo gamemode=on || echo gamemode=off; [[ -f $saved ]] && echo playing=yes || echo playing=no ;;
+  *) echo "usage: mountain-gamemode watch|on|off|toggle|status" >&2; exit 2 ;;
+esac
