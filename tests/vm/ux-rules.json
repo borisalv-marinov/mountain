@@ -9,5 +9,6 @@
   "kbd-switch": {"must_not_read": ["traditional phonetic"]},
   "kbd-flyout": {"must_read": ["ENG", "Bulgarian", "More keyboard settings"], "must_not_read": ["traditional phonetic"]},
   "start-search-.*|search-settings|ux-search-.*": {"ocr_quality": true},
-  "every-.*": {"dark_window": true}
+  "every-(?!com[.]brave[.]Browser$).*": {"dark_window": true},
+  "_brave": "Brave's frame is dark; its first-run page is purple web artwork, not the theme"
 }
