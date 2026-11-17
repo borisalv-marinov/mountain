@@ -1,7 +1,7 @@
 /*
     Mountain: the taskbar's language button (ENG / БГ) works like Windows 11: a click opens a list of your languages
     (the current one marked) with "More keyboard settings"; Plasma's own button switched to the next layout on a click.
-    Win+Space and Alt+Shift still switch straight away; the wheel still cycles. Replaces Plasma's keyboardlayout UI file,
+    Win+Space and Alt+Shift still switch straight away; the wheel still cycles. Mountain's own tray applet in place of Plasma's (whose QML is compiled into its plugin, so a replaced file is ignored),
     same model (org.kde.plasma.workspace.keyboardlayout) and same config; tests/check-image.sh checks the imports exist.
     Based on Plasma 6.5 applets/keyboardlayout (Andrey Butirsky). SPDX-License-Identifier: GPL-2.0-or-later
 */

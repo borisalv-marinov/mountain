@@ -560,6 +560,7 @@ jobs:
           sleep 1; QM click $((1020*W/1280)) $((776*H/800)); sleep 2; shot kbd-flyout
           chk "language button: a click opens the list, does not switch" 0 "$KL | awk '/uint32/{print \$2}'" '^0$'
           QM key esc; sleep 1
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true # if that check failed, the later typing stays English
           # Cyrillic names in File Explorer
           R "$(TL 'mkdir -p ~/Документи-тест; cp /usr/share/mountain/wallpaper.png ~/Документи-тест/снимка.png; echo здравей > ~/Документи-тест/бележка.txt')"
           L 'dolphin /home/looktest/Документи-тест'; sleep 7; shot cyrillic-names; K -x dolphin
@@ -877,7 +878,10 @@ jobs:
           KS="$LT WAYLAND_DISPLAY=wayland-0 kscreen-doctor"
           OUT=$(R "$KS -o" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
           R "$KS output.$OUT.mode.1920x1080@60" >/dev/null 2>&1; sleep 6; shot fhd-desktop
-          L dolphin; sleep 7; shot fhd-file-explorer; K -x dolphin
+          L env QT_LOGGING_RULES='kf.kio.*=true;org.kde.dolphin*=true;kf.solid*=true' dolphin; sleep 7; shot fhd-file-explorer
+          # 0 B free hunt: what File Explorer sees (its mounts, every mount's free space) and its own log of the free-space lookup
+          R "p=\$(pgrep -u looktest -x dolphin | head -1); echo pid=\$p; cat /proc/\$p/mountinfo; echo; for m in / /var /etc /sysroot /var/home /var/home/looktest /home/looktest; do stat -f -c '%n type=%T avail=%a blocks=%b bsize=%S' \$m; stat -c '%n st_dev=%D' \$m; done; $LT journalctl --user --since '-1min' --no-pager -o cat | grep -iE 'space|free|mount|statfs|storage|solid' | tail -60" > explorer-space-log.txt 2>&1
+          K -x dolphin
           QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot fhd-menu-context; QM key esc
           R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
@@ -1004,7 +1008,7 @@ jobs:
           # one scan at a time: the next folder's check waits behind this scan (the VM loads the full ClamAV database per scan, slowly)
           for _ in $(seq 60); do R "$LT journalctl --user -u mountain-protect --since '-5min' --no-pager -o cat | grep -A1 'checking 6 file' | grep -q '^result:'" && break; sleep 3; done
           R "rm -rf ~looktest/Documents/ext"
-          R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d | sudo -u looktest tee eicar.txt >/dev/null"; apwait /var/home/looktest/Documents/ext2/eicar.txt # a real path: ~looktest would expand on the runner (no such user) and stay literal
+          R "sudo -u looktest mkdir -p ~looktest/Documents/ext2; cd ~looktest/Documents/ext2; for i in 1 2 3 4 5; do echo note\$i | sudo -u looktest tee f\$i.txt >/dev/null; done; { echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d; echo; } | sudo -u looktest tee eicar.txt >/dev/null"; apwait /var/home/looktest/Documents/ext2/eicar.txt # a real path: ~looktest would expand on the runner (no such user) and stay literal # EICAR plus a newline: the plain EICAR bytes were restored from quarantine above, so they are allowed now (on purpose)
           chk "Active Protection: EICAR named .txt in an extracted folder is caught" 0 "test ! -e ~looktest/Documents/ext2/eicar.txt && ls ~looktest/.local/share/mountain/quarantine | grep -q eicar && echo caught" '^caught$'
           R "$LT journalctl --user -u mountain-protect --since '-8min' --no-pager -o short-precise; $LT systemctl --user status mountain-protect --no-pager -l; ls -la ~looktest/Documents/ext2 ~looktest/.local/share/mountain/quarantine" > protect-extract-log.txt 2>&1 # why, if the check above fails
           R "rm -rf ~looktest/Documents/ext2"

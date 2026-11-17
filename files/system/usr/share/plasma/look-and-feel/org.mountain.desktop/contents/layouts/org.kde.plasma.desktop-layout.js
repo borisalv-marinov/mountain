@@ -60,10 +60,13 @@ const list = key => String(tray.readConfig(key, "")).split(",").filter(s => s);
 // The tray already enabled its default applets while it was added, the bell among them: take the bell out
 // (it sits on the taskbar right of the clock) and keep it "known" so the tray never enables it again.
 const bellId = "org.kde.plasma.notifications";
-const extra = list("extraItems").filter(id => id !== bellId);
-stock.forEach(id => { if (extra.indexOf(id) < 0) extra.push(id); });
+// Plasma's language button switches on a click; Mountain's opens the Windows language list (same script in
+// shells/org.kde.plasma.desktop/contents/updates/mountain-keyboardlayout.js for accounts made before v7.2)
+const kdeKbd = "org.kde.plasma.keyboardlayout", mtKbd = "org.mountain.keyboardlayout";
+const extra = list("extraItems").filter(id => id !== bellId && id !== kdeKbd);
+stock.concat([mtKbd]).forEach(id => { if (extra.indexOf(id) < 0) extra.push(id); });
 const knownItems = list("knownItems");
-if (knownItems.indexOf(bellId) < 0) knownItems.push(bellId);
+[bellId, kdeKbd, mtKbd].forEach(id => { if (knownItems.indexOf(id) < 0) knownItems.push(id); });
 tray.writeConfig("extraItems", extra);
 tray.writeConfig("knownItems", knownItems);
 tray.writeConfig("hiddenItems", stock);

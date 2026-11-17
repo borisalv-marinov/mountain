@@ -1087,7 +1087,12 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   assert_grep 'com.brave.Browser org.mozilla.firefox; do tight' $X/usr/libexec/mountain-flatpak-policy
   [[ -n $X ]] || assert_grep com.brave.Browser /usr/share/bluebuild/default-flatpaks/configuration.yaml
   # language button: a click opens the Windows list (current language marked, More keyboard settings), it never just switches
-  f=$X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout/contents/ui/main.qml
+  # Mountain's own tray applet: Plasma's QML is compiled into its plugin, so a replaced file on disk was ignored
+  f=$X/usr/share/plasma/plasmoids/org.mountain.keyboardlayout/contents/ui/main.qml
+  assert_grep '"X-Plasma-NotificationArea": "true"' $X/usr/share/plasma/plasmoids/org.mountain.keyboardlayout/metadata.json
+  assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/look-and-feel/org.mountain.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+  assert_grep 'mtKbd = "org.mountain.keyboardlayout"' $X/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/mountain-keyboardlayout.js
+  [[ -e $X/usr/share/plasma/plasmoids/org.kde.plasma.keyboardlayout ]] && fail "a dead override of Plasma's language button is shipped"
   assert_grep 'onClicked: root.expanded = !root.expanded' $f
   assert_grep 'text: "More keyboard settings"' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
