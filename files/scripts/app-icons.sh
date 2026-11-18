@@ -26,7 +26,7 @@ done
 # One icon style: Photos (Gwenview), App Store (Bazaar) and Welcome come from We10X's own set (first match); brand apps keep theirs.
 pick() { # new icon name, candidate names...
   local n=$1 c s; shift
-  [[ $n == org.kde.gwenview || $n == gwenview || $n == io.github.* ]] || { find /usr/share/icons/We10X-dark -name "$n.*" -xtype f -print -quit | grep -q . && return 0; } # We10X already has it: keep
+  [[ $n == org.kde.gwenview || $n == gwenview || $n == io.github.* || $n == org.gnome.DiskUtility ]] || { find /usr/share/icons/We10X-dark -name "$n.*" -xtype f -print -quit | grep -q . && return 0; } # We10X already has it: keep
   for c; do s=$(find /usr/share/icons/We10X-dark \( -name "$c.svg" -o -name "$c.png" \) -xtype f -print -quit); [[ -n $s ]] && break; done
   [[ -n $s ]] || { echo "app-icons: no We10X icon for $n, keeping the default"; return 0; }
   ln -sf "$s" "${s%/*}/$n.${s##*.}"
@@ -35,6 +35,7 @@ pick org.kde.gwenview multimedia-photo-manager photos gwenview image-x-generic
 pick gwenview multimedia-photo-manager photos image-x-generic
 pick io.github.kolunmi.Bazaar org.gnome.Software system-software-install softwarecenter
 pick io.github.ublue_os.yafti_gtk help-about system-help
+pick org.gnome.DiskUtility drive-harddisk gnome-disks harddrive
 # System apps from the one We10X set, whatever the launcher asks for (Breeze and Papirus names fall back to We10X's own)
 pick accessories-calculator calculator accessories-calculator
 pick utilities-terminal terminal utilities-terminal

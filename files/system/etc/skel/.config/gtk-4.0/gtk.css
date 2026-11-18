@@ -1,0 +1,14 @@
+/* mountain-gtk: libadwaita apps use Mountain's own dark (the BlackGlass colour scheme: window #121212, buttons #1e1e1e), not Adwaita grey */
+@define-color window_bg_color #121212;
+@define-color view_bg_color #121212;
+@define-color headerbar_bg_color #121212;
+@define-color headerbar_backdrop_color #121212;
+@define-color sidebar_bg_color #121212;
+@define-color secondary_sidebar_bg_color #121212;
+@define-color dialog_bg_color #121212;
+@define-color card_bg_color #1e1e1e;
+@define-color popover_bg_color #1e1e1e;
+/* Windows-style caption buttons: flat 46x32 rectangles like the window decoration, red close on hover */
+windowcontrols button { border-radius: 0; min-width: 46px; min-height: 32px; margin: 0; padding: 0; background: none; box-shadow: none; }
+windowcontrols button:hover { background: alpha(white, 0.1); }
+windowcontrols button.close:hover { background: #c42b1c; }

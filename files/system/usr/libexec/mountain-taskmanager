@@ -167,10 +167,12 @@ processes() { # [apps]: background processes (default), or the Apps table: proce
   for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
   ((${#own[@]})) || return 0
   a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
-  # pid and app id from the scope Plasma starts each app in: app-[flatpak-]ID-RANDOM.scope ('-' in ID is \x2d);
-  # autostart services (app-ID@autostart.service) stay background processes
-  cg=$(grep -H '/app-[^/]*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null |
-    sed -E 's|.*/([0-9]+)/cgroup:.*/app-([^/]*)\.scope$|\1 \2|; s/ flatpak-/ /; s/ (.*)-[^-]*$/ \1/; s/[\]x2d/-/g')
+  # pid and app id from the unit Plasma starts each app in: app-[flatpak-]ID-RANDOM.scope, or (D-Bus-activated apps such as
+  # Dolphin from "Open folder") [app-]dbus[\]x2d:1.N[\]x2dID@N.service; '-' in ID is [\]x2d. Autostart services (app-ID@autostart.service)
+  # stay background processes
+  cg=$(grep -HE '/app-[^/]*\.scope$|/(app-)?dbus[\]x2d:[0-9.]+[\]x2d[^/]*@[0-9]+\.service$' "${own[@]/%//cgroup}" 2>/dev/null |
+    sed -E '/dbus[\]x2d:/{s|.*/([0-9]+)/cgroup:.*/(app-)?dbus[\]x2d:[0-9.]+[\]x2d([^/]*)@[0-9]+\.service$|\1 \3|; s/[\]x2d/-/g; b;}
+      s|.*/([0-9]+)/cgroup:.*/app-([^/]*)\.scope$|\1 \2|; s/ flatpak-/ /; s/ (.*)-[^-]*$/ \1/; s/[\]x2d/-/g')
   if [[ $want == apps ]]; then # app names and icons from their launchers, like Windows
     while read -r id; do
       [[ -n $id ]] || continue

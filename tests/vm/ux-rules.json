@@ -10,5 +10,8 @@
   "kbd-flyout": {"must_read": ["ENG", "Bulgarian", "More keyboard settings"], "must_not_read": ["traditional phonetic"]},
   "start-search-.*|search-settings|ux-search-.*": {"ocr_quality": true},
   "every-(?!com[.]brave[.]Browser$).*": {"dark_window": true},
+  "every-(io[.]github[.]kolunmi[.]Bazaar|net[.]lutris[.]Lutris|org[.]gnome[.]DiskUtility|io[.]github[.]ublue_os[.]yafti_gtk)": {"dark_window": 0.12},
+  "notification-stack-expired": {"must_not_read": ["Test notification"]},
+  "toast-pointer-away": {"must_not_read": ["Pointer toast test"]},
   "_brave": "Brave's frame is dark; its first-run page is purple web artwork, not the theme"
 }

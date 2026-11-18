@@ -41,7 +41,7 @@ PlasmoidItem {
                 // Mountain: Task Manager
                 text: i18n("Task Manager")
                 icon: "utilities-system-monitor"
-                onClicked: root.run("plasma-systemmonitor")
+                onClicked: root.run("kstart --application org.kde.plasma-systemmonitor") // an app scope, so it is listed under Apps
             }
             PlasmaExtras.MenuItem { separator: true }
             PlasmaExtras.MenuItem {

@@ -34,6 +34,8 @@ RowLayout {
     GText {
         Layout.fillWidth: true
         text: parent.title
+        Accessible.role: Accessible.Heading // a plain Text is not reliably in the accessibility tree; screen readers and the VM test read the page title here
+        Accessible.name: text
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }

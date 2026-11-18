@@ -1,0 +1,10 @@
+/* mountain-gtk: GTK 3 apps use Mountain's own dark (the BlackGlass colour scheme), same as the GTK 4 file */
+@define-color theme_bg_color #121212;
+@define-color theme_base_color #121212;
+@define-color theme_unfocused_bg_color #121212;
+@define-color theme_unfocused_base_color #121212;
+@define-color insensitive_bg_color #121212;
+headerbar, .titlebar { background: #121212; box-shadow: none; }
+headerbar button.titlebutton { border-radius: 0; min-width: 46px; min-height: 32px; margin: 0; padding: 0; background: none; box-shadow: none; }
+headerbar button.titlebutton:hover { background: alpha(white, 0.1); }
+headerbar button.titlebutton.close:hover { background: #c42b1c; }

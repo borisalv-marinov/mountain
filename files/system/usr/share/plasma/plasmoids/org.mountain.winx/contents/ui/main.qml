@@ -40,7 +40,7 @@ PlasmoidItem {
         { t: "Terminal", k: "i", cmd: "konsole" },
         { t: "Terminal (Admin)", k: "a", cmd: "konsole -e sudo -i" },
         { sep: true },
-        { t: "Task Manager", k: "t", cmd: "plasma-systemmonitor" },
+        { t: "Task Manager", k: "t", cmd: "kstart --application org.kde.plasma-systemmonitor" },
         { t: "Settings", k: "n", cmd: later("plasmawindowed org.mountain.settings") },
         { t: "File Explorer", k: "e", cmd: "dolphin" },
         { t: "Search", k: "s", cmd: "dbus-send --session --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.activateLauncherMenu" },

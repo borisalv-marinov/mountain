@@ -244,7 +244,7 @@ PlasmoidItem {
         PlasmaCore.Action { // Mountain: like right-clicking Start on Windows 11
             text: i18n("Task Manager")
             icon.name: "utilities-system-monitor"
-            onTriggered: executable.exec("plasma-systemmonitor >/dev/null 2>&1 &")
+            onTriggered: executable.exec("kstart --application org.kde.plasma-systemmonitor >/dev/null 2>&1 &")
         },
         PlasmaCore.Action {
             text: i18n("Edit Applications…")

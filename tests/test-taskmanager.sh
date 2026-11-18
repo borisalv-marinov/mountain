@@ -84,6 +84,15 @@ ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB\tlocked\tpreferences-
 ok 'grep -q $'"'"'^108,109	Search Indexer (2)	'"'"' <<<"$L" && ! grep -q baloorunner <<<"$L"' "processes: baloorunner named, merged"
 ok 'grep -q $'"'"'^110	Print Spooler	'"'"' <<<"$L" && grep -q $'"'"'^111	File System Helper	'"'"' <<<"$L" && grep -q $'"'"'^112	Container Helper	'"'"' <<<"$L" && grep -q $'"'"'^113	Active Protection	'"'"' <<<"$L" && grep -q $'"'"'^114	Power Profiles Service	'"'"' <<<"$L" && grep -q $'"'"'^115	Command Shell	'"'"' <<<"$L"' "processes: service helpers named (cupsd, gvfsd, catatonit, inotifywait, tuned-ppd, bash)"
 ok '! grep -q "^105" <<<"$L"' "processes: apps (app scopes) left out"
+# Apps table: scope, flatpak scope, D-Bus-activated service, autostart service (background)
+st 130 firefox 0 10; echo "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-firefox-0123abcd.scope" > "$F/130/cgroup"
+st 131 gwenview 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-flatpak-org.kde.plasma\x2dsystemmonitor-0123abcd.scope' > "$F/131/cgroup"
+st 132 dolphin 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-dbus\x2d:1.23\x2dorg.kde.dolphin@0.service' > "$F/132/cgroup"
+st 133 steam 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-steam@autostart.service' > "$F/133/cgroup"
+A=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash "$S" apps | cut -f1,2)
+ok 'grep -q $'"'"'^130\tfirefox$'"'"' <<<"$A" && grep -q $'"'"'^131\torg.kde.plasma-systemmonitor$'"'"' <<<"$A"' "apps: app scope and flatpak scope listed by app id"
+ok 'grep -q $'"'"'^132\torg.kde.dolphin$'"'"' <<<"$A"' "apps: D-Bus-activated service listed by app id"
+ok '! grep -q "^133" <<<"$A" && MOUNTAIN_PROC=$F bash "$S" processes | grep -q "^133"' "apps: autostart service stays a background process"
 ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
 ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"
 if ((EUID != 0)) && [[ -e /proc/1 && ! -O /proc/1 ]]; then ok '! bash "$S" end 1 2>/dev/null' "end: refuses another user's process"; fi

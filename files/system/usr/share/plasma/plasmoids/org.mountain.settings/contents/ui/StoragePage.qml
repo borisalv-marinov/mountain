@@ -1,15 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Storage: each disk partition with its used and free space (df), and a button that opens File Explorer.
+// Storage: the main disk as "Local Disk (C:)" plus USB and extra drives, with used and free space (df), and a button that opens File Explorer.
 ColumnLayout {
     id: st
     spacing: 10
     property var disks: []
 
     function gb(b) { return b >= 1e12 ? (b / 1e12).toFixed(1) + " TB" : (b / 1e9).toFixed(1) + " GB"; }
-    Component.onCompleted: app.sh("df -B1 --output=source,size,used,avail,target | awk 'NR > 1 && $1 ~ /^\\/dev\\// && !seen[$1]++ { t = $5; for (i = 6; i <= NF; i++) t = t \" \" $i; print $2 \"\\t\" $3 \"\\t\" $4 \"\\t\" t }'", out => {
-        disks = out === "" ? [] : out.split("\n").map(r => { const f = r.split("\t"); return { size: +f[0], used: +f[1], free: +f[2], at: f[3] }; });
+    // C: is the disk holding /var/home (like File Explorer); extra drives are the ones mounted under /run/media, /mnt (D:, E:, ...). /boot, /etc and bind mounts are not drives.
+    Component.onCompleted: app.sh("{ df -B1 --output=size,used,avail /var/home | awk 'NR > 1 { print \"Local Disk (C:)\t\" $1 \"\t\" $2 \"\t\" $3 }'; df -B1 --output=size,used,avail,target | awk 'NR > 1 && $4 ~ \"^/(var/)?(run/media|mnt)/\" && !seen[$1 $2 $4]++ { printf \"%s (%c:)\\t%s\\t%s\\t%s\\n\",($4 ~ \"/media/\" ? \"USB Drive\" : \"Local Disk\"), 68 + n++, $1, $2, $3 }'; }", out => {
+        disks = out === "" ? [] : out.split("\n").map(r => { const f = r.split("\t"); return { name: f[0], size: +f[1], used: +f[2], free: +f[3] }; });
     })
 
     PageTitle { title: "Storage" }
@@ -21,7 +22,7 @@ ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
             padding: 6
-            CardHeader { title: card.modelData.at === "/" || card.modelData.at === "/var" ? "This PC (" + card.modelData.at + ")" : card.modelData.at; subtitle: st.gb(card.modelData.used) + " used of " + st.gb(card.modelData.size) + " · " + st.gb(card.modelData.free) + " free" }
+            CardHeader { title: card.modelData.name; subtitle: st.gb(card.modelData.used) + " used of " + st.gb(card.modelData.size) + " · " + st.gb(card.modelData.free) + " free" }
             Rectangle {
                 Layout.fillWidth: true
                 Layout.leftMargin: 18
