@@ -411,7 +411,7 @@ jobs:
           QM click $((936*W/1280)) $((155*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
           # the Win key toggles Start: it must be open for the All pill steps (an earlier Esc only clears the search; the taskbar menu's Esc leaves Start open)
           sdw() { convert "$(ls shots/*-$1.png | tail -1)" -negate - 2>/dev/null | tesseract - stdout --psm 11 2>/dev/null; } # OCR words of a shot (dark UI: inverted)
-          for s in "start-all-pill-hover:Search for apps:Pinned" "start-all-apps:Search for apps:" "start-back-to-pinned:Pinned:"; do
+          for s in "start-all-pill-hover:for apps:Pinned" "start-all-apps:for apps:" "start-back-to-pinned:Pinned:"; do
             IFS=: read -r sn sw sx <<<"$s"; o=$(sdw "$sn"); ok=PASS
             grep -qi -- "$sw" <<<"$o" || ok=FAIL
             if [ "$sn" = start-all-apps ] && grep -qi 'Pinned' <<<"$o"; then ok=FAIL; fi # the All apps list replaces the pinned grid
@@ -1136,7 +1136,7 @@ jobs:
           nohup setsid python3 /tmp/vtl.py >/dev/null 2>&1 &"
           sleep 2
           OPENH=$(R "ip netns exec attacker bash -c 'for p in 22 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
-          R "pkill -f '[v]tl.py'; rm -f /tmp/vtl.py; firewall-cmd --zone=mountain-home --remove-interface=vatk >/dev/null" || true # back to no zone of its own (the default zone), as at the start
+          R "firewall-cmd --zone=mountain-home --remove-interface=vatk >/dev/null; pkill -f 'python3 /tmp/[v]tl[.]py'; rm -f /tmp/vtl.py" || true # zone first: a pkill pattern matching this shell's own command line killed it before the restore ran (back to the default zone, as at the start)
           BACK=$(R "ip netns exec attacker timeout 1 bash -c '</dev/tcp/10.99.0.1/22' 2>/dev/null && echo 22-open || echo 22-shut")
           [ "$OPENH" = "1714 1716 27036" ] && [ "$BACK" = 22-open ] && r=PASS || r=FAIL; echo "| attack: port scan on the Home profile (only KDE Connect 1714-1764 and Steam 27036 from mountain-home.xml) | $r | open: ${OPENH:-none}; after restore: $BACK |" >> report.md; echo "$r port scan home"
           RTPW=$(openssl rand -hex 12); echo "::add-mask::$RTPW"
@@ -1241,6 +1241,8 @@ jobs:
             t0=$(R "date +%s")
             R "$LT systemd-run --user --quiet -p RemainAfterExit=yes --unit=every-$n gio launch '$f'" >/dev/null 2>&1
             sleep 12; shot "every-$id"
+            # which toolkit Welcome really draws with (it stayed Adwaita grey while libadwaita and GTK 3 apps took Mountain's dark)
+            [ "$id" = io.github.ublue_os.yafti_gtk ] && R "p=\$(pgrep -n -u looktest -f yafti); readlink /proc/\$p/exe; tr '\0' '\n' </proc/\$p/environ | grep -E '^(GTK|ADW|GDK)'; grep -oE 'lib(gtk-3|gtk-4|adwaita-1)[^ ]*' /proc/\$p/maps | sort -u" > perf/yafti-toolkit.txt 2>&1
             # added or activated since the launch (apps started from ssh may open without focus, so 'add' counts too)
             # judge the window of the app launched: class or desktop file equal to its id; else the last window, listed in every-alias.txt
             # (by design some apps open another program's window: Settings in plasmawindowed, Terminal tools in konsole; see EVERY_ALIAS)
@@ -1277,6 +1279,9 @@ jobs:
             echo "-- composefs redirect xattr:"; awk -v h="$h" '/^# file:/{f=substr($0,9)} /redirect/{v=$0; gsub("/","",v); if (index(v,h)) print "  " f}' /tmp/xattr.txt
             echo "-- fsverity measure:"; grep -F "$h" /tmp/fsv.txt | sed 's/^/  /'
             echo "-- object in the ostree repo:"; ls -l /sysroot/ostree/repo/objects/*/$h.file /sysroot/composefs/objects/*/$h 2>&1 | sed 's/^/  /'
+            # the redirect and fsverity reads came back empty: name the library by size, confirmed byte for byte
+            o=$(ls /sysroot/ostree/repo/objects/*/$h.file 2>/dev/null | head -1); sz=$(stat -c %s "$o" 2>/dev/null)
+            [ -n "$sz" ] && { echo "-- /usr files with its size ($sz bytes), = when identical:"; find /usr -xdev -type f -size "${sz}c" 2>/dev/null | head -8 | while read -r u; do cmp -s "$o" "$u" && echo "  = $u" || echo "    $u"; done; }
           done
           echo "== ldd kioworker"; ldd /usr/libexec/kf6/kioworker; echo "== kio plugins"; ls /usr/lib64/qt6/plugins/kf6/kio/
           echo "== journal: kioworker / kf.kio"; journalctl -b --no-pager | grep -iE 'kioworker|kf.kio' | tail -50

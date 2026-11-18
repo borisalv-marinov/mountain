@@ -95,6 +95,9 @@ A=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash "$S" apps 
 ok 'grep -q $'"'"'^130\tfirefox$'"'"' <<<"$A" && grep -q $'"'"'^131\torg.kde.plasma-systemmonitor$'"'"' <<<"$A"' "apps: app scope and flatpak scope listed by app id"
 ok 'grep -q $'"'"'^132\torg.kde.dolphin$'"'"' <<<"$A"' "apps: D-Bus-activated service listed by app id"
 ok 'grep -q $'"'"'^134	org.kde.kate$'"'"' <<<"$A"' "apps: app started from Start or the taskbar (app-ID@UUID.service) listed"
+# Task Manager runs the helper through sh -c, which execs it: the parent is then Task Manager itself, and must stay a row
+A2=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash -c 'mkdir -p "$1/$$"; printf "%s (plasma-systemmo) S 1 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 0 0 100 0\n" $$ > "$1/$$/stat"; echo "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.plasma\x2dsystemmonitor@0123456789abcdef0123456789abcdef.service" > "$1/$$/cgroup"; bash "$2" apps; rm -r "${1:?}/$$"' _ "$F" "$S" | cut -f2)
+ok 'grep -qx org.kde.plasma-systemmonitor <<<"$A2"' "apps: Task Manager itself (the helper's parent) listed"
 ok '! grep -q "^133" <<<"$A" && MOUNTAIN_PROC=$F bash "$S" processes | grep -q "^133"' "apps: autostart service stays a background process"
 ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
 ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"

@@ -14,4 +14,14 @@ sed -i 's/org.mountain.taskbarspace/org.kde.plasma.panelspacer/' "$rc_file"; run
 ok 'grep -qx plugin=org.kde.plasma.panelspacer "$rc_file"' "only once: a spacer added later by the user stays"
 rm -rf "$T/state"; rm -rf "$T/plasmoids/org.mountain.taskbarspace"; run >/dev/null
 ok 'grep -qx plugin=org.kde.plasma.panelspacer "$rc_file"' "nothing changes when Mountain's applet is missing"
+# Desktop right-click menu: Plasma's KDE-only rows off from the first sign-in (no appletsrc yet), once per account
+mkdir -p "$T/bin" "$T/new"; printf '#!/bin/sh\necho "$*" >> "%s/kw.log"\n' "$T" > "$T/bin/kwriteconfig6"; chmod +x "$T/bin/kwriteconfig6"
+runm() { (HOME=$T/new XDG_CONFIG_HOME=$T/new/cfg XDG_STATE_HOME=$T/new/state PATH=$T/bin:$PATH; . "$S") >/dev/null 2>&1; }
+runm
+for k in _logout _lock_screen "desktop edit mode"; do
+  ok 'grep -qF -- "--group RightButton;NoModifier --key $k false" "$T/kw.log"' "desktop menu: $k off at the first sign-in"
+done
+ok '[[ -e $T/new/state/mountain/migrated-desktopmenu ]]' "desktop menu: done marker written"
+: > "$T/kw.log"; runm
+ok '[[ ! -s $T/kw.log ]]' "desktop menu: only once (a later change by the user stays)"
 rm -rf "$T"; exit $rc

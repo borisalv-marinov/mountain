@@ -15,6 +15,10 @@
 @define-color dialog_bg_color #121212;
 @define-color card_bg_color #1e1e1e;
 @define-color popover_bg_color #1e1e1e;
+/* plain GTK 4 apps (no libadwaita, e.g. Welcome) take the theme's compiled greys: set the surfaces themselves, as in gtk-3.0.
+   Not a bare .background: popovers carry it too, and a filled popover node shows square corners */
+window.background { background-color: #121212; }
+.card, .boxed-list { background-color: #1e1e1e; }
 /* Windows-style caption buttons: flat 46x32 rectangles like the window decoration, red close on hover */
 windowcontrols button { border-radius: 0; min-width: 46px; min-height: 32px; margin: 0; padding: 0; background: none; box-shadow: none; }
 windowcontrols button:hover { background: alpha(white, 0.1); }

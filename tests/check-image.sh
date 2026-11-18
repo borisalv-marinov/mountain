@@ -1139,6 +1139,7 @@ check_phase38() { # v7.3 style: one title-bar colour, Disks icon in the one icon
   for v in 3.0 4.0; do assert_grep 'mountain-gtk' $X/etc/skel/.config/gtk-$v/gtk.css; done
   assert_grep '@define-color window_bg_color #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css
   assert_grep 'window-bg-color: #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css # libadwaita 1.6+ reads only the variables
+  assert_grep 'window.background { background-color: #121212; }' $X/etc/skel/.config/gtk-4.0/gtk.css # plain GTK 4 apps (Welcome) ignore the colour names
   assert_grep 'window.background, .background' $X/etc/skel/.config/gtk-3.0/gtk.css # Adwaita GTK 3 hard-codes its greys
   grep -q 'cat "\$g" 2>/dev/null || true; cat "\$t"' $X/usr/libexec/mountain-user-setup || fail "gtk.css must be appended after KDE's @import"
   assert_grep '@define-color theme_bg_color #121212;' $X/etc/skel/.config/gtk-3.0/gtk.css
@@ -1151,7 +1152,7 @@ check_phase38() { # v7.3 style: one title-bar colour, Disks icon in the one icon
 check_phase39() { # v7.3 menus: right-click menus without KDE-only rows (desktop: edit mode, logout screen; File Explorer: disk usage)
   local X=${MOUNTAIN_ROOT:-}
   assert_grep 'RightButton;NoModifier' $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh
-  for k in _logout '"desktop edit mode"'; do assert_grep "$k" $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh; done
+  for k in _logout _lock_screen '"desktop edit mode"'; do assert_grep "$k" $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh; done
   assert_grep '^filelight=false$' $X/etc/xdg/kservicemenurc
   [[ -z $X ]] || { assert_grep 'Филтър' tests/vm/ux-rules.json; } # repo-only
   true
