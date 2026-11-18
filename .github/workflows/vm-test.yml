@@ -1,9 +1,14 @@
 name: vm-test
+run-name: "vm-test${{ inputs.parts && format(' (quick: {0})', inputs.parts) || '' }}"
 on:
   workflow_dispatch:
     inputs:
       tag:
         description: "Image tag to test (empty: newest build of this branch)"
+        default: ""
+        type: string
+      parts:
+        description: "Quick re-check: only these parts (gui apps taskmgr security attack hardware startapps session rollback, space-separated). Empty: everything. A quick run never counts for a merge"
         default: ""
         type: string
   workflow_run: # every successful image build of main (nightlies too) and of the release branch
@@ -27,6 +32,7 @@ jobs:
     env:
       IMG: ${{ matrix.image }}
       BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      PARTS: ${{ inputs.parts }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 # tests/vm: user-view checks (OCR, window census, every Start app)
         with:
@@ -157,6 +163,10 @@ jobs:
             echo "| $1 | $r | \`$ev\` |" >> report.md
             echo "$r $1"
           }
+          # quick re-check (input parts): run only the named parts; setup, perf data, the stability rows and the shutdown always run
+          part() { [ -z "${PARTS// }" ] || [[ " $PARTS " == *" $1 "* ]]; }
+          for p in $PARTS; do case $p in gui|apps|taskmgr|security|attack|hardware|startapps|session|rollback) ;; *) echo "::error::unknown part $p"; exit 1 ;; esac; done
+          [ -z "${PARTS// }" ] || echo "| quick run: only $PARTS (never counts for a merge) | INFO | other parts skipped |" >> report.md
 
           if ! wait_ssh 600; then
             echo "| SSH up within 10 min | FAIL | never came up |" >> report.md
@@ -400,6 +410,26 @@ jobs:
           R "$LT kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false; $LT dbus-send --session --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.kde.screensaver.configure" || true
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
+          # helpers and files more than one part uses (here so a quick run can skip the part that made them)
+          R "echo IyBQcmludHMgZXZlcnkgYWNjZXNzaWJsZSBuYW1lIGluIG9uZSBhcHAncyB3aW5kb3dzIChBVC1TUEkpLCBvbmUgcGVyIGxpbmU6IG5hbWVzLnB5IEFQUC1OQU1FIFtNSU4tTElORVNdCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKd2FudCA9IHN5cy5hcmd2WzFdLmxvd2VyKCkKbmVlZCA9IGludChzeXMuYXJndlsyXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDIgZWxzZSAxCgpkZWYgd2FsayhhLCBkLCBvdXQpOgogICAgaWYgZCA+IDQwIG9yIGxlbihvdXQpID4gMjAwMDA6CiAgICAgICAgcmV0dXJuCiAgICB0cnk6CiAgICAgICAgbiA9IGEuZ2V0X25hbWUoKQogICAgICAgIGsgPSBhLmdldF9jaGlsZF9jb3VudCgpCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIHJldHVybgogICAgaWYgbjoKICAgICAgICBvdXQuYXBwZW5kKG4pCiAgICBmb3IgaSBpbiByYW5nZShtaW4oaywgMjAwMCkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgYyA9IGEuZ2V0X2NoaWxkX2F0X2luZGV4KGkpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgY29udGludWUKICAgICAgICBpZiBjOgogICAgICAgICAgICB3YWxrKGMsIGQgKyAxLCBvdXQpCgpiZXN0ID0gW10KZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIGFwcCBhbmQgd2FudCBpbiAoYXBwLmdldF9uYW1lKCkgb3IgJycpLmxvd2VyKCk6CiAgICAgICAgICAgIG5hbWVzID0gW10KICAgICAgICAgICAgd2FsayhhcHAsIDAsIG5hbWVzKQogICAgICAgICAgICBpZiBsZW4obmFtZXMpID4gbGVuKGJlc3QpOgogICAgICAgICAgICAgICAgYmVzdCA9IG5hbWVzCiAgICBpZiBsZW4oYmVzdCkgPj0gbmVlZDoKICAgICAgICBicmVhawogICAgdGltZS5zbGVlcCgxKQpwcmludCgnXG4nLmpvaW4oYmVzdCkpCg== | base64 -d > /tmp/names.py && chmod 644 /tmp/names.py"
+          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"CAP|\" + w.caption + \"|\" + w.desktopFileName);' > /tmp/caps.js; chmod 644 /tmp/caps.js"
+          apwait() { for _ in $(seq 40); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
+          opent() { # label "command" process-pattern
+            local m0 m t0 t i out=""
+            for i in cold warm; do
+              echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm)
+              t0=$(date +%s%N); L $2
+              while :; do
+                t=$(( ( $(date +%s%N) - t0 ) / 1000000 ))
+                echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm)
+                [ "$m" != "$m0" ] && break; [ $t -ge 30000 ] && break; sleep 0.05
+              done
+              out="$out $i=${t}ms"; sleep 5; K -f "$3"; sleep 3
+            done
+            echo "| open $1 (cold/warm) | INFO |$out |" >> report.md; echo "open $1:$out"
+          }
+
+          if part gui; then
           # 2. start menu -> settings
           QM key meta_l; sleep 3; shot start-menu
           QM type firewall; sleep 3; shot start-search-firewall; QM key esc; sleep 1 # Mountain's Security, no KDE or firewalld pages
@@ -458,7 +488,6 @@ jobs:
           chk "KWin contrast effect is loaded" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:contrast | awk '/boolean/{print \$2}'" '^true$'
           R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 12
           # v7 Settings pages are native: no KDE System Settings or kcmshell6 window opens for them
-          R "echo IyBQcmludHMgZXZlcnkgYWNjZXNzaWJsZSBuYW1lIGluIG9uZSBhcHAncyB3aW5kb3dzIChBVC1TUEkpLCBvbmUgcGVyIGxpbmU6IG5hbWVzLnB5IEFQUC1OQU1FIFtNSU4tTElORVNdCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKd2FudCA9IHN5cy5hcmd2WzFdLmxvd2VyKCkKbmVlZCA9IGludChzeXMuYXJndlsyXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDIgZWxzZSAxCgpkZWYgd2FsayhhLCBkLCBvdXQpOgogICAgaWYgZCA+IDQwIG9yIGxlbihvdXQpID4gMjAwMDA6CiAgICAgICAgcmV0dXJuCiAgICB0cnk6CiAgICAgICAgbiA9IGEuZ2V0X25hbWUoKQogICAgICAgIGsgPSBhLmdldF9jaGlsZF9jb3VudCgpCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIHJldHVybgogICAgaWYgbjoKICAgICAgICBvdXQuYXBwZW5kKG4pCiAgICBmb3IgaSBpbiByYW5nZShtaW4oaywgMjAwMCkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgYyA9IGEuZ2V0X2NoaWxkX2F0X2luZGV4KGkpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgY29udGludWUKICAgICAgICBpZiBjOgogICAgICAgICAgICB3YWxrKGMsIGQgKyAxLCBvdXQpCgpiZXN0ID0gW10KZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIGFwcCBhbmQgd2FudCBpbiAoYXBwLmdldF9uYW1lKCkgb3IgJycpLmxvd2VyKCk6CiAgICAgICAgICAgIG5hbWVzID0gW10KICAgICAgICAgICAgd2FsayhhcHAsIDAsIG5hbWVzKQogICAgICAgICAgICBpZiBsZW4obmFtZXMpID4gbGVuKGJlc3QpOgogICAgICAgICAgICAgICAgYmVzdCA9IG5hbWVzCiAgICBpZiBsZW4oYmVzdCkgPj0gbmVlZDoKICAgICAgICBicmVhawogICAgdGltZS5zbGVlcCgxKQpwcmludCgnXG4nLmpvaW4oYmVzdCkpCg== | base64 -d > /tmp/names.py && chmod 644 /tmp/names.py"
           declare -A PT=([display]="Display" [sound]="Sound" [bluetooth]="Bluetooth" [nightlight]="Night light" [language]="Language & region" [typing]="Typing" [notifications]="Notifications" [mouse]="Mouse & touchpad" [defaultapps]="Default apps" [power]="Power & battery" [about]="About" [storage]="Storage" [startup]="Startup apps" [datetime]="Date & time" [lockscreen]="Lock screen" [colors]="Colors" [controllers]="Game controllers" [printers]="Printers & scanners" [youraccount]="Your account")
           # the page title must be on screen over AT-SPI (a blank or solid window has none)
           for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount; do
@@ -583,7 +612,6 @@ jobs:
           L /usr/libexec/mountain-phonelink; wchk "Phone Link opens" 0 kdeconnect-app 25; sleep 5; shot app-phone-link; K -x kdeconnect-app; sleep 3
           chk "Phone Link's background service stops when it closes" 0 "pgrep -u looktest -x kdeconnectd || echo stopped" '^stopped$'; K -x kdeconnectd
           # title bars use the Windows names (en@mountain catalogs)
-          R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"CAP|\" + w.caption + \"|\" + w.desktopFileName);' > /tmp/caps.js; chmod 644 /tmp/caps.js"
           caps() { local s; s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; }
           for t in "Calculator:kcalc:org.kde.kcalc" "Paint:kolourpaint:org.kde.kolourpaint" "Notepad:kwrite:org.kde.kwrite" "Terminal:konsole:org.kde.konsole" "Task Manager:plasma-systemmonitor:org.kde.plasma-systemmonitor" "Camera:kamoso:org.kde.kamoso" "Scanner:skanlite:org.kde.skanlite" "Phone Link:kdeconnect-app:org.kde.kdeconnect.app"; do
             IFS=: read n app id <<<"$t"; L "$app"; PGF=-f wchk "title $n ($app) opens" 2 "$app" 25; sleep 5
@@ -625,7 +653,9 @@ jobs:
           L dolphin; sleep 5; L kwrite; sleep 5
           QM keyhold 4 alt tab & sleep 2; shot alt-tab; wait; QM key esc; K -x dolphin; K -x kwrite
           chk "personalize: glass back on" 0 "$(TL 'kreadconfig6 --file kwinrc --group Plugins --key blurEnabled')" '^true$'
+          fi # part gui
           
+          if part apps; then
           # 3. double-click the first desktop icon (folder AI)
           read -r IX IY IW <<<"$(icon 1 1)"
           chk "desktop icons are Medium (48 px)" 0 "echo ${IW:-0}" '^(3[0-9]|4[0-6])$' # the folder picture inside a 48 px icon; 64 px would be ~56
@@ -776,20 +806,6 @@ jobs:
           echo "| plasmashell idle RSS | INFO | ${PS_RSS} MB |" >> report.md
 
           # app open time: QMP-free launch, ms until the first changed frame (cold, then warm)
-          opent() { # label "command" process-pattern
-            local m0 m t0 t i out=""
-            for i in cold warm; do
-              echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm)
-              t0=$(date +%s%N); L $2
-              while :; do
-                t=$(( ( $(date +%s%N) - t0 ) / 1000000 ))
-                echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm)
-                [ "$m" != "$m0" ] && break; [ $t -ge 30000 ] && break; sleep 0.05
-              done
-              out="$out $i=${t}ms"; sleep 5; K -f "$3"; sleep 3
-            done
-            echo "| open $1 (cold/warm) | INFO |$out |" >> report.md; echo "open $1:$out"
-          }
           opent "File Explorer" dolphin dolphin
           opent "Settings" "plasmawindowed org.mountain.settings" org.mountain.settings
           opent "Terminal" konsole konsole
@@ -831,7 +847,9 @@ jobs:
             [ "${v:--1}" -ge 0 ] && [ "$v" -le $b ] && r=met || r=over
             echo "| real-PC budget $k <= $b ms | INFO | $v ms ($r) |" >> report.md
           done
+          fi # part apps
           
+          if part taskmgr; then
           # Task Manager: Ctrl+Shift+Esc, every tab, End task, Startup apps
           R "$(TL 'cp /usr/bin/sleep ~/.local/bin/endtasktest')"; L /home/looktest/.local/bin/endtasktest 99999
           K -f plasma-systemmonitor; QM key ctrl shift esc; PGF=-f wchk "Ctrl+Shift+Esc opens Task Manager" 0 plasma-systemmonitor 15; sleep 6; shot taskmanager
@@ -909,6 +927,7 @@ jobs:
           R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
 
           QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu; QM key esc; QM key esc
+          fi # part taskmgr
           # perf data (non-fatal) while the session is still up
           mkdir -p perf
           P() { R "$1" > "perf/$2.txt" 2>&1 || true; } # cmd, filename
@@ -929,6 +948,7 @@ jobs:
           P "ps -eo pid,rss,pcpu,user,args --sort=-rss | head -25 | cut -c1-200" ps-args
           P "$LT systemctl --user list-unit-files --state=enabled --no-pager" user-unit-files
           
+          if part security; then
           # Security page, on-demand virus scan, firewall, Flatpak sandbox, snapshots, accounts
           U() { R "timeout 600 $LT systemd-run --user --wait --pipe --quiet --collect $*"; } # like an app started from the desktop
           L "/usr/libexec/mountain-settings-open privacy"; PGF=-f wchk "Security entry opens Settings on Privacy & security" 0 org.mountain.settings 20; sleep 8; shot security-page
@@ -965,7 +985,6 @@ jobs:
           chk "scan history" 2 "tail -3 ~looktest/.local/share/mountain/scan-history | paste -sd';'" 'scan'
           R "$LT systemctl --user start mountain-protect.service"; sleep 3
           # Active Protection: /tmp, a USB drive, an attachment-like path; unverified scripts and autostart entries; its cost
-          apwait() { for _ in $(seq 40); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /tmp/apa-tmp.com')"; apwait /tmp/apa-tmp.com
           chk "Active Protection: a threat in /tmp is caught" 0 "test ! -e /tmp/apa-tmp.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-tmp && echo caught" '^caught$'
           R "truncate -s 64M /root/usb.img && mkfs.vfat -n USBTEST /root/usb.img >/dev/null && mkdir -p /run/media/looktest/USBTEST && mount -o loop,uid=\$(id -u looktest) /root/usb.img /run/media/looktest/USBTEST"
@@ -1065,6 +1084,7 @@ jobs:
           if [[ $A0 =~ ^[0-9]+$ && $A1 =~ ^[0-9]+$ ]]; then APC=$(awk -v a="$A0" -v b="$A1" 'BEGIN{printf "%.2f", (b-a)/30e9*100}'); else APC=n/a; fi
           [ "${APM:-999999999}" -le 157286400 ] && r=PASS || r=FAIL; echo "| Active Protection idle RAM <= 150 MB | $r | $((${APM:-0}/1048576)) MB |" >> report.md
           [[ $APC =~ ^[0-9.]+$ ]] && awk -v c="$APC" 'BEGIN{exit !(c < 1)}' && r=PASS || r=FAIL; echo "| Active Protection idle CPU ~0 % | $r | ${APC} % over 30 s |" >> report.md
+          part apps || R "$(TL 'mkdir -p ~/Speed/Folder; cp /usr/share/mountain/wallpaper.png ~/Speed/photo.png; rsvg-convert -f pdf -o ~/Speed/letter.pdf /usr/share/mountain/wallpaper.svg; echo speed > ~/Speed/notes.txt; seq 6 | xargs -I{} cp ~/Speed/photo.png ~/Speed/Folder/picture-{}.png')" # the apps part makes it; a quick run without it needs it here
           R "$LT systemctl --user stop mountain-protect.service"; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
           R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
           L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans
@@ -1120,7 +1140,9 @@ jobs:
           chk "sudo always asks for a password" 0 "grep -rsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d || echo none" '^none$'
           chk "polkit rules that skip the password" 2 "grep -ls 'Result.YES' /etc/polkit-1/rules.d/* /usr/share/polkit-1/rules.d/* 2>/dev/null | paste -sd' '" '.'
           chk "kernel lockdown (off by default: game drivers)" 2 "cat /sys/kernel/security/lockdown" '.'
+          fi # part security
           
+          if part attack; then
           # Part H: attack test (red team) inside this test VM only. The attacker sits in a network namespace on a veth,
           # so its traffic reaches the PC through firewalld's default zone, like another computer on the same network.
           R "ip netns add attacker && ip link add vatk type veth peer name vatk0 && ip link set vatk0 netns attacker && ip addr add 10.99.0.1/24 dev vatk && ip link set vatk up && ip netns exec attacker ip addr add 10.99.0.2/24 dev vatk0 && ip netns exec attacker ip link set vatk0 up"
@@ -1202,7 +1224,9 @@ jobs:
           chk "attack: a broken system file is repaired" 0 "/usr/libexec/mountain-security repair-etc xdg/kdeglobals && cmp /etc/xdg/kdeglobals /usr/etc/xdg/kdeglobals && echo repaired" 'repaired$'
           R "cp -a /tmp/kdeglobals.ok /etc/xdg/kdeglobals"
           chk "attack: deleted desktop settings come back from Previous versions" 0 "$(TL "rm ~/.config/plasma-org.kde.plasma.desktop-appletsrc && cp /var/home/.snapshots/$SNAP2/looktest/.config/plasma-org.kde.plasma.desktop-appletsrc ~/.config/ && grep -c '^\[Containments\]' ~/.config/plasma-org.kde.plasma.desktop-appletsrc")" '^[1-9]'
+          fi # part attack
 
+          if part hardware; then
           # simulated hardware (tests/vm/hwsim.sh): what a VM lacks, so each feature gets a check and a screenshot
           R "echo IyEvYmluL2Jhc2gKIyBUZXN0LW9ubHk6IGZha2UgV2ktRmksIEJsdWV0b290aCwgY2FtZXJhLCBwcmludGVyIGFuZCBnYW1lIHBhZCBpbnNpZGUgdGhlIHZtLXRlc3QgVk0gKHJ1biBhcyByb290KS4KIyBOb3RoaW5nIGhlcmUgaXMgcGFydCBvZiB0aGUgaW1hZ2U6IHBhY2thZ2VzIGdvIGludG8gYSB0aHJvdy1hd2F5IC91c3Igb3ZlcmxheSwgZnJvbSByZXBvcyB0aGUgaW1hZ2UgYWxyZWFkeSBoYXMuCiMgT3V0cHV0OiBvbmUgbGluZSBwZXIgY2FsbCwgIk9LIDx3aGF0PiAuLi4iLCAiU0tJUCA8d2hhdD46IDxyZWFzb24+IiAoZXhpdCAzLCBjYW5ub3QgYmUgZmFrZWQgaGVyZSkgb3IgIkZBSUwgPHdoYXQ+OiA8cmVhc29uPiIgKGV4aXQgMSkuCiMgVXNhZ2U6IGh3c2ltLnNoIHNldHVwfHdpZmktdXB8d2lmaS1qb2lufHdpZmktbGVhdmV8YnQtdXB8YnQtcGFpcnxjYW0tdXB8cHJpbnRlci11cHxwcmludGVyLXByaW50fHBhZC11cHxwYWQtcHJlc3N8YnJpZ2h0bmVzc3x0ZWFyZG93bgpEPS9ydW4vaHdzaW0KU1NJRD1Nb3VudGFpblRlc3QKUFNLPW1vdW50YWluLXRlc3QtMTIzClBBRE5BTUU9Ik1pY3Jvc29mdCBYLUJveCAzNjAgcGFkIgpMT0c9JEQvbG9nCm1rZGlyIC1wICRECgpvaygpICAgeyBlY2hvICJPSyAkKiI7IGV4aXQgMDsgfQpza2lwKCkgeyBlY2hvICJTS0lQICQqIjsgZXhpdCAzOyB9CmZhaWwoKSB7IGVjaG8gIkZBSUwgJCoiOyBleGl0IDE7IH0KIyB3YWl0IHVwIHRvICQxIHNlY29uZHMgZm9yIGEgY29tbWFuZCAocmVzdCBvZiB0aGUgYXJncykgdG8gc3VjY2VlZAp3YWl0Zm9yKCkgeyBsb2NhbCBuPSQxOyBzaGlmdDsgd2hpbGUgWyAiJG4iIC1ndCAwIF07IGRvICIkQCIgPi9kZXYvbnVsbCAyPiYxICYmIHJldHVybiAwOyBzbGVlcCAxOyBuPSQoKG4tMSkpOyBkb25lOyByZXR1cm4gMTsgfQoKIyAvdXNyIGlzIHJlYWQtb25seSBvbiBib290YzogYSB0cmFuc2llbnQgb3ZlcmxheSBsZXRzIGRuZiBpbnN0YWxsIHRlc3QgdG9vbHMgKGdvbmUgYWZ0ZXIgcmVib290KQpvdmVybGF5KCkgewogIGZpbmRtbnQgLW4gLW8gRlNUWVBFIC91c3IgfCBncmVwIC1xIG92ZXJsYXkgJiYgcmV0dXJuIDAKICB7IGJvb3RjIHVzci1vdmVybGF5IHx8IHJwbS1vc3RyZWUgdXNyb3ZlcmxheTsgfSA+PiRMT0cgMj4mMQp9CiMgcGtnIENNRC1PUi1GSUxFIFBBQ0tBR0UtU1BFQy4uLjogaW5zdGFsbCBvbmx5IHdoZW4gdGhlIGNvbW1hbmQgaXMgbWlzc2luZyAoZmlsZSBwYXRocyB3b3JrIGFzIGRuZiBwcm92aWRlcykKcGtnKCkgewogIGNvbW1hbmQgLXYgIiQxIiA+L2Rldi9udWxsIDI+JjEgJiYgcmV0dXJuIDAKICBzaGlmdAogIG92ZXJsYXkgJiYgdGltZW91dCAzMDAgZG5mIGluc3RhbGwgLXkgLXEgLS1zZXRvcHQ9aW5zdGFsbF93ZWFrX2RlcHM9RmFsc2UgIiRAIiA+PiRMT0cgMj4mMQp9CiMga21vZCBOQU1FIFtQQUNLQUdFLi4uXTogbW9kcHJvYmUsIGVsc2UgdHJ5IGluc3RhbGxpbmcgdGhlIG1hdGNoaW5nLWtlcm5lbCBwYWNrYWdlLCBlbHNlIGZhaWwgKGNhbGxlciBTS0lQcykKa21vZCgpIHsKICBsb2NhbCBtPSQxOyBzaGlmdAogIG1vZHByb2JlICIkbSIgMj4+JExPRyAmJiByZXR1cm4gMAogIFsgJCMgLWd0IDAgXSAmJiBvdmVybGF5ICYmIHRpbWVvdXQgMzAwIGRuZiBpbnN0YWxsIC15IC1xICIkQCIgPj4kTE9HIDI+JjEgJiYgZGVwbW9kIC1hICYmIG1vZHByb2JlICIkbSIgMj4+JExPRwp9CmFzX3VzZXIoKSB7IHN1ZG8gLXUgbG9va3Rlc3QgZW52IFhER19SVU5USU1FX0RJUj0vcnVuL3VzZXIvIiQoaWQgLXUgbG9va3Rlc3QpIiBEQlVTX1NFU1NJT05fQlVTX0FERFJFU1M9dW5peDpwYXRoPS9ydW4vdXNlci8iJChpZCAtdSBsb29rdGVzdCkiL2J1cyAiJEAiOyB9CmJnKCkgeyAjIE5BTUUgQ01ELi4uOiBzdGFydCBkZXRhY2hlZCwgcmVtZW1iZXIgcGlkCiAgbG9jYWwgbj0kMTsgc2hpZnQKICBzZXRzaWQgbm9odXAgIiRAIiA+PiRMT0cgMj4mMSA8L2Rldi9udWxsICYKICBlY2hvICQhID4kRC8kbi5waWQKfQp3aWZpX2lmYWNlcygpIHsgZm9yIGkgaW4gL3N5cy9jbGFzcy9uZXQvKi93aXJlbGVzczsgZG8gWyAtZSAiJGkiIF0gJiYgYmFzZW5hbWUgIiQoZGlybmFtZSAiJGkiKSI7IGRvbmUgfCBzb3J0OyB9CgpjYXNlICQxIGluCnNldHVwKSAjIG5vIGhhcmR3YXJlIHlldDsgcHJvdmVzIHRoZSBvdmVybGF5IGFuZCB0aGUgcmVwb3Mgd29yawogIG92ZXJsYXkgJiYgb2sgInNldHVwIG92ZXJsYXk9JChmaW5kbW50IC1uIC1vIEZTVFlQRSAvdXNyKSBrZXJuZWw9JCh1bmFtZSAtcikiIHx8IGZhaWwgInNldHVwOiBubyAvdXNyIG92ZXJsYXkgKHNlZSAkTE9HKSIgOzsKCndpZmktdXApCiAga21vZCBtYWM4MDIxMV9od3NpbSAia2VybmVsLW1vZHVsZXMtaW50ZXJuYWwtJCh1bmFtZSAtcikiIHx8IHNraXAgIndpZmk6IG1hYzgwMjExX2h3c2ltIG1pc3NpbmcgZm9yIGtlcm5lbCAkKHVuYW1lIC1yKSAoa2VybmVsLW1vZHVsZXMtaW50ZXJuYWwgbm90IGluIHRoZSBlbmFibGVkIHJlcG9zKSIKICBwa2cgaG9zdGFwZCBob3N0YXBkIHx8IHNraXAgIndpZmk6IGhvc3RhcGQgbm90IGluc3RhbGxhYmxlIGZyb20gdGhlIGVuYWJsZWQgcmVwb3MiCiAgd2FpdGZvciAxNSB0ZXN0ICIkKHdpZmlfaWZhY2VzIHwgd2MgLWwpIiAtZ2UgMiB8fCBmYWlsICJ3aWZpOiBod3NpbSBtYWRlIG5vIHJhZGlvcyIKICBTVEE9JCh3aWZpX2lmYWNlcyB8IHNlZCAtbiAxcCk7IEFQPSQod2lmaV9pZmFjZXMgfCBzZWQgLW4gMnApCiAgbm1jbGkgZGV2aWNlIHNldCAiJEFQIiBtYW5hZ2VkIG5vID4+JExPRyAyPiYxICMgdGhlIGFjY2VzcyBwb2ludCBzaWRlIHN0YXlzIG91dCBvZiBOZXR3b3JrTWFuYWdlcgogIHdhaXRmb3IgMTUgYmFzaCAtYyAibm1jbGkgLXQgLWYgREVWSUNFLFNUQVRFIGRldmljZSB8IGdyZXAgLXF4ICckQVA6dW5tYW5hZ2VkJyIgfHwgZmFpbCAid2lmaTogTmV0d29ya01hbmFnZXIga2VwdCAkQVAiCiAgaXAgbGluayBzZXQgIiRBUCIgZG93bjsgaXAgbGluayBzZXQgIiRBUCIgdXAgIyBubyBzY2FuIGxlZnQgcnVubmluZyBvbiBpdAogIGNhdCA+JEQvaG9zdGFwZC5jb25mIDw8RU9GCmludGVyZmFjZT0kQVAKZHJpdmVyPW5sODAyMTEKc3NpZD0kU1NJRApod19tb2RlPWcKY2hhbm5lbD0xCndwYT0yCndwYV9rZXlfbWdtdD1XUEEtUFNLCnJzbl9wYWlyd2lzZT1DQ01QCndwYV9wYXNzcGhyYXNlPSRQU0sKRU9GCiAgYmcgaG9zdGFwZCBob3N0YXBkICREL2hvc3RhcGQuY29uZgogICMgdGhlIGZha2UgcmFkaW8gc29tZXRpbWVzIHJlZnVzZXMgdGhlIGNoYW5uZWwgcmlnaHQgYWZ0ZXIgbGVhdmluZyBOZXR3b3JrTWFuYWdlciAoIkNvdWxkIG5vdCBzZXQgY2hhbm5lbCBmb3Iga2VybmVsCiAgIyBkcml2ZXIiKTogdGhpcyBpcyB0ZXN0IGhhcmR3YXJlLCBzbyByZXNldCB0aGUgcmFkaW8gYW5kIHN0YXJ0IHRoZSBhY2Nlc3MgcG9pbnQgb25jZSBtb3JlCiAgd2FpdGZvciAxMCBncmVwIC1xIEFQLUVOQUJMRUQgJExPRyB8fCB7IHBraWxsIC14IGhvc3RhcGQ7IGlwIGxpbmsgc2V0ICIkQVAiIGRvd247IHNsZWVwIDM7IGlwIGxpbmsgc2V0ICIkQVAiIHVwOyBiZyBob3N0YXBkIGhvc3RhcGQgJEQvaG9zdGFwZC5jb25mOyB9CiAgZWNobyAiJFNUQSIgPiREL3N0YQogICMgTk0gbXVzdCBsaXN0IHRoZSBBUDsgcmVzY2FuIHVudGlsIGl0IGRvZXMgKGJvdW5kZWQpCiAgd2FpdGZvciA0MCBiYXNoIC1jICJubWNsaSBkZXZpY2Ugd2lmaSByZXNjYW4gaWZuYW1lICRTVEEgPi9kZXYvbnVsbCAyPiYxOyBubWNsaSAtdCAtZiBTU0lEIGRldmljZSB3aWZpIGxpc3QgaWZuYW1lICRTVEEgfCBncmVwIC1xeCAkU1NJRCIgXAogICAgJiYgb2sgIndpZmkgYXA9JFNTSUQgc3RhPSRTVEEgYXAtaWY9JEFQIiB8fCBmYWlsICJ3aWZpOiAkU1NJRCBub3QgdmlzaWJsZSB0byBOZXR3b3JrTWFuYWdlciBvbiAkU1RBIChzZWUgJExPRykiIDs7Cgp3aWZpLWpvaW4pICMgYXMgbG9va3Rlc3QgbGlrZSB0aGUgdXNlcjsgZmFsbHMgYmFjayB0byByb290IGlmIHBvbGtpdCByZWZ1c2VzIGEgbm9uLXNlYXQgc2Vzc2lvbgogIFNUQT0kKGNhdCAkRC9zdGEgMj4vZGV2L251bGwpIHx8IHNraXAgIndpZmktam9pbjogbm8gd2lmaS11cCIKICBubWNsaSBjb25uZWN0aW9uIGRlbGV0ZSAkU1NJRCA+L2Rldi9udWxsIDI+JjEKICAjIGxpbmstbG9jYWw6IHRoZXJlIGlzIG5vIERIQ1Agc2VydmVyIG9uIHRoZSBmYWtlIEFQLCBzbyBkbyBub3Qgd2FpdCBmb3Igb25lCiAgQUREPShubWNsaSBjb25uZWN0aW9uIGFkZCB0eXBlIHdpZmkgaWZuYW1lICIkU1RBIiBjb24tbmFtZSAkU1NJRCBzc2lkICRTU0lEIHdpZmktc2VjLmtleS1tZ210IHdwYS1wc2sgd2lmaS1zZWMucHNrICRQU0sgaXB2NC5tZXRob2QgbGluay1sb2NhbCBpcHY2Lm1ldGhvZCBkaXNhYmxlZCkKICBVUD0obm1jbGkgLXcgMzAgY29ubmVjdGlvbiB1cCAkU1NJRCBpZm5hbWUgIiRTVEEiKQogIGlmIGFzX3VzZXIgIiR7QUREW0BdfSIgPj4kTE9HIDI+JjEgJiYgYXNfdXNlciAiJHtVUFtAXX0iID4+JExPRyAyPiYxOyB0aGVuIFY9bG9va3Rlc3QKICBlbHNlIG5tY2xpIGNvbm5lY3Rpb24gZGVsZXRlICRTU0lEID4vZGV2L251bGwgMj4mMTsgIiR7QUREW0BdfSIgPj4kTE9HIDI+JjEgJiYgIiR7VVBbQF19IiA+PiRMT0cgMj4mMSAmJiBWPXJvb3Q7IGZpCiAgWyAtbiAiJFYiIF0gfHwgZmFpbCAid2lmaS1qb2luOiBjb3VsZCBub3QgY29ubmVjdCAoc2VlICRMT0cpIgogIHdhaXRmb3IgMjAgYmFzaCAtYyAibm1jbGkgLXQgLWYgR0VORVJBTC5TVEFURSBkZXZpY2Ugc2hvdyAkU1RBIHwgZ3JlcCAtcSAnXkdFTkVSQUwuU1RBVEU6MTAwJyIgXAogICAgJiYgb2sgIndpZmktam9pbiBzc2lkPSRTU0lEIGRldj0kU1RBIHN0YXRlPWNvbm5lY3RlZCBhcz0kViIgfHwgZmFpbCAid2lmaS1qb2luOiAkU1RBIG5vdCBjb25uZWN0ZWQiIDs7Cgp3aWZpLWxlYXZlKQogIFNUQT0kKGNhdCAkRC9zdGEgMj4vZGV2L251bGwpIHx8IHNraXAgIndpZmktbGVhdmU6IG5vIHdpZmktdXAiCiAgbm1jbGkgY29ubmVjdGlvbiBkb3duICRTU0lEID4+JExPRyAyPiYxOyBubWNsaSBjb25uZWN0aW9uIGRlbGV0ZSAkU1NJRCA+PiRMT0cgMj4mMQogIHdhaXRmb3IgMTUgYmFzaCAtYyAiISBubWNsaSAtdCAtZiBHRU5FUkFMLlNUQVRFIGRldmljZSBzaG93ICRTVEEgfCBncmVwIC1xICdeR0VORVJBTC5TVEFURToxMDAnIiBcCiAgICAmJiBvayAid2lmaS1sZWF2ZSBkZXY9JFNUQSBzdGF0ZT1kaXNjb25uZWN0ZWQiIHx8IGZhaWwgIndpZmktbGVhdmU6ICRTVEEgc3RpbGwgY29ubmVjdGVkIiA7OwoKYnQtdXApICMgYnR2aXJ0IChibHVleiBlbXVsYXRvcikgZmVlZHMgL2Rldi92aGNpOiB0d28gdmlydHVhbCBjb250cm9sbGVycyB0aGF0IGNhbiBzZWUgZWFjaCBvdGhlcgogIGttb2QgaGNpX3ZoY2kgfHwgc2tpcCAiYnQ6IGhjaV92aGNpIG5vdCBpbiBrZXJuZWwgJCh1bmFtZSAtcikiCiAgcGtnIGJ0dmlydCBibHVlei10b29scyBibHVlei10ZXN0ID4vZGV2L251bGwgMj4mMSAjIHdoaWNoZXZlciBvZiB0aGVzZSBleGlzdHM7IGJ0dmlydCBpcyBub3QgYSBzdGFuZGFyZCBGZWRvcmEgcGFja2FnZQogIEJUVj0kKGNvbW1hbmQgLXYgYnR2aXJ0IHx8IGxzIC91c3IvbGliZXhlYy9ibHVldG9vdGgvYnR2aXJ0IC91c3IvbGliL2JsdWV6L2J0dmlydCAyPi9kZXYvbnVsbCB8IGhlYWQgLTEpCiAgWyAtbiAiJEJUViIgXSB8fCBza2lwICJidDogbm8gYnR2aXJ0IGluIHRoZSBlbmFibGVkIHJlcG9zIChvbmx5IHRoZSBrZXJuZWwgc2lkZSwgaGNpX3ZoY2ksIGxvYWRzKSIKICBzeXN0ZW1jdGwgc3RhcnQgYmx1ZXRvb3RoID4+JExPRyAyPiYxCiAgYmcgYnR2aXJ0ICIkQlRWIiAtbDIKICB3YWl0Zm9yIDIwIGJhc2ggLWMgInRpbWVvdXQgMTAgYmx1ZXRvb3RoY3RsIGxpc3QgfCBncmVwIC1xIENvbnRyb2xsZXIiIHx8IGZhaWwgImJ0OiBubyBjb250cm9sbGVyIGFwcGVhcmVkIChzZWUgJExPRykiCiAgdGltZW91dCAxMCBibHVldG9vdGhjdGwgcG93ZXIgb24gPj4kTE9HIDI+JjEKICB3YWl0Zm9yIDEwIGJhc2ggLWMgInRpbWVvdXQgMTAgYmx1ZXRvb3RoY3RsIHNob3cgfCBncmVwIC1xICdQb3dlcmVkOiB5ZXMnIiBcCiAgICAmJiBvayAiYnQgY29udHJvbGxlcnM9JCh0aW1lb3V0IDEwIGJsdWV0b290aGN0bCBsaXN0IHwgZ3JlcCAtYyBDb250cm9sbGVyKSBwb3dlcmVkPXllcyIgfHwgZmFpbCAiYnQ6IGNvbnRyb2xsZXIgbm90IHBvd2VyZWQiIDs7CgpidC1wYWlyKSAjIGJlc3QgZWZmb3J0OiBjb250cm9sbGVyIDIgaXMgZGlzY292ZXJhYmxlLCBjb250cm9sbGVyIDEgc2NhbnMsIGZpbmRzIGFuZCBwYWlycyBpdAogIEMxPSQodGltZW91dCAxMCBibHVldG9vdGhjdGwgbGlzdCB8IHNlZCAtbiAxcCB8IGF3ayAne3ByaW50ICQyfScpOyBDMj0kKHRpbWVvdXQgMTAgYmx1ZXRvb3RoY3RsIGxpc3QgfCBzZWQgLW4gMnAgfCBhd2sgJ3twcmludCAkMn0nKQogIFsgLW4gIiRDMiIgXSB8fCBza2lwICJidC1wYWlyOiBuZWVkcyB0aGUgdHdvIGJ0dmlydCBjb250cm9sbGVycyBmcm9tIGJ0LXVwIgogIHsgZWNobyAic2VsZWN0ICRDMiI7IGVjaG8gInBvd2VyIG9uIjsgZWNobyAicGFpcmFibGUgb24iOyBlY2hvICJkaXNjb3ZlcmFibGUgb24iOyBzbGVlcCAxCiAgICBlY2hvICJzZWxlY3QgJEMxIjsgZWNobyAicG93ZXIgb24iOyBlY2hvICJzY2FuIG9uIjsgc2xlZXAgMTI7IGVjaG8gImRldmljZXMiOyBlY2hvICJzY2FuIG9mZiI7IHNsZWVwIDE7IGVjaG8gInF1aXQiOyB9IFwKICAgIHwgdGltZW91dCA0MCBibHVldG9vdGhjdGwgPiREL2J0LXNjYW4udHh0IDI+JjEKICBncmVwIC1xICJEZXZpY2UgJEMyIiAkRC9idC1zY2FuLnR4dCB8fCBza2lwICJidC1wYWlyOiBjb250cm9sbGVyIDEgZGlkIG5vdCBkaXNjb3ZlciBjb250cm9sbGVyIDIgKEJsdWVaIGlnbm9yZXMgaXRzIG93biBob3N0J3MgYWRhcHRlcnMpIgogIHRpbWVvdXQgMzAgYmx1ZXRvb3RoY3RsIHBhaXIgIiRDMiIgPj4kTE9HIDI+JjEgJiYgb2sgImJ0LXBhaXIgZGV2aWNlPSRDMiBwYWlyZWQiIHx8IHNraXAgImJ0LXBhaXI6IGRpc2NvdmVyZWQgJEMyIGJ1dCBwYWlyaW5nIG5lZWRzIGFuIGFnZW50IChmb3VuZCBvbmx5KSIgOzsKCmNhbS11cCkKICBrbW9kIHY0bDJsb29wYmFjayB8fCBza2lwICJjYW06IHY0bDJsb29wYmFjayBrbW9kIG5vdCBhdmFpbGFibGUgZm9yIGtlcm5lbCAkKHVuYW1lIC1yKSAoQmF6eml0ZSBzaGlwcyBpdCB2aWEgYWttb2RzOyBpdCBtdXN0IGJlIGluIHRoZSBpbWFnZSkiCiAgIyBtb2R1bGUgb3B0aW9ucyBnbyBpbiBhdCBsb2FkIHRpbWU7IHJlbG9hZCBvbmNlIHRvIGdldCBhIGZpeGVkIG5vZGUgYW5kIGEgbmFtZQogIHJtbW9kIHY0bDJsb29wYmFjayAyPi9kZXYvbnVsbAogIG1vZHByb2JlIHY0bDJsb29wYmFjayBkZXZpY2VzPTEgdmlkZW9fbnI9MTAgY2FyZF9sYWJlbD0iTW91bnRhaW4gVGVzdCBDYW1lcmEiIGV4Y2x1c2l2ZV9jYXBzPTEgfHwgc2tpcCAiY2FtOiB2NGwybG9vcGJhY2sgd291bGQgbm90IGxvYWQiCiAgd2FpdGZvciAxMCB0ZXN0IC1lIC9kZXYvdmlkZW8xMCB8fCBmYWlsICJjYW06IG5vIC9kZXYvdmlkZW8xMCIKICBjaG1vZCA2NjYgL2Rldi92aWRlbzEwCiAgaWYgcGtnIGdzdC1sYXVuY2gtMS4wIGdzdHJlYW1lcjEgZ3N0cmVhbWVyMS1wbHVnaW5zLWdvb2QgJiYgZ3N0LWluc3BlY3QtMS4wIHY0bDJzaW5rID4vZGV2L251bGwgMj4mMTsgdGhlbgogICAgYmcgY2FtIGdzdC1sYXVuY2gtMS4wIC1xIHZpZGVvdGVzdHNyYyBpcy1saXZlPXRydWUgcGF0dGVybj1iYWxsICEgdmlkZW8veC1yYXcsZm9ybWF0PVlVWTIsd2lkdGg9NjQwLGhlaWdodD00ODAsZnJhbWVyYXRlPTMwLzEgISB2NGwyc2luayBkZXZpY2U9L2Rldi92aWRlbzEwOyBGPWdzdAogIGVsaWYgcGtnIGZmbXBlZyBmZm1wZWctZnJlZTsgdGhlbgogICAgYmcgY2FtIGZmbXBlZyAtbG9nbGV2ZWwgZXJyb3IgLXJlIC1mIGxhdmZpIC1pIHRlc3RzcmM9c2l6ZT02NDB4NDgwOnJhdGU9MzAgLXBpeF9mbXQgeXV5djQyMiAtZiB2NGwyIC9kZXYvdmlkZW8xMDsgRj1mZm1wZWcKICBlbHNlIHNraXAgImNhbTogbmVpdGhlciBnc3RyZWFtZXIgdjRsMnNpbmsgbm9yIGZmbXBlZyBhdmFpbGFibGUgdG8gZmVlZCB0aGUgdGVzdCBwYXR0ZXJuIjsgZmkKICBzbGVlcCAzCiAga2lsbCAtMCAiJChjYXQgJEQvY2FtLnBpZCkiIDI+L2Rldi9udWxsICYmIG9rICJjYW0gL2Rldi92aWRlbzEwIG5hbWU9J01vdW50YWluIFRlc3QgQ2FtZXJhJyBmZWVkZXI9JEYiIHx8IGZhaWwgImNhbTogZmVlZGVyIGV4aXRlZCAoc2VlICRMT0cpIiA7OwoKcHJpbnRlci11cCkgIyBkcml2ZXJsZXNzIElQUCBwcmludGVyIChpcHBldmVwcmludGVyLCBmcm9tIGN1cHMpICsgYSBDVVBTIHF1ZXVlIHRoYXQgdXNlcyBpdAogIHBrZyBscGFkbWluIGN1cHMgfHwgc2tpcCAicHJpbnRlcjogY3VwcyBub3QgaW5zdGFsbGFibGUiCiAgcGtnIGlwcGV2ZXByaW50ZXIgL3Vzci9iaW4vaXBwZXZlcHJpbnRlciB8fCBza2lwICJwcmludGVyOiBubyBpcHBldmVwcmludGVyIGluIHRoZSBlbmFibGVkIHJlcG9zIgogIHN5c3RlbWN0bCBzdGFydCBjdXBzID4+JExPRyAyPiYxCiAgbWtkaXIgLXAgL3Zhci90bXAvaHdzaW0tc3Bvb2wKICBiZyBwcmludGVyIGlwcGV2ZXByaW50ZXIgLWQgL3Zhci90bXAvaHdzaW0tc3Bvb2wgLXAgODYzMSAtciBvZmYgLW4gbG9jYWxob3N0ICJNb3VudGFpbiBUZXN0IFByaW50ZXIiCiAgd2FpdGZvciAyMCBiYXNoIC1jICJleGVjIDM8Pi9kZXYvdGNwLzEyNy4wLjAuMS84NjMxIiB8fCBmYWlsICJwcmludGVyOiBpcHBldmVwcmludGVyIG5vdCBsaXN0ZW5pbmciCiAgbHBhZG1pbiAtcCBNb3VudGFpblRlc3QgLUUgLXYgaXBwOi8vbG9jYWxob3N0Ojg2MzEvaXBwL3ByaW50IC1tIGV2ZXJ5d2hlcmUgPj4kTE9HIDI+JjEgfHwgZmFpbCAicHJpbnRlcjogbHBhZG1pbiByZWZ1c2VkIHRoZSBxdWV1ZSIKICBscGFkbWluIC1kIE1vdW50YWluVGVzdAogIHdhaXRmb3IgMTUgYmFzaCAtYyAibHBzdGF0IC1wIE1vdW50YWluVGVzdCB8IGdyZXAgLXEgJ2lzIGlkbGUnIiBcCiAgICAmJiBvayAicHJpbnRlciBNb3VudGFpblRlc3QgaWRsZSB1cmk9aXBwOi8vbG9jYWxob3N0Ojg2MzEvaXBwL3ByaW50IiB8fCBmYWlsICJwcmludGVyOiBxdWV1ZSBub3QgaWRsZSAoJChscHN0YXQgLXAgTW91bnRhaW5UZXN0IDI+JjEgfCBoZWFkIC0xKSkiIDs7CgpwcmludGVyLXByaW50KQogIGxwc3RhdCAtcCBNb3VudGFpblRlc3QgPi9kZXYvbnVsbCAyPiYxIHx8IHNraXAgInByaW50ZXItcHJpbnQ6IG5vIHByaW50ZXItdXAiCiAgSj0kKGxwIC1kIE1vdW50YWluVGVzdCAvdXNyL3NoYXJlL2N1cHMvZGF0YS90ZXN0cHJpbnQgMj4mMSB8fCBscCAtZCBNb3VudGFpblRlc3QgL2V0Yy9vcy1yZWxlYXNlIDI+JjEpCiAgSUQ9JChlY2hvICIkSiIgfCBncmVwIC1vICdNb3VudGFpblRlc3QtWzAtOV0qJyB8IGhlYWQgLTEpCiAgWyAtbiAiJElEIiBdIHx8IGZhaWwgInByaW50ZXItcHJpbnQ6IGxwIHNhaWQ6ICRKIgogIHdhaXRmb3IgNDAgYmFzaCAtYyAibHBzdGF0IC1XIGNvbXBsZXRlZCAtbyBNb3VudGFpblRlc3QgfCBncmVwIC1xICdeJElEICciIFwKICAgICYmIG9rICJwcmludGVyLXByaW50IGpvYj0kSUQgY29tcGxldGVkIiB8fCBmYWlsICJwcmludGVyLXByaW50OiAkSUQgbm90IGNvbXBsZXRlZCAoJChscHN0YXQgLW8gTW91bnRhaW5UZXN0IDI+JjEgfCBoZWFkIC0xKSkiIDs7CgpwYWQtdXApICMgdWlucHV0IFhib3ggMzYwIHBhZCAodmVuZG9yIDA0NWU6MDI4ZSk7IHRoZSBkYWVtb24gb3ducyB0aGUgZGV2aWNlIGFuZCByZWFkcyBjb21tYW5kcyBmcm9tIGEgZmlmbwogIGttb2QgdWlucHV0IHx8IHNraXAgInBhZDogdWlucHV0IG5vdCBpbiBrZXJuZWwgJCh1bmFtZSAtcikiCiAgbW9kcHJvYmUgam95ZGV2IDI+PiRMT0cKICB3YWl0Zm9yIDEwIHRlc3QgLWUgL2Rldi91aW5wdXQgfHwgc2tpcCAicGFkOiBubyAvZGV2L3VpbnB1dCIKICBta2ZpZm8gJEQvcGFkLmZpZm8gMj4vZGV2L251bGwKICBjYXQgPiREL3BhZC5weSA8PCdQWScKaW1wb3J0IGZjbnRsLCBvcywgc3RydWN0LCBzeXMsIHRpbWUKTkFNRSA9IHN5cy5hcmd2WzFdLmVuY29kZSgpCmYgPSBvcy5vcGVuKCcvZGV2L3VpbnB1dCcsIG9zLk9fV1JPTkxZKQpkZWYgaW8ocmVxLCB2KTogZmNudGwuaW9jdGwoZiwgcmVxLCB2KQppbygweDQwMDQ1NTY0LCAxKTsgaW8oMHg0MDA0NTU2NCwgMykgICAgICAgICAgICAgICAgICAgICAgIyBFVl9LRVksIEVWX0FCUwpCVE5TID0gKDB4MTMwLCAweDEzMSwgMHgxMzMsIDB4MTM0LCAweDEzNiwgMHgxMzcsIDB4MTNhLCAweDEzYiwgMHgxM2MsIDB4MTNkLCAweDEzZSkKZm9yIGIgaW4gQlROUzogaW8oMHg0MDA0NTU2NSwgYikKQVggPSB7MDogKC0zMjc2OCwgMzI3NjcpLCAxOiAoLTMyNzY4LCAzMjc2NyksIDI6ICgwLCAyNTUpLCAzOiAoLTMyNzY4LCAzMjc2NyksIDQ6ICgtMzI3NjgsIDMyNzY3KSwgNTogKDAsIDI1NSksIDB4MTA6ICgtMSwgMSksIDB4MTE6ICgtMSwgMSl9Cm14ID0gWzBdICogNjQ7IG1uID0gWzBdICogNjQKZm9yIGEsIChsbywgaGkpIGluIEFYLml0ZW1zKCk6IGlvKDB4NDAwNDU1NjcsIGEpOyBtblthXSA9IGxvOyBteFthXSA9IGhpCm9zLndyaXRlKGYsIHN0cnVjdC5wYWNrKCc4MHNISEhIaTY0aTY0aTY0aTY0aScsIE5BTUUsIDMsIDB4MDQ1ZSwgMHgwMjhlLCAweDExMCwgMCwgKm14LCAqbW4sICooWzBdICogMTI4KSkpCmlvKDB4NTUwMSwgMCkgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIyBVSV9ERVZfQ1JFQVRFCmRlZiBldih0LCBjLCB2KTogb3Mud3JpdGUoZiwgc3RydWN0LnBhY2soJ2xsSEhpJywgMCwgMCwgdCwgYywgdikpCmZpZm8gPSBvcy5vcGVuKCcvcnVuL2h3c2ltL3BhZC5maWZvJywgb3MuT19SRFdSKSAgICAgICAgICAgIyBPX1JEV1I6IG5ldmVyIHNlZXMgRU9GCmJ1ZiA9IGInJwp3aGlsZSBUcnVlOgogICAgYnVmICs9IG9zLnJlYWQoZmlmbywgNjQpCiAgICB3aGlsZSBiJ1xuJyBpbiBidWY6CiAgICAgICAgY21kLCBidWYgPSBidWYuc3BsaXQoYidcbicsIDEpCiAgICAgICAgaWYgY21kID09IGIncHJlc3MnOgogICAgICAgICAgICBldigxLCAweDEzMCwgMSk7IGV2KDAsIDAsIDApOyB0aW1lLnNsZWVwKDAuMSk7IGV2KDEsIDB4MTMwLCAwKTsgZXYoMCwgMCwgMCkKUFkKICBiZyBwYWQgcHl0aG9uMyAkRC9wYWQucHkgIiRQQUROQU1FIgogIHdhaXRmb3IgMTAgZ3JlcCAtcSAiJFBBRE5BTUUiIC9wcm9jL2J1cy9pbnB1dC9kZXZpY2VzIHx8IGZhaWwgInBhZDogZGV2aWNlIGRpZCBub3QgYXBwZWFyIChzZWUgJExPRykiCiAgSD0kKGF3ayAtdiBSUz0gLXYgbj0iJFBBRE5BTUUiICdpbmRleCgkMCwgbikge3ByaW50fScgL3Byb2MvYnVzL2lucHV0L2RldmljZXMgfCBncmVwICdeSDonKQogIEVWPSQoZWNobyAiJEgiIHwgZ3JlcCAtbyAnZXZlbnRbMC05XSonIHwgaGVhZCAtMSk7IEpTPSQoZWNobyAiJEgiIHwgZ3JlcCAtbyAnanNbMC05XSonIHwgaGVhZCAtMSkKICBlY2hvICIkRVYiID4kRC9wYWQuZXZlbnQKICBvayAicGFkIG5hbWU9JyRQQUROQU1FJyBldmVudD0kRVYganM9JHtKUzotbm9uZX0iIDs7CgpwYWQtcHJlc3MpICMgcHJlc3MgQSBvbiB0aGUgcGFkLCByZWFkIGl0IGJhY2sgZnJvbSBldmRldiAoYW5kIGZyb20gL2Rldi9pbnB1dC9qcyogd2hlbiBqb3lkZXYgbWFkZSBvbmUpCiAgRVY9JChjYXQgJEQvcGFkLmV2ZW50IDI+L2Rldi9udWxsKSB8fCBza2lwICJwYWQtcHJlc3M6IG5vIHBhZC11cCIKICBweXRob24zIC0gIiRFViIgPDwnUFknIHx8IGZhaWwgInBhZC1wcmVzczogbm8gQlROX1NPVVRIIHByZXNzIHJlYWQgYmFjayIKaW1wb3J0IG9zLCBzZWxlY3QsIHN0cnVjdCwgc3lzLCB0aW1lCiMgYW55IFgtQm94IHBhZCBub2RlOiBCYXp6aXRlJ3MgY29udHJvbGxlciBzZXJ2aWNlIG1heSBncmFiIHRoZSBzb3VyY2UgcGFkIGFuZCByZS1leHBvc2UgaXQgYXMgaXRzIG93biB2aXJ0dWFsIHBhZApkZWYgbmFtZShuKToKICAgIHRyeTogcmV0dXJuIG9wZW4oJy9zeXMvY2xhc3MvaW5wdXQvJXMvZGV2aWNlL25hbWUnICUgbikucmVhZCgpLnN0cmlwKCkubG93ZXIoKQogICAgZXhjZXB0IE9TRXJyb3I6IHJldHVybiAnJwpmZHMgPSB7fQpmb3IgbiBpbiBzb3J0ZWQob3MubGlzdGRpcignL2Rldi9pbnB1dCcpKToKICAgIGlmIChuLnN0YXJ0c3dpdGgoJ2V2ZW50Jykgb3Igbi5zdGFydHN3aXRoKCdqcycpKSBhbmQgKCd4LWJveCcgaW4gbmFtZShuKSBvciAneGJveCcgaW4gbmFtZShuKSk6CiAgICAgICAgZmRzW29zLm9wZW4oJy9kZXYvaW5wdXQvJyArIG4sIG9zLk9fUkRPTkxZIHwgb3MuT19OT05CTE9DSyldID0gbgpvcy53cml0ZShvcy5vcGVuKCcvcnVuL2h3c2ltL3BhZC5maWZvJywgb3MuT19XUk9OTFkpLCBiJ3ByZXNzXG4nKQpnb3QgPSBOb25lOyBlbmQgPSB0aW1lLnRpbWUoKSArIDUKd2hpbGUgdGltZS50aW1lKCkgPCBlbmQgYW5kIG5vdCBnb3Q6CiAgICByLCBfLCBfID0gc2VsZWN0LnNlbGVjdChsaXN0KGZkcyksIFtdLCBbXSwgMC41KQogICAgZm9yIGYgaW4gcjoKICAgICAgICBkID0gb3MucmVhZChmLCAyNCAqIDE2KQogICAgICAgIGlmIGZkc1tmXS5zdGFydHN3aXRoKCdqcycpOgogICAgICAgICAgICBmb3IgaSBpbiByYW5nZSgwLCBsZW4oZCkgLSBsZW4oZCkgJSA4LCA4KToKICAgICAgICAgICAgICAgIF8sIHYsIHQsIG4gPSBzdHJ1Y3QudW5wYWNrKCdJaEJCJywgZFtpOmkgKyA4XSkKICAgICAgICAgICAgICAgIGlmICh0LCBuLCB2KSA9PSAoMSwgMCwgMSk6IGdvdCA9IGZkc1tmXSAgIyAweDgxIGluaXQgZXZlbnRzIGFyZSBub3QgMQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIGZvciBpIGluIHJhbmdlKDAsIGxlbihkKSAtIGxlbihkKSAlIDI0LCAyNCk6CiAgICAgICAgICAgICAgICBfLCBfLCB0LCBjLCB2ID0gc3RydWN0LnVucGFjaygnbGxISGknLCBkW2k6aSArIDI0XSkKICAgICAgICAgICAgICAgIGlmICh0LCBjLCB2KSA9PSAoMSwgMHgxMzAsIDEpOiBnb3QgPSBmZHNbZl0KcHJpbnQoJ3JlYWQgYmFjayBmcm9tJywgZ290IG9yICdub25lIG9mICcgKyAnICcuam9pbihmZHMudmFsdWVzKCkpLCBmaWxlPXN5cy5zdGRlcnIpCnN5cy5leGl0KDAgaWYgZ290IGVsc2UgMSkKUFkKICBvayAicGFkLXByZXNzIEJUTl9TT1VUSD0xIHJlYWQgYmFjayBmcm9tIGFuIFgtQm94IHBhZCBub2RlIiA7OwoKYnJpZ2h0bmVzcykgIyBjYW5ub3QgYmUgZmFrZWQ6IHN5c2ZzIGJhY2tsaWdodCBkZXZpY2VzIGFyZSBtYWRlIG9ubHkgYnkgZHJpdmVyczsgcmVwb3J0IHdoYXQgdGhlIEREQyBwYXRoIGhhcwogIG1vZHByb2JlIGkyYy1kZXYgMj4vZGV2L251bGwKICBCTD0kKGxzIC9zeXMvY2xhc3MvYmFja2xpZ2h0IDI+L2Rldi9udWxsIHwgd2MgLWwpCiAgTElCPW5vOyBsZGNvbmZpZyAtcCB8IGdyZXAgLXEgbGliZGRjdXRpbCAmJiBMSUI9eWVzCiAgQ0xJPW5vOyBjb21tYW5kIC12IGRkY3V0aWwgPi9kZXYvbnVsbCAmJiBDTEk9eWVzCiAgZWNobyAiSU5GTyBicmlnaHRuZXNzIGJhY2tsaWdodC1kZXZpY2VzPSRCTCBsaWJkZGN1dGlsPSRMSUIgZGRjdXRpbC1jbGk9JENMSSBpMmMtZGV2PSQobHNtb2QgfCBncmVwIC1jICdeaTJjX2RldicpIGkyYy1ub2Rlcz0kKGxzIC9kZXYvaTJjLSogMj4vZGV2L251bGwgfCB3YyAtbCkgKFZNIGhhcyBubyBwYW5lbCBvciBEREMgbW9uaXRvcikiCiAgWyAiJExJQiIgPSB5ZXMgXSAmJiBleGl0IDAgfHwgZXhpdCAzIDs7Cgp0ZWFyZG93bikKICBmb3IgcCBpbiAkRC8qLnBpZDsgZG8gWyAtZSAiJHAiIF0gJiYga2lsbCAiJChjYXQgIiRwIikiIDI+L2Rldi9udWxsOyBkb25lCiAgbm1jbGkgY29ubmVjdGlvbiBkZWxldGUgJFNTSUQgPi9kZXYvbnVsbCAyPiYxCiAgbHBhZG1pbiAteCBNb3VudGFpblRlc3QgPi9kZXYvbnVsbCAyPiYxCiAgcGtpbGwgLXggaG9zdGFwZDsgcGtpbGwgLXggaXBwZXZlcHJpbnRlcgogIHNsZWVwIDEKICBybW1vZCB2NGwybG9vcGJhY2sgbWFjODAyMTFfaHdzaW0gaGNpX3ZoY2kgdWlucHV0ID4vZGV2L251bGwgMj4mMQogIG9rICJ0ZWFyZG93biIgOzsKCiopIGVjaG8gInVzYWdlOiAkMCBzZXR1cHx3aWZpLXVwfHdpZmktam9pbnx3aWZpLWxlYXZlfGJ0LXVwfGJ0LXBhaXJ8Y2FtLXVwfHByaW50ZXItdXB8cHJpbnRlci1wcmludHxwYWQtdXB8cGFkLXByZXNzfGJyaWdodG5lc3N8dGVhcmRvd24iOyBleGl0IDIgOzsKZXNhYwo= | base64 -d > /tmp/hwsim.sh && chmod 755 /tmp/hwsim.sh"
           HW=/tmp/hwsim.sh
@@ -1239,7 +1263,9 @@ jobs:
           chk "brightness: no fakeable backlight; DDC library present" 2 "$HW brightness" '^INFO brightness backlight-devices=0 libddcutil=yes'
           R "$HW teardown" >/dev/null 2>&1 || true
           R "cat /run/hwsim/log 2>/dev/null" > hwsim-log.txt 2>&1 || true
+          fi # part hardware
 
+          if part startapps; then
           # v7.1 user view: Start search typed one letter at a time (overdrawn rows show as unreadable text), every Start app opened
           # (its window must be dark like the system), then stability and tearing guards and the window census
           K -x kdebugsettings; QM key esc; sleep 1
@@ -1279,6 +1305,7 @@ jobs:
           EVERY_ALIAS='btrfs-assistant=org.kde.polkit-kde-authentication-agent-1|mountain-node=org.kde.konsole|mountain-python=org.kde.konsole|org.gnome.DiskUtility=gnome-disks|org.kde.krfb=org.freedesktop.impl.portal.desktop.kde|org.mountain.(protection|run|security|settings)=org.kde.plasmawindowed|webapp-manager=webapp-manager.py|org.onlyoffice.desktopeditors=ONLYOFFICE'
           touch perf/every-alias.txt
           echo "| Start apps: each judged by its own window | $(grep -qvE "^($EVERY_ALIAS)$" perf/every-alias.txt && echo FAIL || echo PASS) | other window judged: $(grep -vE "^($EVERY_ALIAS)$" perf/every-alias.txt | paste -sd' ') |" >> report.md
+          fi # part startapps
           chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
           chk "stability: no program crashed during the run" 0 "c=\$(coredumpctl list --no-legend --no-pager 2>/dev/null | grep -oE '/[^ ]+\$' | sort | uniq -c | paste -sd' '); echo \${c:-none}" '^none$'
@@ -1317,11 +1344,13 @@ jobs:
           chk "v7.3 style: gtk.css (libadwaita colours) in the account" 0 "grep -c mountain-gtk ~looktest/.config/gtk-4.0/gtk.css ~looktest/.config/gtk-3.0/gtk.css | paste -sd' '" 'gtk-4.0/gtk.css:1 .*gtk-3.0/gtk.css:1'
           chk "v7.3 style: Flatpak apps see the GTK css folders" 0 "flatpak override --system --show 2>/dev/null | grep -c 'xdg-config/gtk-4.0:ro'" '^1$'
           R "$LT notify-send -a 'Test app' 'Pointer toast test' 'Leaves by itself.'"; sleep 1; QM move $((W/2)) $((H/3)); sleep 8; shot toast-pointer-away # ux-rules: no "Pointer toast test" left
+          if part session; then
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
           R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
           chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
+          fi # part session
           LO=fail
           for _ in $(seq 30); do
             R "loginctl list-sessions --no-legend | grep -q looktest" || { LO=ok; break; }
@@ -1332,7 +1361,7 @@ jobs:
           # Startup apps: the switched-off test app must not start at the next sign-in
           sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
           for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20; shot relogin-desktop
-          chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
+          part taskmgr && chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
           # Bulgarian: what Language & region writes (plasma-localerc [Translations] LANGUAGE), sign out and in, look at KDE-owned and
           # Mountain windows, then back to English. Only KDE's own text (Dolphin, Plasma menus) is Bulgarian: Mountain's plasmoids ship no bg catalog.
           chk "Bulgarian: KDE catalogs are installed" 0 "ls /usr/share/locale/bg/LC_MESSAGES/dolphin.mo /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo" 'dolphin.mo'
@@ -1352,11 +1381,12 @@ jobs:
           L dolphin; sleep 8; shot bg-file-explorer; K -x dolphin
           R "ls /usr/lib64/qt6/plugins/kf6/kfileitemaction/ /usr/share/kio/servicemenus/ 2>&1" > fileitemactions-log.txt 2>&1 || true # real names of the right-click plugins (folder-colour row)
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
+          BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
+          printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
+          if part rollback; then
           # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
           chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
           chk "attack: fill the disk" 2 "fallocate -l \$(( \$(df --output=avail -B1 /var | tail -1) - 64*1024*1024 )) /var/rt-fill; df -h /var | tail -1" '.'
-          BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
-          printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
           newboot() { local b; for _ in $(seq 18); do b=$(R "cat /proc/sys/kernel/random/boot_id" 2>/dev/null); [ -n "$b" ] && [ "$b" != "$1" ] && return 0; sleep 10; done; return 1; }
@@ -1374,6 +1404,7 @@ jobs:
               fi
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
+          fi # part rollback
           # clean shutdown: the VM must power itself off
           R "systemctl poweroff" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null
           if timeout 180 sudo podman wait qemu >/dev/null 2>&1; then echo "| shutdown | PASS | VM powered off |" >> report.md
