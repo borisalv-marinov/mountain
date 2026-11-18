@@ -13,6 +13,7 @@
     "Id": "org.mountain.keyboardlayout",
     "License": "GPL-2.0-or-later",
     "Name": "Input language",
+    "Name[bg]": "Език на въвеждане",
     "Version": "1.0"
   },
   "X-Plasma-API-Minimum-Version": "6.0",

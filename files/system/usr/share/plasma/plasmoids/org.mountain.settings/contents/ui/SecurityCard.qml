@@ -11,7 +11,7 @@ GlassCard {
     property int level: 0 // 0 good, 1 recommended, 2 needed
     property string details: ""
     property string details2: ""
-    property string tech: "" // technical names, shown only under "Details"
+    property string tech: "" // technical names, shown only under i18n("Details")
     property bool showTech: false
     property alias buttons: row.data // the one-click fixes: buttons: [ GlassButton {...} ]
     padding: 16
@@ -46,7 +46,7 @@ GlassCard {
                 }
                 GText {
                     id: status
-                    text: card.level === 0 ? "No action needed" : (card.level === 1 ? "Action recommended" : "Action needed")
+                    text: card.level === 0 ? i18n("No action needed") : (card.level === 1 ? i18n("Action recommended") : i18n("Action needed"))
                     color: card.level === 0 ? "#7EE2A8" : (card.level === 1 ? "#F2CC60" : "#FF9B94") // all >= 6:1 on the card
                 }
             }
@@ -70,8 +70,8 @@ GlassCard {
                 visible: card.tech !== ""
                 hoverEnabled: true
                 activeFocusOnTab: true
-                text: card.showTech ? "Hide details" : "Details"
-                Accessible.name: text + " for " + card.title
+                text: card.showTech ? i18n("Hide details") : i18n("Details")
+                Accessible.name: i18n("%1 for %2", text, card.title)
                 onClicked: card.showTech = !card.showTech
                 Keys.onReturnPressed: clicked()
                 contentItem: GText {

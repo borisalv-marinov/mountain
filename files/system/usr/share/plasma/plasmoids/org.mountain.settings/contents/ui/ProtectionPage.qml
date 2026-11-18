@@ -61,9 +61,9 @@ ColumnLayout {
                 return;
             }
             if (ap.running === "scan") {
-                ap.note = out.indexOf("av_result=found") >= 0 ? "Threats found and moved to quarantine."
-                        : out.indexOf("av_result=clean") >= 0 ? "Scan finished: no threats found."
-                        : "The scan could not finish. Check your internet connection (definitions download first) and try again.";
+                ap.note = out.indexOf("av_result=found") >= 0 ? i18n("Threats found and moved to quarantine.")
+                        : out.indexOf("av_result=clean") >= 0 ? i18n("Scan finished: no threats found.")
+                        : i18n("The scan could not finish. Check your internet connection (definitions download first) and try again.");
             }
             ap.running = "";
             ap.refresh();
@@ -82,7 +82,7 @@ ColumnLayout {
 
     GText {
         Layout.topMargin: 6
-        text: "Active Protection"
+        text: i18n("Active Protection")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }
@@ -91,14 +91,14 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         dim: true
-        text: "Watches new files in Downloads, Desktop, Documents, your home folder, temporary files and USB drives, on this PC only: nothing is uploaded. "
-              + "When you extract an archive (Ark, Extract here), everything that came out is checked and you get one result. "
-              + "It uses almost no memory until a file appears, and never watches games."
+        text: i18n("Watches new files in Downloads, Desktop, Documents, your home folder, temporary files and USB drives, on this PC only: nothing is uploaded. ")
+              + i18n("When you extract an archive (Ark, Extract here), everything that came out is checked and you get one result. ")
+              + i18n("It uses almost no memory until a file appears, and never watches games.")
     }
     GText {
         Layout.fillWidth: true
         visible: ap.note !== "" || ap.running !== ""
-        text: ap.running === "scan" ? "Scanning… definitions download first, then the scan runs at low priority." : ap.running !== "" ? "Working…" : ap.note
+        text: ap.running === "scan" ? i18n("Scanning… definitions download first, then the scan runs at low priority.") : ap.running !== "" ? i18n("Working…") : ap.note
         wrapMode: Text.WordWrap
         color: app.accent
     }
@@ -106,24 +106,23 @@ ColumnLayout {
     SecurityCard {
         Layout.fillWidth: true
         iconName: ap.v("ap") === "on" ? "security-high" : "security-low"
-        title: "Real-time protection is " + (ap.v("ap") === "on" ? "on" : "off")
+        title: ap.v("ap") === "on" ? i18n("Real-time protection is on") : i18n("Real-time protection is off")
         level: ap.v("ap") === "on" ? (ap.v("av_defs") === "none" ? 2 : (ap.list("ap_unverified").length > 0 ? 1 : 0)) : 2
-        details: "Files checked today: " + ap.v("ap_checked_today", "0") + " · Threats blocked: " + ap.v("ap_threats", "0")
-                 + " · Unverified to review: " + ap.list("ap_unverified").length
-                 + "\nDefinitions: " + (ap.v("av_defs") === "none" ? "No virus definitions — press Update" : ap.v("av_defs"))
-                 + ". They update only when you press Update or a scan button."
+        details: i18n("Files checked today: %1 · Threats blocked: %2 · Unverified to review: %3", ap.v("ap_checked_today", "0"), ap.v("ap_threats", "0"), ap.list("ap_unverified").length)
+                 + "\n" + i18n("Definitions: %1", ap.v("av_defs") === "none" ? i18n("No virus definitions — press Update") : ap.v("av_defs"))
+                 + i18n(". They update only when you press Update or a scan button.")
         buttons: [
-            GlassButton { text: ap.v("ap") === "on" ? "Turn off" : "Turn on"; highlighted: ap.v("ap") !== "on"; enabled: ap.running === ""; onClicked: ap.start("fix", ap.helper + (ap.v("ap") === "on" ? " off" : " on")) },
-            GlassButton { text: "Scan now"; enabled: ap.running === ""; onClicked: ap.start("scan", "/usr/libexec/mountain-security scan quick") },
-            GlassButton { text: "Update definitions"; enabled: ap.running === ""; onClicked: ap.start("fix", "systemctl start mountain-virus-definitions.service") },
-            GlassButton { text: "Security"; onClicked: app.page = "privacy" }
+            GlassButton { text: ap.v("ap") === "on" ? i18n("Turn off") : i18n("Turn on"); highlighted: ap.v("ap") !== "on"; enabled: ap.running === ""; onClicked: ap.start("fix", ap.helper + (ap.v("ap") === "on" ? " off" : " on")) },
+            GlassButton { text: i18n("Scan now"); enabled: ap.running === ""; onClicked: ap.start("scan", "/usr/libexec/mountain-security scan quick") },
+            GlassButton { text: i18n("Update definitions"); enabled: ap.running === ""; onClicked: ap.start("fix", "systemctl start mountain-virus-definitions.service") },
+            GlassButton { text: i18n("Security"); onClicked: app.page = "privacy" }
         ]
     }
 
     GText {
         Layout.topMargin: 10
         visible: ap.list("ap_unverified").length > 0
-        text: "Unverified files"
+        text: i18n("Unverified files")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
         font.weight: Font.DemiBold
     }
@@ -143,9 +142,9 @@ ColumnLayout {
                     GText { Layout.fillWidth: true; text: path.slice(path.lastIndexOf("/") + 1) }
                     GText { Layout.fillWidth: true; text: reason + " · " + path; dim: true; font.pointSize: Kirigami.Theme.smallFont.pointSize }
                 }
-                GlassButton { text: "Allow"; Accessible.name: "Allow " + path; onClicked: ap.start("fix", ap.helper + " allow " + ap.q(path)) }
-                GlassButton { text: "Quarantine"; Accessible.name: "Quarantine " + path; onClicked: ap.start("fix", ap.helper + " quarantine " + ap.q(path)) }
-                GlassButton { text: "Delete"; Accessible.name: "Delete " + path; onClicked: ap.start("fix", ap.helper + " delete " + ap.q(path)) }
+                GlassButton { text: i18n("Allow"); Accessible.name: i18n("Allow %1", path); onClicked: ap.start("fix", ap.helper + " allow " + ap.q(path)) }
+                GlassButton { text: i18n("Quarantine"); Accessible.name: i18n("Quarantine %1", path); onClicked: ap.start("fix", ap.helper + " quarantine " + ap.q(path)) }
+                GlassButton { text: i18n("Delete"); Accessible.name: i18n("Delete %1", path); onClicked: ap.start("fix", ap.helper + " delete " + ap.q(path)) }
             }
         }
     }
@@ -153,7 +152,7 @@ ColumnLayout {
     GText {
         Layout.topMargin: 10
         visible: ap.list("av_q").length > 0
-        text: "Quarantine"
+        text: i18n("Quarantine")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
         font.weight: Font.DemiBold
     }
@@ -166,8 +165,8 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 GText { Layout.fillWidth: true; text: v }
-                GlassButton { text: "Restore"; Accessible.name: "Restore " + v; onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-restore " + ap.q(v)) }
-                GlassButton { text: "Delete"; Accessible.name: "Delete " + v; onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-delete " + ap.q(v)) }
+                GlassButton { text: i18n("Restore"); Accessible.name: i18n("Restore %1", v); onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-restore " + ap.q(v)) }
+                GlassButton { text: i18n("Delete"); Accessible.name: i18n("Delete %1", v); onClicked: ap.start("fix", "/usr/libexec/mountain-security quarantine-delete " + ap.q(v)) }
             }
         }
     }
@@ -175,7 +174,7 @@ ColumnLayout {
     GText {
         Layout.topMargin: 10
         visible: ap.list("av_history").length > 0
-        text: "History"
+        text: i18n("History")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
         font.weight: Font.DemiBold
     }

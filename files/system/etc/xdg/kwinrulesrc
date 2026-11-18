@@ -1,8 +1,8 @@
 # File Explorer opens 1100x700 (Dolphin's own first size is 640 px wide: one icon column, breadcrumb and search pushed off the toolbar).
 # Apply initially (sizerule=3): the user can still resize; only normal windows (types=1), not dialogs.
 [General]
-count=3
-rules=mountain-explorer-size,mountain-emoji,mountain-settings-identity
+count=4
+rules=mountain-explorer-size,mountain-emoji,mountain-settings-identity,mountain-settings-identity-bg
 
 [mountain-explorer-size]
 Description=File Explorer default size
@@ -37,6 +37,16 @@ Description=Settings shows as Settings on the taskbar
 wmclass=plasmawindowed
 wmclassmatch=2
 title=Settings
+titlematch=1
+desktopfile=org.mountain.settings
+desktopfilerule=2
+
+# The same window in Bulgarian: its title comes from Name[bg] in the plasmoid's metadata.json.
+[mountain-settings-identity-bg]
+Description=Settings shows as Settings on the taskbar (Bulgarian)
+wmclass=plasmawindowed
+wmclassmatch=2
+title=Настройки
 titlematch=1
 desktopfile=org.mountain.settings
 desktopfilerule=2

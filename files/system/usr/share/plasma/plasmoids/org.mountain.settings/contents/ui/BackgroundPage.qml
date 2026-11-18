@@ -19,7 +19,7 @@ ColumnLayout {
     property var pics: [] // [{ pkg, preview }]
     property string mode: plugin === "org.kde.color" ? "color" : plugin === "org.kde.slideshow" ? "slideshow" : "picture"
 
-    readonly property var fits: [{ t: "Fill", v: 2 }, { t: "Fit", v: 1 }, { t: "Stretch", v: 0 }, { t: "Tile", v: 3 }, { t: "Center", v: 6 }]
+    readonly property var fits: [{ t: i18n("Fill"), v: 2 }, { t: i18n("Fit"), v: 1 }, { t: i18n("Stretch"), v: 0 }, { t: i18n("Tile"), v: 3 }, { t: i18n("Center"), v: 6 }]
     readonly property var swatches: ["#FF8C00", "#E81123", "#D13438", "#C30052", "#BF0077", "#9A0089", "#881798", "#744DA9",
                                      "#0078D4", "#0063B1", "#6B69D6", "#8764B8", "#00B7C3", "#038387", "#00B294", "#018574",
                                      "#00CC6A", "#10893E", "#7A7574", "#5D5A58", "#68768A", "#515C6B", "#4C4A48", "#000000"]
@@ -74,7 +74,7 @@ ColumnLayout {
         Layout.topMargin: 6
         Layout.bottomMargin: 6
         Layout.fillWidth: true
-        text: "Personalization  ›  Background"
+        text: i18n("Personalization  ›  Background")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }
@@ -89,7 +89,7 @@ ColumnLayout {
         border.width: 4
         border.color: "#3A3C42"
         Accessible.role: Accessible.Graphic
-        Accessible.name: "Preview of your desktop"
+        Accessible.name: i18n("Preview of your desktop")
         Rectangle {
             anchors.fill: parent
             anchors.margins: 4
@@ -123,22 +123,22 @@ ColumnLayout {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1
-                GText { Layout.fillWidth: true; text: "Personalize your background" }
+                GText { Layout.fillWidth: true; text: i18n("Personalize your background") }
                 GText {
                     Layout.fillWidth: true
                     dim: true
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    text: bg.mode === "slideshow" ? "A new picture every 30 minutes" : bg.mode === "color" ? "One color for your desktop" : "A picture you choose"
+                    text: bg.mode === "slideshow" ? i18n("A new picture every 30 minutes") : bg.mode === "color" ? i18n("One color for your desktop") : i18n("A picture you choose")
                 }
             }
             Repeater {
-                model: [{ t: "Picture", m: "picture" }, { t: "Solid color", m: "color" }, { t: "Slideshow", m: "slideshow" }]
+                model: [{ t: i18n("Picture"), m: "picture" }, { t: i18n("Solid color"), m: "color" }, { t: i18n("Slideshow"), m: "slideshow" }]
                 delegate: GlassButton {
                     required property var modelData
                     text: modelData.t
                     implicitWidth: 100
                     highlighted: bg.mode === modelData.m
-                    Accessible.name: "Background: " + modelData.t
+                    Accessible.name: i18n("Background: %1", modelData.t)
                     onClicked: if (bg.mode !== modelData.m) bg.switchTo(modelData.m)
                 }
             }
@@ -153,7 +153,7 @@ ColumnLayout {
             Layout.bottomMargin: 14
             spacing: 10
             Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
-            GText { text: "Choose a photo" }
+            GText { text: i18n("Choose a photo") }
             Flow {
                 Layout.fillWidth: true
                 spacing: 8
@@ -168,7 +168,7 @@ ColumnLayout {
                         padding: 3
                         hoverEnabled: true
                         activeFocusOnTab: true
-                        Accessible.name: "Set background " + modelData.pkg.split("/").filter(x => x).pop().replace(/-/g, " ")
+                        Accessible.name: i18n("Set background %1", modelData.pkg.split("/").filter(x => x).pop().replace(/-/g, " "))
                         onClicked: bg.setPicture(modelData.pkg)
                         Keys.onReturnPressed: clicked()
                         background: Rectangle {
@@ -188,13 +188,13 @@ ColumnLayout {
             }
             RowLayout {
                 Layout.fillWidth: true
-                GText { Layout.fillWidth: true; text: "Choose a photo from your PC"; dim: true }
-                GlassButton { text: "Browse photos"; onClicked: bg.act("browse " + bg.fill) }
+                GText { Layout.fillWidth: true; text: i18n("Choose a photo from your PC"); dim: true }
+                GlassButton { text: i18n("Browse photos"); onClicked: bg.act("browse " + bg.fill) }
             }
             RowLayout {
                 Layout.fillWidth: true
-                GText { Layout.fillWidth: true; text: "Lock screen"; dim: true }
-                GlassButton { text: "Use on lock screen too"; enabled: bg.image !== ""; onClicked: bg.act("lock " + bg.q(bg.image)) }
+                GText { Layout.fillWidth: true; text: i18n("Lock screen"); dim: true }
+                GlassButton { text: i18n("Use on lock screen too"); enabled: bg.image !== ""; onClicked: bg.act("lock " + bg.q(bg.image)) }
             }
         }
 
@@ -207,7 +207,7 @@ ColumnLayout {
             Layout.bottomMargin: 14
             spacing: 10
             Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
-            GText { text: "Choose your background color" }
+            GText { text: i18n("Choose your background color") }
             Flow {
                 Layout.fillWidth: true
                 spacing: 6
@@ -221,7 +221,7 @@ ColumnLayout {
                         height: 40
                         hoverEnabled: true
                         activeFocusOnTab: true
-                        Accessible.name: "Color " + modelData
+                        Accessible.name: i18n("Color %1", modelData)
                         onClicked: { bg.solid = modelData; bg.act("color " + bg.q(modelData)); }
                         Keys.onReturnPressed: clicked()
                         background: Rectangle {
@@ -246,9 +246,9 @@ ColumnLayout {
             Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.08) }
             RowLayout {
                 Layout.fillWidth: true
-                GText { Layout.fillWidth: true; text: "Choose a picture album for a slideshow" }
-                GlassButton { text: "Mountain pictures"; onClicked: bg.act("slideshow") }
-                GlassButton { text: "Browse"; onClicked: bg.act("slideshow browse") }
+                GText { Layout.fillWidth: true; text: i18n("Choose a picture album for a slideshow") }
+                GlassButton { text: i18n("Mountain pictures"); onClicked: bg.act("slideshow") }
+                GlassButton { text: i18n("Browse"); onClicked: bg.act("slideshow browse") }
             }
         }
     }
@@ -263,7 +263,7 @@ ColumnLayout {
             Layout.margins: 12
             spacing: 14
             Kirigami.Icon { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: "zoom-fit-best-symbolic"; fallback: "zoom-fit-best"; isMask: true; color: Kirigami.Theme.textColor }
-            GText { Layout.fillWidth: true; text: "Choose a fit for your desktop image" }
+            GText { Layout.fillWidth: true; text: i18n("Choose a fit for your desktop image") }
             Flow {
                 Layout.preferredWidth: Math.min(5 * 78, bg.width * 0.6)
                 spacing: 6
@@ -274,7 +274,7 @@ ColumnLayout {
                         text: modelData.t
                         implicitWidth: 72
                         highlighted: bg.fill === modelData.v
-                        Accessible.name: "Fit: " + modelData.t
+                        Accessible.name: i18n("Fit: %1", modelData.t)
                         onClicked: { bg.fill = modelData.v; bg.act("fit " + modelData.v); }
                     }
                 }

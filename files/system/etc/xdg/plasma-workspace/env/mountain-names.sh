@@ -8,3 +8,7 @@ esac
 case ${LANGUAGE:-${LANG:-}} in
   ""|en_US*|C|C.UTF-8|C.utf8|POSIX) export LANGUAGE="en@mountain:${LANGUAGE:-en_US}" ;;
 esac
+# Bulgarian: the same trick with a "bg@mountain" catalog (Windows' Bulgarian names: "Файлов мениджър", "Терминал", ...).
+case ${LANGUAGE:-${LANG:-}} in
+  bg*) export LANGUAGE="bg@mountain:${LANGUAGE:-bg}" ;;
+esac

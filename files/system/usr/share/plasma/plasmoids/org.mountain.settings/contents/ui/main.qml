@@ -51,78 +51,78 @@ PlasmoidItem {
     // Windows 11 categories and their sub-pages. page = a native Settings page, cmd = shell command, k = extra search keywords.
     // Every page is built in: nothing here opens KDE System Settings.
     readonly property var categories: [
-        { id: "home", name: "Home", icon: "go-home", items: [] },
-        { id: "system", name: "System", icon: "preferences-system", items: [
-            { t: "Display", d: "Monitors, brightness, resolution, scale", i: "monitor", page: "display", k: "screen monitor resolution refresh hdr" },
-            { t: "Sound", d: "Volume, output and input devices", i: "audio-speakers", page: "sound", k: "audio speaker microphone headphones" },
-            { t: "Notifications", d: "Alerts from apps and system, do not disturb", i: "preferences-desktop-notification", page: "notifications", k: "alerts do not disturb" },
-            { t: "Power & battery", d: "Sleep, screen off, battery saver", i: "battery-080", page: "power", k: "power sleep suspend energy" },
-            { t: "Storage", d: "Drives and partitions", i: "drive-harddisk", page: "storage", k: "disk drive space ssd" },
-            { t: "Recovery", d: "Go back to the previous version, reset this PC", i: "document-revert", page: "updates", k: "recovery reset go back rollback restore" },
-            { t: "About", d: "Device specifications, PC name", i: "help-about", page: "about", k: "pc name hostname rename specs version" }
+        { id: "home", name: i18n("Home"), icon: "go-home", items: [] },
+        { id: "system", name: i18n("System"), icon: "preferences-system", items: [
+            { t: i18n("Display"), d: i18n("Monitors, brightness, resolution, scale"), i: "monitor", page: "display", k: "screen monitor resolution refresh hdr" },
+            { t: i18n("Sound"), d: i18n("Volume, output and input devices"), i: "audio-speakers", page: "sound", k: "audio speaker microphone headphones" },
+            { t: i18n("Notifications"), d: i18n("Alerts from apps and system, do not disturb"), i: "preferences-desktop-notification", page: "notifications", k: "alerts do not disturb" },
+            { t: i18n("Power & battery"), d: i18n("Sleep, screen off, battery saver"), i: "battery-080", page: "power", k: "power sleep suspend energy" },
+            { t: i18n("Storage"), d: i18n("Drives and partitions"), i: "drive-harddisk", page: "storage", k: "disk drive space ssd" },
+            { t: i18n("Recovery"), d: i18n("Go back to the previous version, reset this PC"), i: "document-revert", page: "updates", k: "recovery reset go back rollback restore" },
+            { t: i18n("About"), d: i18n("Device specifications, PC name"), i: "help-about", page: "about", k: "pc name hostname rename specs version" }
         ] },
-        { id: "devices", name: "Bluetooth & devices", icon: "network-bluetooth", items: [
-            { t: "Bluetooth", d: "Pair and manage Bluetooth devices", i: "preferences-system-bluetooth", page: "bluetooth", k: "bluetooth pair headphones" },
-            { t: "Mouse & touchpad", d: "Pointer speed, scrolling, buttons, taps", i: "input-mouse", page: "mouse", k: "mouse touchpad trackpad pointer cursor speed natural scrolling left handed tap" },
-            { t: "Keyboard", d: "Layouts and keys", i: "input-keyboard", page: "typing", k: "layout typing keys" },
-            { t: "Printers & scanners", d: "Your printers and test page; network printers are added automatically", i: "printer", page: "printers", k: "print" },
-            { t: "Scanner", d: "Scan a document or photo", i: "preferences-devices-scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
-            { t: "Phone Link", d: "Your phone's messages, files and notifications on this PC", i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
-            { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad joystick controller" }
+        { id: "devices", name: i18n("Bluetooth & devices"), icon: "network-bluetooth", items: [
+            { t: i18n("Bluetooth"), d: i18n("Pair and manage Bluetooth devices"), i: "preferences-system-bluetooth", page: "bluetooth", k: "bluetooth pair headphones" },
+            { t: i18n("Mouse & touchpad"), d: i18n("Pointer speed, scrolling, buttons, taps"), i: "input-mouse", page: "mouse", k: "mouse touchpad trackpad pointer cursor speed natural scrolling left handed tap" },
+            { t: i18n("Keyboard"), d: i18n("Layouts and keys"), i: "input-keyboard", page: "typing", k: "layout typing keys" },
+            { t: i18n("Printers & scanners"), d: i18n("Your printers and test page; network printers are added automatically"), i: "printer", page: "printers", k: "print" },
+            { t: i18n("Scanner"), d: i18n("Scan a document or photo"), i: "preferences-devices-scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
+            { t: i18n("Phone Link"), d: i18n("Your phone's messages, files and notifications on this PC"), i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
+            { t: i18n("Game controllers"), d: i18n("Gamepads and joysticks"), i: "input-gamepad", page: "controllers", k: "gamepad joystick controller" }
         ] },
-        { id: "network", name: "Network & internet", icon: "network-wireless", items: [
-            { t: "Wi-Fi", d: "Connect, manage known networks", i: "network-wireless", page: "network", net: "wifi", k: "wifi wireless internet" },
-            { t: "Ethernet", d: "Authentication, IP and DNS settings", i: "network-wired", page: "network", net: "ethernet", k: "ethernet wired cable lan ip dns internet" },
-            { t: "VPN", d: "Add, connect, manage", i: "network-vpn", page: "network", net: "vpn", k: "vpn wireguard openvpn" },
-            { t: "Mobile hotspot", d: "Share your internet connection", i: "network-wireless-hotspot", page: "network", net: "hotspot", k: "hotspot tethering share" },
-            { t: "Airplane mode", d: "Stop all wireless communication", i: "network-flightmode-on", page: "network", net: "airplane", k: "airplane flight mode radio" }
+        { id: "network", name: i18n("Network & internet"), icon: "network-wireless", items: [
+            { t: i18n("Wi-Fi"), d: i18n("Connect, manage known networks"), i: "network-wireless", page: "network", net: "wifi", k: "wifi wireless internet" },
+            { t: i18n("Ethernet"), d: i18n("Authentication, IP and DNS settings"), i: "network-wired", page: "network", net: "ethernet", k: "ethernet wired cable lan ip dns internet" },
+            { t: i18n("VPN"), d: i18n("Add, connect, manage"), i: "network-vpn", page: "network", net: "vpn", k: "vpn wireguard openvpn" },
+            { t: i18n("Mobile hotspot"), d: i18n("Share your internet connection"), i: "network-wireless-hotspot", page: "network", net: "hotspot", k: "hotspot tethering share" },
+            { t: i18n("Airplane mode"), d: i18n("Stop all wireless communication"), i: "network-flightmode-on", page: "network", net: "airplane", k: "airplane flight mode radio" }
         ] },
-        { id: "personalization", name: "Personalization", icon: "draw-brush", items: [
-            { t: "Background", d: "Picture, solid color, slideshow", i: "edit-image", page: "background", k: "wallpaper background picture" },
-            { t: "Colors", d: "Dark and light mode, accent color", i: "color-management", page: "colors", k: "dark light accent color colour" },
-            { t: "Lock screen", d: "Lock screen picture and timeout", i: "system-lock-screen", page: "lockscreen", k: "lock wallpaper" },
-            { t: "Transparency effects", d: "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)", i: "special-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
-            { t: "Taskbar alignment", d: "Click to switch between center and left", i: "align-horizontal-center", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
-            { t: "Start menu: more pins", d: "Four rows of pinned apps, fewer recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
-            { t: "Start menu: default", d: "Three rows of pins and recommendations", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu default", k: "start menu layout default" },
-            { t: "Start menu: more recommendations", d: "Two rows of pins, more recent files", i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu recommended", k: "start menu layout recommended recent" },
-            { t: "Top bar", d: "Click to add or remove a top bar with CPU and memory", i: "view-split-top-bottom", cmd: "/usr/libexec/mountain-topbar toggle", k: "top bar panel" }
+        { id: "personalization", name: i18n("Personalization"), icon: "draw-brush", items: [
+            { t: i18n("Background"), d: i18n("Picture, solid color, slideshow"), i: "edit-image", page: "background", k: "wallpaper background picture" },
+            { t: i18n("Colors"), d: i18n("Dark and light mode, accent color"), i: "color-management", page: "colors", k: "dark light accent color colour" },
+            { t: i18n("Lock screen"), d: i18n("Lock screen picture and timeout"), i: "system-lock-screen", page: "lockscreen", k: "lock wallpaper" },
+            { t: i18n("Transparency effects"), d: i18n("Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)"), i: "special-effects", cmd: "/usr/libexec/mountain-personalize glass toggle", k: "glass blur transparency effects" },
+            { t: i18n("Taskbar alignment"), d: i18n("Click to switch between center and left"), i: "align-horizontal-center", cmd: "/usr/libexec/mountain-personalize align toggle", k: "taskbar alignment left center centre" },
+            { t: i18n("Start menu: more pins"), d: i18n("Four rows of pinned apps, fewer recommendations"), i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu pins", k: "start menu layout pins" },
+            { t: i18n("Start menu: default"), d: i18n("Three rows of pins and recommendations"), i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu default", k: "start menu layout default" },
+            { t: i18n("Start menu: more recommendations"), d: i18n("Two rows of pins, more recent files"), i: "view-grid", cmd: "/usr/libexec/mountain-personalize startmenu recommended", k: "start menu layout recommended recent" },
+            { t: i18n("Top bar"), d: i18n("Click to add or remove a top bar with CPU and memory"), i: "view-split-top-bottom", cmd: "/usr/libexec/mountain-topbar toggle", k: "top bar panel" }
         ] },
-        { id: "apps", name: "Apps", icon: "view-app-grid", items: [
-            { t: "Default apps", d: "Browser, mail, music, video", i: "starred", page: "defaultapps", k: "default browser" },
-            { t: "Startup apps", d: "Apps that start when you sign in", i: "system-run", page: "startup", k: "autostart startup login" },
-            { t: "App Store", d: "Install and remove apps", i: "get-hot-new-stuff", cmd: "kstart --application io.github.kolunmi.Bazaar", k: "install store bazaar flatpak" }
+        { id: "apps", name: i18n("Apps"), icon: "view-app-grid", items: [
+            { t: i18n("Default apps"), d: i18n("Browser, mail, music, video"), i: "starred", page: "defaultapps", k: "default browser" },
+            { t: i18n("Startup apps"), d: i18n("Apps that start when you sign in"), i: "system-run", page: "startup", k: "autostart startup login" },
+            { t: i18n("App Store"), d: i18n("Install and remove apps"), i: "get-hot-new-stuff", cmd: "kstart --application io.github.kolunmi.Bazaar", k: "install store bazaar flatpak" }
         ] },
-        { id: "accounts", name: "Accounts", icon: "system-users", items: [
-            { t: "Your info", d: "Name and account picture", i: "user-identity", page: "youraccount", k: "account picture avatar name" },
-            { t: "Sign-in options", d: "Password", i: "lock", page: "youraccount", k: "password sign in login" }
+        { id: "accounts", name: i18n("Accounts"), icon: "system-users", items: [
+            { t: i18n("Your info"), d: i18n("Name and account picture"), i: "user-identity", page: "youraccount", k: "account picture avatar name" },
+            { t: i18n("Sign-in options"), d: i18n("Password"), i: "lock", page: "youraccount", k: "password sign in login" }
         ] },
-        { id: "time", name: "Time & language", icon: "clock", items: [
-            { t: "Date & time", d: "Time zone, clock", i: "clock", page: "datetime", k: "clock time zone date" },
-            { t: "Language & region", d: "Language, formats, region", i: "preferences-desktop-locale", page: "language", k: "language region locale format add a language display" },
-            { t: "Typing", d: "Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches", i: "input-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български" }
+        { id: "time", name: i18n("Time & language"), icon: "clock", items: [
+            { t: i18n("Date & time"), d: i18n("Time zone, clock"), i: "clock", page: "datetime", k: "clock time zone date" },
+            { t: i18n("Language & region"), d: i18n("Language, formats, region"), i: "preferences-desktop-locale", page: "language", k: "language region locale format add a language display" },
+            { t: i18n("Typing"), d: i18n("Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches"), i: "input-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български" }
         ] },
-        { id: "gaming", name: "Gaming", icon: "input-gamepad", items: [
-            { t: "Game Mode", d: "Full power while a game runs, your power mode back after (on by default): click to turn on or off", i: "speedometer", cmd: "/usr/libexec/mountain-gamemode toggle", k: "game mode performance full power fps boost" },
-            { t: "Game controllers", d: "Gamepads and joysticks", i: "input-gamepad", page: "controllers", k: "gamepad controller joystick" },
-            { t: "Steam", d: "Open Steam", i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
-            { t: "GTA Online and FiveM", d: "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming", i: "state-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
-            { t: "Check game support", d: "See if a game runs on Mountain (opens two game-support websites)", i: "help-contents", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
-            { t: "Game overlay", d: "Press Win+G in a game for FPS and performance", i: "view-visible", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
-            { t: "Display: VRR and HDR", d: "Adaptive sync and HDR for your monitor", i: "monitor", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
+        { id: "gaming", name: i18n("Gaming"), icon: "input-gamepad", items: [
+            { t: i18n("Game Mode"), d: i18n("Full power while a game runs, your power mode back after (on by default): click to turn on or off"), i: "speedometer", cmd: "/usr/libexec/mountain-gamemode toggle", k: "game mode performance full power fps boost" },
+            { t: i18n("Game controllers"), d: i18n("Gamepads and joysticks"), i: "input-gamepad", page: "controllers", k: "gamepad controller joystick" },
+            { t: i18n("Steam"), d: i18n("Open Steam"), i: "applications-games", cmd: "kstart --application steam", k: "steam games" },
+            { t: i18n("GTA Online and FiveM"), d: i18n("Some online games need Windows: use Restart into Windows (power menu) or cloud gaming"), i: "state-information", cmd: "dolphin \"desktop:/Cloud Gaming\"", k: "gta online fivem anticheat battleye windows dual boot" },
+            { t: i18n("Check game support"), d: i18n("See if a game runs on Mountain (opens two game-support websites)"), i: "help-contents", cmd: "xdg-open https://www.protondb.com; xdg-open https://areweanticheatyet.com", k: "proton protondb anticheat compatible game support" },
+            { t: i18n("Game overlay"), d: i18n("Press Win+G in a game for FPS and performance"), i: "view-visible", cmd: "xdg-open /etc/xdg/MangoHud/MangoHud.conf", k: "game bar overlay fps mangohud win+g" },
+            { t: i18n("Display: VRR and HDR"), d: i18n("Adaptive sync and HDR for your monitor"), i: "monitor", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
-        { id: "accessibility", name: "Accessibility", icon: "preferences-desktop-accessibility", items: [
-            { t: "Night light", d: "Warmer colors at night", i: "redshift-status-on", page: "nightlight", k: "night light blue light" }
+        { id: "accessibility", name: i18n("Accessibility"), icon: "preferences-desktop-accessibility", items: [
+            { t: i18n("Night light"), d: i18n("Warmer colors at night"), i: "redshift-status-on", page: "nightlight", k: "night light blue light" }
         ] },
-        { id: "privacy", name: "Privacy & security", icon: "security-high", items: [
-            { t: "Screen lock", d: "Lock automatically, require password", i: "system-lock-screen", page: "lockscreen", k: "lock password security" },
-            { t: "Virus & threat protection", d: "Scan now, quarantine, Previous versions", i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
+        { id: "privacy", name: i18n("Privacy & security"), icon: "security-high", items: [
+            { t: i18n("Screen lock"), d: i18n("Lock automatically, require password"), i: "system-lock-screen", page: "lockscreen", k: "lock password security" },
+            { t: i18n("Virus & threat protection"), d: i18n("Scan now, quarantine, Previous versions"), i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
         ] },
-        { id: "updates", name: "Updates", icon: "system-software-update", items: [
-            { t: "Check for updates", d: "Updates are manual: open the Updates app and run it when you choose", i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
-            { t: "Go back to the previous version", d: "Undo the last update: Mountain restarts into the version you had before", i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
-            { t: "Reset this PC (keep my files)", d: "Removes system changes made on this PC and restarts into plain Mountain; files and apps stay", i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
-            { t: "Update virus definitions", d: "Download the newest definitions now (they never download in the background)", i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" }
+        { id: "updates", name: i18n("Updates"), icon: "system-software-update", items: [
+            { t: i18n("Check for updates"), d: i18n("Updates are manual: open the Updates app and run it when you choose"), i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
+            { t: i18n("Go back to the previous version"), d: i18n("Undo the last update: Mountain restarts into the version you had before"), i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
+            { t: i18n("Reset this PC (keep my files)"), d: i18n("Removes system changes made on this PC and restarts into plain Mountain; files and apps stay"), i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
+            { t: i18n("Update virus definitions"), d: i18n("Download the newest definitions now (they never download in the background)"), i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" }
         ] }
     ]
 
@@ -241,7 +241,7 @@ PlasmoidItem {
 
             GText {
                 anchors { left: parent.left; leftMargin: 20; verticalCenter: parent.verticalCenter }
-                text: "Settings"
+                text: i18n("Settings")
                 dim: true
             }
 
@@ -280,7 +280,7 @@ PlasmoidItem {
                     focus: true
                     activeFocusOnTab: true
                     Accessible.role: Accessible.EditableText
-                    Accessible.name: "Find a setting"
+                    Accessible.name: i18n("Find a setting")
                     onTextChanged: app.query = text
                     onAccepted: {
                         if (app.searchResults.length > 0) {
@@ -295,7 +295,7 @@ PlasmoidItem {
 
                     GText {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "Find a setting"
+                        text: i18n("Find a setting")
                         dim: true
                         visible: searchInput.text.length === 0
                     }
@@ -344,7 +344,7 @@ PlasmoidItem {
                     }
                     GText {
                         Layout.fillWidth: true
-                        text: "Local account"
+                        text: i18n("Local account")
                         dim: true
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                     }

@@ -13,7 +13,7 @@ ColumnLayout {
         disks = out === "" ? [] : out.split("\n").map(r => { const f = r.split("\t"); return { name: f[0], size: +f[1], used: +f[2], free: +f[3] }; });
     })
 
-    PageTitle { title: "Storage" }
+    PageTitle { title: i18n("Storage") }
 
     Repeater {
         model: st.disks
@@ -22,7 +22,7 @@ ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
             padding: 6
-            CardHeader { title: card.modelData.name; subtitle: st.gb(card.modelData.used) + " used of " + st.gb(card.modelData.size) + " · " + st.gb(card.modelData.free) + " free" }
+            CardHeader { title: card.modelData.name; subtitle: i18n("%1 used of %2 · %3 free", st.gb(card.modelData.used), st.gb(card.modelData.size), st.gb(card.modelData.free)) }
             Rectangle {
                 Layout.fillWidth: true
                 Layout.leftMargin: 18
@@ -36,6 +36,6 @@ ColumnLayout {
         }
     }
 
-    GText { visible: st.disks.length === 0; text: "No drives found."; dim: true }
-    GlassButton { text: "Open File Explorer"; highlighted: true; onClicked: app.run("/usr/libexec/mountain-explorer") }
+    GText { visible: st.disks.length === 0; text: i18n("No drives found."); dim: true }
+    GlassButton { text: i18n("Open File Explorer"); highlighted: true; onClicked: app.run("/usr/libexec/mountain-explorer") }
 }

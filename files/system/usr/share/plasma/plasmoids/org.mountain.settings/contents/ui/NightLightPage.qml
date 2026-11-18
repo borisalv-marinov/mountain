@@ -26,7 +26,7 @@ ColumnLayout {
     }
     Component.onCompleted: load()
 
-    PageTitle { title: "Night light" }
+    PageTitle { title: i18n("Night light") }
 
     GlassCard {
         Layout.fillWidth: true
@@ -41,11 +41,11 @@ ColumnLayout {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1
-                GText { Layout.fillWidth: true; text: "Night light" }
-                GText { Layout.fillWidth: true; dim: true; text: "Use warmer colors to help you sleep"; font.pointSize: Kirigami.Theme.smallFont.pointSize }
+                GText { Layout.fillWidth: true; text: i18n("Night light") }
+                GText { Layout.fillWidth: true; dim: true; text: i18n("Use warmer colors to help you sleep"); font.pointSize: Kirigami.Theme.smallFont.pointSize }
             }
-            GText { text: nl.on ? "On" : "Off" }
-            PillSwitch { text: "Night light"; checked: nl.on; onClicked: nl.save("Active", nl.on ? "false" : "true", "bool") }
+            GText { text: nl.on ? i18n("On") : i18n("Off") }
+            PillSwitch { text: i18n("Night light"); checked: nl.on; onClicked: nl.save("Active", nl.on ? "false" : "true", "bool") }
         }
         RowLayout {
             Layout.fillWidth: true
@@ -53,14 +53,14 @@ ColumnLayout {
             Layout.rightMargin: 18
             Layout.bottomMargin: 10
             spacing: 14
-            GText { text: "Warmth" }
+            GText { text: i18n("Warmth") }
             QQC2.Slider {
                 id: warmth
                 Layout.fillWidth: true
                 from: 500
                 to: 4500
                 stepSize: 100
-                Accessible.name: "Night light warmth"
+                Accessible.name: i18n("Night light warmth")
                 Binding on value { when: !warmth.pressed; value: 6500 - nl.temp }
                 onPressedChanged: if (!pressed) nl.save("NightTemperature", String(6500 - Math.round(value)))
             }
@@ -71,10 +71,10 @@ ColumnLayout {
             Layout.rightMargin: 18
             Layout.bottomMargin: 12
             spacing: 8
-            GText { text: "Schedule" }
+            GText { text: i18n("Schedule") }
             Item { Layout.fillWidth: true }
-            GlassButton { text: "Sunset to sunrise"; highlighted: !nl.allDay; onClicked: nl.save("Mode", "Automatic") }
-            GlassButton { text: "All day"; highlighted: nl.allDay; onClicked: nl.save("Mode", "Constant") }
+            GlassButton { text: i18n("Sunset to sunrise"); highlighted: !nl.allDay; onClicked: nl.save("Mode", "Automatic") }
+            GlassButton { text: i18n("All day"); highlighted: nl.allDay; onClicked: nl.save("Mode", "Constant") }
         }
     }
 }

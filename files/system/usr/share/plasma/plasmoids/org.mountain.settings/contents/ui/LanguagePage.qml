@@ -33,7 +33,7 @@ ColumnLayout {
         });
     }
     Component.onCompleted: {
-        app.sh(readCmd, out => { current = (out.split(":")[0] || "en_US").replace("en@mountain", "en_US"); });
+        app.sh(readCmd, out => { current = (out.split(":")[0] || "en_US").replace("en@mountain", "en_US").replace("bg@mountain", "bg"); });
         app.sh(listCmd, out => {
             const codes = out.split("\n").filter(c => /^[A-Za-z0-9_@-]+$/.test(c));
             if (codes.indexOf("en_US") < 0) {
@@ -43,28 +43,28 @@ ColumnLayout {
         });
     }
 
-    PageTitle { title: "Language & region" }
+    PageTitle { title: i18n("Language & region") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Display language"; subtitle: "Menus, settings and apps appear in this language" }
+        CardHeader { title: i18n("Display language"); subtitle: i18n("Menus, settings and apps appear in this language") }
         SettingRow { text: lang.label(lang.current); description: lang.current; iconName: "preferences-desktop-locale"; chevron: false }
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 12
             spacing: 10
-            GlassButton { text: lang.adding ? "Cancel" : "Add a language"; highlighted: !lang.adding; onClicked: lang.adding = !lang.adding }
+            GlassButton { text: lang.adding ? i18n("Cancel") : i18n("Add a language"); highlighted: !lang.adding; onClicked: lang.adding = !lang.adding }
             GText {
                 Layout.fillWidth: true
                 visible: lang.changed
                 dim: true
                 wrapMode: Text.WordWrap
-                text: "Sign out and back in to use " + lang.label(lang.current) + "."
+                text: i18n("Sign out and back in to use %1.", lang.label(lang.current))
             }
             GlassButton {
                 visible: lang.changed
-                text: "Sign out now"
+                text: i18n("Sign out now")
                 onClicked: app.run("qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout")
             }
         }
@@ -74,7 +74,7 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: lang.adding
         padding: 6
-        CardHeader { title: "Add a language"; subtitle: lang.available.length + " languages are installed" }
+        CardHeader { title: i18n("Add a language"); subtitle: i18n("%1 languages are installed", lang.available.length) }
         Repeater {
             model: lang.adding ? lang.available : []
             delegate: SettingRow {

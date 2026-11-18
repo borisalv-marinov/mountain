@@ -71,6 +71,14 @@ ui = {'@title:menu Create new folder, file, link, etc.\x04Create New': 'New', '@
       '@item\x04Places': 'Quick access', '@item\x04Remote': 'Network', '@item\x04Devices': 'This PC',
       '@action\x04End Process': 'End task', '@action\x04Quit Application': 'End task'}
 uicat = {k: r'dolphin|kio6|.*systemmonitor.*' for k in ui}
+# The same names in Bulgarian, as Windows 11 shows them: "bg@mountain" catalog, read before bg (mountain-names.sh)
+bgnames = {'Dolphin': 'Файлов мениджър', 'Konsole': 'Терминал', 'System Monitor': 'Диспечер на задачите', 'KWrite': 'Бележник',
+           'KCalc': 'Калкулатор', 'Gwenview': 'Снимки', 'Haruna': 'Медиен плейър', 'Kamoso': 'Камера',
+           'Spectacle': 'Инструмент за изрязване', 'KolourPaint': 'Paint', 'KRecorder': 'Звукозапис', 'Skanlite': 'Скенер',
+           'KDE Connect': 'Връзка с телефона', 'Okular': 'PDF четец'}
+bgui = {'@title:menu Create new folder, file, link, etc.\x04Create New': 'Нов', '@action:inmenu View\x04Sort By': 'Сортиране',
+        '@item\x04Places': 'Бърз достъп', '@item\x04Remote': 'Мрежа', '@item\x04Devices': 'Този компютър',
+        '@action\x04End Process': 'Край на задачата', '@action\x04Quit Application': 'Край на задачата'}
 # App texts that name KDE projects: exact msgids from the apps' de .po files (25.12/26.04), only in that app's catalog
 apps = {
     'kdeconnect-app': {'About KDE Connect': 'About Phone Link',
@@ -93,15 +101,17 @@ apps = {
                'The clock daemon was not found. Please start kclockd in order to have timer functionality.':
                    'The alarm service is not running. Sign out and back in to use timers.'}}
 for c, d in apps.items(): ui.update(d); uicat.update({k: c for k in d})
-loc = sys.argv[1]; found = {}  # catalog -> {key: new}; contexts are read from real translations (de/fr), never guessed
+loc = sys.argv[1]; found = {}; found_bg = {}  # catalog -> {key: new}; contexts are read from real translations (de/fr), never guessed
 for mo in glob.glob(f'{loc}/de/LC_MESSAGES/*.mo') + glob.glob(f'{loc}/fr/LC_MESSAGES/*.mo'):
     try: cat = gettext.GNUTranslations(open(mo, 'rb'))._catalog
     except Exception: continue
     for k in cat:
         if isinstance(k, str) and k.split('\x04')[-1] in names:
             found.setdefault(os.path.basename(mo), {})[k] = names[k.split('\x04')[-1]]
+            found_bg.setdefault(os.path.basename(mo), {})[k] = bgnames[k.split('\x04')[-1]]
         elif isinstance(k, str) and k in ui and re.fullmatch(f'({uicat[k]})\\.mo', os.path.basename(mo)):
             found.setdefault(os.path.basename(mo), {})[k] = ui[k]
+            if k in bgui: found_bg.setdefault(os.path.basename(mo), {})[k] = bgui[k]
 def write(path, d):
     d = {'': 'Content-Type: text/plain; charset=UTF-8\n', **d}  # with no charset, non-ASCII text does not read back
     keys = sorted(d); ids = [k.encode() for k in keys]; strs = [d[k].encode() for k in keys]
@@ -111,6 +121,8 @@ def write(path, d):
     assert gettext.GNUTranslations(open(path, 'rb'))._catalog == d, 'catalog does not read back: ' + path
 os.makedirs(f'{loc}/en@mountain/LC_MESSAGES', exist_ok=True)
 for c, d in found.items(): write(f'{loc}/en@mountain/LC_MESSAGES/{c}', d)
+os.makedirs(f'{loc}/bg@mountain/LC_MESSAGES', exist_ok=True)
+for c, d in found_bg.items(): write(f'{loc}/bg@mountain/LC_MESSAGES/{c}', d)
 seen = {k.split('\x04')[-1] for d in found.values() for k in d}
 print('windows-names: titles renamed in', len(found), 'catalogs; not found:', sorted(set(names) - seen) or 'none')
 assert {'KCalc', 'Okular', 'Konsole', 'KolourPaint'} <= seen, 'app display names not found in any catalog'

@@ -4,6 +4,7 @@
 chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Your device
+Title[bg]=Вашето устройство
 
 [Face-880000000003][org.mountain.taskmanager.list][General]
 mode=device
@@ -12,6 +13,7 @@ mode=device
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=CPU
+Title[bg]=Процесор
 
 [Face-880000000004][Sensors]
 highPrioritySensorIds=["cpu/all/usage"]
@@ -20,6 +22,7 @@ highPrioritySensorIds=["cpu/all/usage"]
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=Memory
+Title[bg]=Памет
 
 [Face-880000000005][Sensors]
 highPrioritySensorIds=["memory/physical/used"]
@@ -29,6 +32,7 @@ totalSensors=["memory/physical/total"]
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=Disk
+Title[bg]=Диск
 
 [Face-880000000006][Sensors]
 highPrioritySensorIds=["disk/all/read", "disk/all/write"]
@@ -37,6 +41,7 @@ highPrioritySensorIds=["disk/all/read", "disk/all/write"]
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=Network
+Title[bg]=Мрежа
 
 [Face-880000000007][Sensors]
 highPrioritySensorIds=["network/all/download", "network/all/upload"]
@@ -48,6 +53,7 @@ loadType=
 margin=2
 version=1
 Title=Performance
+Title[bg]=Производителност
 
 [page][row-0]
 Title=

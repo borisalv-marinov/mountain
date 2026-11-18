@@ -32,29 +32,29 @@ PlasmoidItem {
     function quote(s) { return "'" + s.replace(/'/g, "'\\''") + "'"; }
 
     readonly property var items: [
-        { t: "Installed apps", k: "p", cmd: later("/usr/libexec/mountain-settings-open apps") },
-        { t: "Power Options", k: "o", cmd: later("/usr/libexec/mountain-settings-open system") },
-        { t: "System", k: "y", cmd: "kinfocenter" },
-        { t: "Network Connections", k: "w", cmd: later("/usr/libexec/mountain-settings-open network") },
-        { t: "Disk Management", k: "k", cmd: disk, hidden: disk === "" },
-        { t: "Terminal", k: "i", cmd: "konsole" },
-        { t: "Terminal (Admin)", k: "a", cmd: "konsole -e sudo -i" },
+        { t: i18n("Installed apps"), k: "p", cmd: later("/usr/libexec/mountain-settings-open apps") },
+        { t: i18n("Power Options"), k: "o", cmd: later("/usr/libexec/mountain-settings-open system") },
+        { t: i18n("System"), k: "y", cmd: "kinfocenter" },
+        { t: i18n("Network Connections"), k: "w", cmd: later("/usr/libexec/mountain-settings-open network") },
+        { t: i18n("Disk Management"), k: "k", cmd: disk, hidden: disk === "" },
+        { t: i18n("Terminal"), k: "i", cmd: "konsole" },
+        { t: i18n("Terminal (Admin)"), k: "a", cmd: "konsole -e sudo -i" },
         { sep: true },
-        { t: "Task Manager", k: "t", cmd: "kstart --application org.kde.plasma-systemmonitor" },
-        { t: "Settings", k: "n", cmd: later("plasmawindowed org.mountain.settings") },
-        { t: "File Explorer", k: "e", cmd: "dolphin" },
-        { t: "Search", k: "s", cmd: "dbus-send --session --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.activateLauncherMenu" },
-        { t: "Run", k: "r", cmd: later("plasmawindowed org.mountain.run") },
+        { t: i18n("Task Manager"), k: "t", cmd: "kstart --application org.kde.plasma-systemmonitor" },
+        { t: i18n("Settings"), k: "n", cmd: later("plasmawindowed org.mountain.settings") },
+        { t: i18n("File Explorer"), k: "e", cmd: "dolphin" },
+        { t: i18n("Search"), k: "s", cmd: "dbus-send --session --type=method_call --dest=org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.activateLauncherMenu" },
+        { t: i18n("Run"), k: "r", cmd: later("plasmawindowed org.mountain.run") },
         { sep: true },
-        { t: "Shut down or sign out", k: "u", submenu: true },
-        { t: "Desktop", k: "d", cmd: "dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.showDesktop boolean:true" }
+        { t: i18n("Shut down or sign out"), k: "u", submenu: true },
+        { t: i18n("Desktop"), k: "d", cmd: "dbus-send --session --type=method_call --dest=org.kde.KWin /KWin org.kde.KWin.showDesktop boolean:true" }
     ].filter(i => !i.hidden)
     readonly property var subItems: [
-        { t: "Sign out", k: "i", act: () => session.requestLogout(0) },   // 0 = SessionManagement.Skip: no second question, like Windows
-        { t: "Sleep", k: "s", act: () => session.suspend(), hidden: !session.canSuspend },
-        { t: "Shut down", k: "u", act: () => session.requestShutdown(0) },
-        { t: "Restart", k: "r", act: () => session.requestReboot(0) },
-        { t: "Restart into Windows", k: "w", cmd: "/usr/libexec/mountain-windows-boot go", hidden: !windowsBoot }
+        { t: i18n("Sign out"), k: "i", act: () => session.requestLogout(0) },   // 0 = SessionManagement.Skip: no second question, like Windows
+        { t: i18n("Sleep"), k: "s", act: () => session.suspend(), hidden: !session.canSuspend },
+        { t: i18n("Shut down"), k: "u", act: () => session.requestShutdown(0) },
+        { t: i18n("Restart"), k: "r", act: () => session.requestReboot(0) },
+        { t: i18n("Restart into Windows"), k: "w", cmd: "/usr/libexec/mountain-windows-boot go", hidden: !windowsBoot }
     ].filter(i => !i.hidden)
 
     SessionManagement { id: session }
@@ -199,7 +199,7 @@ PlasmoidItem {
             width: app.menuWidth
             height: parent.height
             Accessible.role: Accessible.PopupMenu
-            Accessible.name: "Quick Link menu"
+            Accessible.name: i18n("Quick Link menu")
             Column {
                 id: list
                 anchors { fill: parent; topMargin: 6; bottomMargin: 6 }
@@ -222,7 +222,7 @@ PlasmoidItem {
             height: 12 + app.subItems.length * app.rowHeight
             y: Math.min(parent.height - height, app.items.slice(0, app.items.findIndex(i => i.submenu)).reduce((h, i) => h + (i.sep ? 9 : app.rowHeight), 0))
             Accessible.role: Accessible.PopupMenu
-            Accessible.name: "Shut down or sign out"
+            Accessible.name: i18n("Shut down or sign out")
             Column {
                 anchors { fill: parent; topMargin: 6; bottomMargin: 6 }
                 Repeater {

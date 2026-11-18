@@ -5,6 +5,7 @@
 chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Apps
+Title[bg]=Приложения
 
 [Face-880000000001][org.mountain.taskmanager.list][General]
 mode=apps
@@ -13,6 +14,7 @@ mode=apps
 chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Background processes
+Title[bg]=Фонови процеси
 
 [Face-880000000002][org.mountain.taskmanager.list][General]
 mode=processes
@@ -25,6 +27,7 @@ loadType=
 margin=2
 version=1
 Title=Processes
+Title[bg]=Процеси
 
 [page][row-0]
 Title=

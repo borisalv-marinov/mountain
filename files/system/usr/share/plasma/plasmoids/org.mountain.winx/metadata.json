@@ -12,6 +12,7 @@
     "Id": "org.mountain.winx",
     "License": "GPL-2.0+",
     "Name": "Quick Link menu",
+    "Name[bg]": "Меню за бърза връзка",
     "Version": "1.0"
   },
   "NoDisplay": true,

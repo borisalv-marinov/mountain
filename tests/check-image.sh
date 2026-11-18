@@ -1148,6 +1148,56 @@ check_phase38() { # v7.3 style: one title-bar colour, Disks icon in the one icon
   true
 }
 
+check_phase39() { # v7.3 menus: right-click menus without KDE-only rows (desktop: edit mode, logout screen; File Explorer: disk usage)
+  local X=${MOUNTAIN_ROOT:-}
+  assert_grep 'RightButton;NoModifier' $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh
+  for k in _logout '"desktop edit mode"'; do assert_grep "$k" $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh; done
+  assert_grep '^filelight=false$' $X/etc/xdg/kservicemenurc
+  [[ -z $X ]] || { assert_grep 'Филтър' tests/vm/ux-rules.json; } # repo-only
+  true
+}
+
+check_phase40() { # v7.3 Bulgarian: Mountain's own windows (Settings, Shut Down, Quick Settings, Start, Run, Win+X ...) speak Bulgarian
+  local X=${MOUNTAIN_ROOT:-} d id
+  for d in $X/usr/share/plasma/plasmoids/org.mountain.* $X/usr/share/plasma/plasmoids/menu.11.enhanced; do
+    id=${d##*/}
+    # libplasma reads contents/locale/<lang>/LC_MESSAGES/plasma_applet_<pluginId>.mo (KPackage "translations")
+    [[ -f $d/contents/locale/bg/LC_MESSAGES/plasma_applet_$id.mo ]] || fail "no Bulgarian catalog for $id"
+    [[ -z $X ]] || [[ -f i18n/bg/$id.po ]] || fail "no Bulgarian .po for $id (tools/po2mo.py builds the .mo from it)"
+  done
+  python3 -I - "$X/usr/share/plasma/plasmoids" <<'PY' || fail "Bulgarian catalogs: a window title or menu word is missing or still English"
+import gettext, sys
+root = sys.argv[1]
+want = {  # plasmoid -> words that Windows 11 shows in Bulgarian
+    'org.mountain.settings': ['Settings', 'Home', 'System', 'Privacy & security', 'Display', 'Sound', 'Storage', 'About', 'Virus & threat protection'],
+    'org.mountain.shutdown': ['Shut Down Mountain', 'Shut down', 'Restart', 'Sleep', 'Sign out', 'Switch user', 'Cancel'],
+    'org.mountain.quicksettings': ['Quick settings', 'Airplane mode', 'Bluetooth', 'Brightness', 'Volume', 'Night light', 'Energy saver'],
+    'org.mountain.winx': ['Quick Link menu', 'Task Manager', 'File Explorer', 'Settings', 'Run', 'Shut down'],
+    'org.mountain.run': ['Run', 'Open:', 'Cancel'],
+    'org.mountain.taskbarspace': ['Task Manager', 'Taskbar settings'],
+    'org.mountain.showdesktop': ['Show desktop'],
+    'org.mountain.keyboardlayout': ['Input language'],
+    'menu.11.enhanced': ['All apps', 'Pinned', 'Recommended', 'Shut down', 'Restart', 'Sleep', 'Sign out', 'Lock'],
+}
+bad = []
+for pid, words in want.items():
+    t = gettext.GNUTranslations(open(f'{root}/{pid}/contents/locale/bg/LC_MESSAGES/plasma_applet_{pid}.mo', 'rb'))
+    for w in words:
+        s = t.gettext(w)
+        if s == w or not any('Ѐ' <= c <= 'ӿ' for c in s):
+            if not (w == 'Bluetooth' and s == w):  # product name: the same in Bulgarian
+                bad.append(f'{pid}: {w!r} -> {s!r}')
+print('\n'.join(bad)); sys.exit(1 if bad else 0)
+PY
+  # window titles of the plasmoid windows come from Name[bg]; Task Manager tabs from Title[bg]; File Explorer and friends from bg@mountain
+  for id in settings quicksettings shutdown run winx taskbarspace showdesktop keyboardlayout; do assert_grep '"Name\[bg\]": "' $X/usr/share/plasma/plasmoids/org.mountain.$id/metadata.json; done
+  assert_grep '^Title\[bg\]=Процеси$' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep '^Title\[bg\]=Приложения$' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep 'bg@mountain' $X/etc/xdg/plasma-workspace/env/mountain-names.sh
+  [[ -z $X ]] || { assert_grep "'Dolphin': 'Файлов мениджър'" files/scripts/windows-names.sh; assert_grep '^title=Настройки$' files/system/etc/xdg/kwinrulesrc; } # repo-only
+  true
+}
+
 # every check_phaseN defined above runs, so a new phase can never be forgotten
 phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
 [[ -n $phases ]] || fail "no check_phase functions found"

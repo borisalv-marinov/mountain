@@ -1,0 +1,8 @@
+# Bulgarian (bg) strings of org.mountain.showdesktop, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "Show desktop"
+msgstr "Показване на работния плот"

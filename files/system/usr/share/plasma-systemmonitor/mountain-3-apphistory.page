@@ -4,6 +4,7 @@
 chartFace=org.kde.ksysguard.applicationstable
 showTitle=true
 Title=CPU time per app since you signed in
+Title[bg]=Процесорно време по приложение от влизането ви
 
 [Face-880000000009][org.kde.ksysguard.applicationstable][General]
 sortedColumns=appName,totalTime,usage,memory
@@ -17,6 +18,7 @@ sortColumn=totalTime
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=CPU over time
+Title[bg]=Процесор във времето
 
 [Face-880000000010][Sensors]
 highPrioritySensorIds=["cpu/all/usage"]
@@ -25,6 +27,7 @@ highPrioritySensorIds=["cpu/all/usage"]
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=Memory over time
+Title[bg]=Памет във времето
 
 [Face-880000000011][Sensors]
 highPrioritySensorIds=["memory/physical/used"]
@@ -33,6 +36,7 @@ highPrioritySensorIds=["memory/physical/used"]
 chartFace=org.kde.ksysguard.linechart
 showTitle=true
 Title=Network over time
+Title[bg]=Мрежа във времето
 
 [Face-880000000012][Sensors]
 highPrioritySensorIds=["network/all/download", "network/all/upload"]
@@ -46,6 +50,7 @@ loadType=
 margin=2
 version=1
 Title=App history
+Title[bg]=История на приложенията
 
 [page][row-0]
 Title=

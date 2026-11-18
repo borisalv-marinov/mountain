@@ -16,7 +16,7 @@ RowLayout {
         text: app.navCategory.name
         hoverEnabled: true
         activeFocusOnTab: true
-        Accessible.name: "Back to " + text
+        Accessible.name: i18n("Back to %1", text)
         onClicked: app.page = app.navPage
         Keys.onReturnPressed: clicked()
         contentItem: GText {

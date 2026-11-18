@@ -19,7 +19,7 @@ RowLayout {
         id: box
         Layout.preferredWidth: 220
         Accessible.name: parent.label
-        displayText: currentIndex < 0 ? "Choose" : currentText
+        displayText: currentIndex < 0 ? i18n("Choose") : currentText
         onActivated: i => parent.picked(i)
     }
 }
