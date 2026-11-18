@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail # not -e: a failed step must not end the script early (never fail the login)
 # Offers the mountain-nvidia / mountain image when the GPU does not match. Never switches by itself.
 # Usage: mountain-gpu-check [--dry-run]   detect and print only (boot unit; offline, no downloads)
 #        mountain-gpu-check --notify      user session: ask once per image with a Switch button
@@ -9,7 +10,7 @@ MARKER=$STATE_DIR/gpu-switched
 . "${MOUNTAIN_CONFIG:-/usr/share/mountain/config}" || { echo "mountain-gpu-check: no config"; exit 0; }
 
 # any NVIDIA GPU counts (iGPU + NVIDIA laptops too); a hidden or switched-off dGPU never shows up, so it never recommends the NVIDIA image
-has_gpu=0; lspci -nn 2>/dev/null | grep -qi '\[10de:' && has_gpu=1
+has_gpu=0; lspci -nn 2>/dev/null | grep -i '\[10de:' >/dev/null && has_gpu=1 # no grep -q: with pipefail its early exit can SIGPIPE lspci
 is_img=0; command -v nvidia-smi >/dev/null 2>&1 && is_img=1
 
 if [[ $has_gpu == "$is_img" ]]; then echo "nothing to do"; exit 0; fi

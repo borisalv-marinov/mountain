@@ -1122,6 +1122,29 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   true
 }
 
+check_phase37() { # v7.3 audit: helpers that got set -u/pipefail keep it (a lost line would hide unset-variable bugs again)
+  local X=${MOUNTAIN_ROOT:-} f
+  for f in ai explorer gpu-check lite-mode phonelink settings-open; do
+    grep -q '^set -uo pipefail' "$X/usr/libexec/mountain-$f" || fail "mountain-$f lost set -uo pipefail"
+  done
+  true
+}
+
+check_phase38() { # v7.3 style: one title-bar colour, Disks icon in the one icon style
+  local X=${MOUNTAIN_ROOT:-}
+  # title bar = window colour in every state: no see-through fills (they showed the blurred wallpaper as navy, maximized was greyer)
+  grep -qE 'fill-opacity="0\.(8|92)"' $X/usr/share/aurorae/themes/BlackGlass/decoration.svg && fail "title bar is see-through: navy over the wallpaper, not the window colour"
+  [[ -z $X ]] || assert_grep 'org.gnome.DiskUtility drive-harddisk' files/scripts/app-icons.sh # repo-only: the script is not in the image
+  # GTK/libadwaita apps: Mountain's dark and flat caption buttons for new accounts (skel) and old ones (mountain-user-setup); Flatpak apps read the folders
+  for v in 3.0 4.0; do assert_grep 'mountain-gtk' $X/etc/skel/.config/gtk-$v/gtk.css; done
+  assert_grep '@define-color window_bg_color #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css
+  assert_grep '@define-color theme_bg_color #121212;' $X/etc/skel/.config/gtk-3.0/gtk.css
+  assert_grep 'windowcontrols button { border-radius: 0;' $X/etc/skel/.config/gtk-4.0/gtk.css
+  assert_grep 'grep -qs mountain-gtk' $X/usr/libexec/mountain-user-setup
+  assert_grep 'xdg-config/gtk-4.0:ro' $X/usr/libexec/mountain-flatpak-policy
+  true
+}
+
 # every check_phaseN defined above runs, so a new phase can never be forgotten
 phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
 [[ -n $phases ]] || fail "no check_phase functions found"
