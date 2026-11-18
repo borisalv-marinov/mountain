@@ -884,7 +884,7 @@ PY
   assert_file $su/NetworkPage.qml
   assert_grep 'NetworkPage.qml' $su/main.qml
   assert_grep 'app.netFailed' $su/main.qml # falls back to the plain rows without plasma-nm
-  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode'; do assert_grep "{ t: \"$t\"" $su/main.qml; done # v7: Proxy and Advanced network removed (they opened KDE windows)
+  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode'; do assert_grep "{ t: i18n(\"$t\")" $su/main.qml; done # v7: Proxy and Advanced network removed (they opened KDE windows)
   assert_grep 'handler.enableAirplaneMode(on)' $su/NetworkPage.qml
   n=$({ grep -c 'Timer' $su/NetworkPage.qml || true; }); [[ $n == 0 ]] || fail "Network page polls"
   assert_grep 'navButton.visualFocus ? 2 : 0' $su/main.qml
