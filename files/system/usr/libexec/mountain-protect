@@ -14,7 +14,7 @@ mkdir -p "$pdir"
 unv=$pdir/unverified   # path<TAB>reason
 shipped=$pdir/shipped   # sha256 of the launchers and defaults this image ships (built at daemon start)
 allowed=$pdir/allowed  # sha256 of files you allowed (or restored from quarantine)
-declare -A seen=()     # path -> "size mtime mode" when last checked: unchanged files are skipped (a chmod +x is a change)
+declare -A seen=()     # path -> "size mtime ctime mode" when last checked: unchanged files are skipped (a chmod +x is a change)
 
 userdirs() { # translated folder names (Изтегляния, Документи...) with the English names as fallback
   local x
@@ -29,7 +29,7 @@ rwq() { local s=${1//\\/\\\\}; printf '"-%s"' "${s//\"/\\\"}"; } # a path quoted
 
 signin() { case $1 in # FILE: runs by itself at sign-in (or sign-out)
   */.config/autostart/*|*/.config/systemd/user/*|*/.local/share/systemd/user/*|*/.config/environment.d/*|*/.config/plasma-workspace/env/*|\
-  */.config/plasma-workspace/shutdown/*|*/.local/share/dbus-1/services/*|*/.local/share/kwin/scripts/*|*/.bashrc|*/.profile|*/.bash_profile) return 0 ;;
+  */.config/plasma-workspace/shutdown/*|*/.local/share/dbus-1/services/*|*/.local/share/kwin/scripts/*|*/.config/autostart-scripts/*|*/.bashrc|*/.profile|*/.bash_profile|*/.bash_login|*/.bash_logout|*/.zshrc|*/.zprofile|*/.zshenv|*/.xprofile|*/.xsessionrc) return 0 ;;
   esac; return 1; }
 
 is_unverified() { # FILE [SHA256, "-" for none] -> reason, or nothing
@@ -71,7 +71,7 @@ ingit() { # FILE: inside a git work tree (clone, project copy) below a watched f
 }
 
 check() { # FILE...: count, flag unverified, scan the risky ones in a separate sandboxed low-priority unit
-  local f r h sig out o one="" all=() sub files=() odd=() new=() found=() props=() rest=() xn=0 res="" tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
+  local lk=() lr f r h sig out o one="" all=() sub files=() odd=() new=() found=() props=() rest=() xn=0 res="" tmp=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mountain-scan
   local now; now=$(date +%s)
   for f; do # a folder moved in: its files, like a new drive's (not in /tmp, where apps and game runtimes unpack folders)
     if [[ -d $f && ! -L $f ]] && [[ ($f != /tmp/* && $f != /var/tmp/*) || $f == "$dl"/* || $f == "$desk"/* || $f == "$docs"/* ]]; then mapfile -d '' -t sub < <(find "$f" -maxdepth 2 -type f -print0 2>/dev/null | head -z -n 200); all+=("${sub[@]}")
@@ -82,7 +82,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   done
   for f in "${all[@]}"; do
     [[ $f == /* ]] && ! skip "$f" || continue
-    sig=$(stat -c '%s %Y %a' -- "$f" 2>/dev/null) || continue # of a link itself, never its target
+    sig=$(stat -c '%s %.9Y %.9Z %a' -- "$f" 2>/dev/null) || continue # of a link itself, never its target
     [[ ${sig%% *} == 0 && ! -L $f ]] && continue # just created and still empty: its close_write comes next
     [[ ${seen[$f]:-} == "$sig" ]] && continue # same path, unchanged: already checked
     seen[$f]=$sig
@@ -102,7 +102,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
     o=0; [[ $f == *[$'\n\t']* ]] || ! iconv -f UTF-8 -t UTF-8 <<<"$f" >/dev/null 2>&1 && o=1
     r=$(is_unverified "$f" "$h")
     # a program or an archive/disk image too big to scan is listed; a big movie or photo is not (no pop-up per download)
-    [[ $h == - ]] && { [[ -n $r ]] || { risky "$f" "" && [[ ${f,,} == *.@(zip|7z|rar|tar|gz|tgz|xz|zst|bz2|cab|iso|img) ]]; }; } && r="too large to scan"
+    [[ $h == - ]] && { [[ -n $r ]] || case $f in "$dl"/*|/run/media/*) true ;; *) [[ ${f,,} == *.@(zip|7z|rar|tar|gz|tgz|xz|zst|bz2|cab|iso|img) ]] ;; esac; } && r="too large to scan" # Downloads and drives: every big file (an attacker picks the name)
     if [[ -n $r ]]; then
       ((o)) || inlist "$f" || printf '%s\t%s\n' "$f" "$r" >> "$unv"
       new+=("$f"); one=$r
@@ -138,7 +138,21 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
     echo "checking ${#files[@]} file(s): ${files[0]}" # to the journal (journalctl --user -u mountain-protect)
     out=$(sbscan "${files[@]}" </dev/null)
     res=$(grep -m1 '^av_result=' <<<"$out"); echo "result: ${res:-none, the scan unit failed}"
-    for f in "${files[@]}"; do P="$f: " awk 'index($0, ENVIRON["P"]) == 1 && / FOUND$/ { f = 1 } END { exit !f }' <<<"$out" && found+=("$f"); done
+    # a file named "X: y" or with a newline forges lines: a match counts only if the file alone is found again
+    for f in "${files[@]}"; do P="$f: " awk 'index($0, ENVIRON["P"]) == 1 && / FOUND$/ { f = 1 } END { exit !f }' <<<"$out" &&
+      grep -q '^av_result=found' < <(sbscan "$f" </dev/null) && found+=("$f"); done
+    # can't be scanned (password-protected, over the limits): listed and notified like "too large", never quarantined; a threat wins
+    for f in "${files[@]}"; do
+      infound "$f" && continue
+      for r in "LOCKED|can't be scanned (password-protected)" "LIMIT|too large to scan"; do
+        P="$f: " T=" ${r%%|*}" awk 'index($0, ENVIRON["P"]) == 1 && substr($0, length($0) - length(ENVIRON["T"]) + 1) == ENVIRON["T"] { f = 1 } END { exit !f }' <<<"$out" || continue
+        inlist "$f" || printf '%s\t%s\n' "$f" "${r#*|}" >> "$unv"; lk+=("$f"); lr=${r#*|}
+      done
+    done
+    if ((${#lk[@]})); then
+      f=$(esc "$(basename "${lk[0]}")"); ((${#lk[@]} == 1)) && r="Unverified file, $lr: $f." || r="${#lk[@]} files could not be scanned, including $f."
+      notify-send -a "Active Protection" -i security-medium -h string:desktop-entry:org.mountain.protection "Active Protection" "$r Review it in Active Protection." 2>/dev/null
+    fi
   fi
   for f in "${odd[@]:0:5}"; do # one scan each, through stdin; at most 5 per burst (each loads the definitions)
     echo "checking a file with an unusual name in ${f%%[$'\n\t']*}"
@@ -154,6 +168,7 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
   f=$(basename -- "${found[0]}"); f=$(iconv -f UTF-8 -t UTF-8 -c <<<"${f//[$'\n\t']/ }")
   notify-send -a "Active Protection" -i security-low -h string:desktop-entry:org.mountain.protection "Active Protection" "Threat blocked: $(esc "$f"). It was moved to quarantine." 2>/dev/null
 }
+infound() { local x; for x in "${found[@]}"; do [[ $x == "$1" ]] && return 0; done; return 1; }
 sbscan() { systemd-run --user --wait --pipe --quiet --collect -p Nice=19 -p IOSchedulingClass=idle -p CPUQuota=50% "${props[@]}" /usr/libexec/mountain-security scan --no-update "$@"; }
 
 qmove() { # FILE: into quarantine under a plain name (no tab, newline or bad UTF-8: the quarantine list is one name per line), never run
@@ -174,7 +189,7 @@ daemon() {
   local rec=("$dl" "$desk" "$docs" "$home/.local/bin" "$home/.local/share/applications")
   local sign=("$home/.config/autostart" "$home/.config/systemd/user" "$home/.local/share/systemd/user" "$home/.config/environment.d"
               "$home/.config/plasma-workspace/env" "$home/.config/plasma-workspace/shutdown" "$home/.local/share/dbus-1/services"
-              "$home/.local/share/kwin/scripts")
+              "$home/.local/share/kwin/scripts" "$home/.config/autostart-scripts")
   mkdir -p "${rec[@]}" "${sign[@]}"
   # once per start: hashes of the .desktop files the image itself puts on the Desktop and in the menu (a few dozen small files)
   find /etc/skel /usr/share/applications -type f -name '*.desktop' -print0 2>/dev/null | xargs -0 -r sha256sum 2>/dev/null | cut -d' ' -f1 | sort -u > "$shipped.new" && mv -f "$shipped.new" "$shipped"

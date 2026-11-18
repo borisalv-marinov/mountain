@@ -53,7 +53,11 @@ printf '%s\n' "$@" >> "$0.log"
 printf '%s\n' "$@" | grep -qx 'Environment=MOUNTAIN_SCAN_REPORT_ONLY=1' || { echo "av_result=error"; exit 0; }
 printf '%s\n' "$@" | grep -q '^InaccessiblePaths=.*/bus"$' || { echo "av_result=error"; exit 0; }
 while [[ $1 != /usr/libexec/mountain-security ]]; do shift; done; shift 3; r=clean
-for f; do if [[ $f == - ]]; then grep -q EVIL && { echo "stdin: Evil FOUND"; r=found; }; elif grep -q EVIL "$f"; then echo "$f: Evil FOUND"; r=found; fi; done
+for f; do if [[ $f == - ]]; then grep -q EVIL && { echo "stdin: Evil FOUND"; r=found; }; elif grep -q EVIL "$f"; then echo "$f: Evil FOUND"; r=found; elif grep -q LOCKEDZIP "$f"; then echo "$f: Heuristics.Encrypted.Zip LOCKED"; fi
+  grep -q MIXED "$f" && { echo "$f: Heuristics.Encrypted.Zip LOCKED"; echo "$f: Evil FOUND"; r=found; } # an encrypted member plus a real virus
+  grep -q LIMITBIG "$f" && echo "$f: Heuristics.Limits.Exceeded LIMIT"
+  grep -q '^FORGE:' "$f" && { echo "$(sed -n 's/^FORGE://p' "$f"): Evil FOUND"; echo "$f: Evil FOUND"; r=found; } # a file name forging another path's line
+done
 echo "av_result=$r"
 STUB
 printf '%s\n' '#!/bin/sh' 'for a; do :; done; printf "%s\n" "$a" >> "$0.log"' > "$B/notify-send"; chmod +x "$B/systemd-run" "$B/notify-send"
@@ -68,9 +72,26 @@ if touch "$H/Downloads/t"$'\t'"x.zip" 2>/dev/null; then # tabs in names: not on 
   ok 'grep -q "Threat quarantined: t_x.zip" "$D/mountain/scan-history"' "the quarantine shows in Protection history"
 fi
 truncate -s 401M "$H/Downloads/big.zip"; pc "$H/Downloads/big.zip"
-truncate -s 401M "$H/Downloads/film.mkv"; pc "$H/Downloads/film.mkv"
-ok '! grep -q film.mkv "$D/mountain/protect/unverified"' "a big movie is not listed (no pop-up for every large download)"
+mkdir -p "$H/Documents"; truncate -s 401M "$H/Documents/film.mkv"; pc "$H/Documents/film.mkv"
+ok '! grep -q film.mkv "$D/mountain/protect/unverified"' "a big movie outside Downloads is not listed (no pop-up for every large download)"
 ok 'grep -q "big.zip	too large to scan$" "$D/mountain/protect/unverified" && ! grep -q big.zip "$B/systemd-run.log"' "a file over 400 MB is listed as too large to scan, not hashed, scanned or passed as clean"
+truncate -s 450M "$H/Downloads/movie.mkv"; pc "$H/Downloads/movie.mkv"
+ok 'grep -q "movie.mkv	too large to scan$" "$D/mountain/protect/unverified"' "S2: a big non-archive in Downloads is listed too large to scan"
+for p in .zshrc .zprofile .zshenv .bash_login .bash_logout .xprofile .xsessionrc .config/autostart-scripts/x.sh; do ok "signin \"\$T/$p\"" "S6: ~/$p starts at sign-in"; done
+ok '[[ $(stat -c "%Z" "$T/notes.txt") =~ ^[0-9]+$ ]] && grep -q "%s %.9Y %.9Z %a" "$S"' "S4: the scan cache key includes ctime"
+qn=$(sed -n '/^qname()/p' "$(dirname "$S")/mountain-security"); quarantine=$T; touch "$T/real"
+ok '(eval "$qn"; qname real) 2>/dev/null && ! (eval "$qn"; qname .) 2>/dev/null && ! (eval "$qn"; qname ..) 2>/dev/null' "S8: quarantine names . and .. are refused"
+echo LOCKEDZIP > "$H/Downloads/secret.zip"; echo EVIL > "$H/Downloads/mixed-bad.com"; rl() { rm -f "$B/systemd-run.log" "$B/notify-send.log"; }; rl
+pc "$H/Downloads/secret.zip" "$H/Downloads/mixed-bad.com"
+ok 'grep -q "secret.zip	can.t be scanned (password-protected)$" "$D/mountain/protect/unverified" && [[ -e $H/Downloads/secret.zip && ! -e $D/mountain/quarantine/secret.zip ]] && ! grep -q "Threat blocked: secret" "$B/notify-send.log"' "S16: a password-protected archive is listed, kept in place, not quarantined"
+ok '[[ ! -e $H/Downloads/mixed-bad.com && -e $D/mountain/quarantine/mixed-bad.com ]]' "S16: a real threat in the same scan is still quarantined"
+echo MIXED > "$H/Downloads/mixed.zip"; echo LIMITBIG > "$H/Downloads/limit.zip"; echo fine > "$H/Downloads/victim.pdf"; printf 'FORGE:%s
+' "$H/Downloads/victim.pdf" > "$H/Downloads/forger.com"; rl
+pc "$H/Downloads/mixed.zip" "$H/Downloads/limit.zip" "$H/Downloads/victim.pdf" "$H/Downloads/forger.com"
+ok '[[ ! -e $H/Downloads/mixed.zip && -e $D/mountain/quarantine/mixed.zip ]]' "S16: a file with both LOCKED and FOUND lines is quarantined (FOUND wins)"
+ok 'grep -q "limit.zip	too large to scan$" "$D/mountain/protect/unverified" && [[ -e $H/Downloads/limit.zip ]]' "a Heuristics.Limits.Exceeded file is listed as too large to scan, not quarantined"
+ok 'grep -q "Unverified file" "$B/notify-send.log"' "a file that can not be scanned also gets one notification"
+ok '[[ -e $H/Downloads/victim.pdf && ! -e $D/mountain/quarantine/victim.pdf && -e $D/mountain/quarantine/forger.com ]]' "a forged result line does not quarantine another file"
 # extracted archives: 5+ new files under one subfolder = one scan, one calm result; fewer = no notification at all
 rl() { rm -f "$B/systemd-run.log" "$B/notify-send.log"; }
 mkdir -p "$H/Documents/ex"; for i in 1 2 3 4 5 6; do echo fine$i > "$H/Documents/ex/f$i.txt"; done

@@ -6,7 +6,8 @@ StartLimitIntervalSec=0
 
 [Service]
 ExecStart=/usr/libexec/mountain-protect daemon
-Restart=on-failure
+# a same-user program can still mask the unit (known limit)
+Restart=always
 RestartSec=30
 Nice=19
 IOSchedulingClass=idle
