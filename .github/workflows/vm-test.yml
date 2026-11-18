@@ -177,6 +177,9 @@ jobs:
           BOOT=$(( $(date +%s) - $(cat boot_start) ))
           sleep 30 # sshd accepts before the system settles; first checks were reset
           echo "| SSH up | PASS | ${BOOT}s after qemu start |" >> report.md
+          # this VM only (in /run, gone at the next boot): a crashing program logs its stack trace (function names from Fedora's
+          # MiniDebugInfo), still never stored (the image's Storage=none stays); set before the first sign-in starts the user manager
+          R "mkdir -p /run/systemd/coredump.conf.d /run/systemd/system/user@.service.d /run/systemd/user.conf.d && printf '[Coredump]\nProcessSizeMax=2G\n' > /run/systemd/coredump.conf.d/90-vmtest.conf && printf '[Service]\nLimitCORE=infinity\n' > /run/systemd/system/user@.service.d/90-vmtest-core.conf && printf '[Manager]\nDefaultLimitCORE=infinity\n' > /run/systemd/user.conf.d/90-vmtest-core.conf && systemctl daemon-reload" || true
           # bib's config.toml user was not created, so make it (gets /etc/skel)
           R "id tester >/dev/null 2>&1 || useradd -m -G wheel tester"
           # the installer makes /var/home a Btrfs subvolume (Previous versions need it); bootc-image-builder does not, so do it here
@@ -1308,7 +1311,9 @@ jobs:
           fi # part startapps
           chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
-          chk "stability: no program crashed during the run" 0 "c=\$(coredumpctl list --no-legend --no-pager 2>/dev/null | grep -oE '/[^ ]+\$' | sort | uniq -c | paste -sd' '); echo \${c:-none}" '^none$'
+          # the VM now logs every crash (above; the path is read from any column: a SIZE column can follow it): kioworker is the known open one (register B1, counted in its own row); any other program fails
+          chk "stability: no program crashed during the run" 0 "c=\$(coredumpctl list --no-legend --no-pager 2>/dev/null | awk '{for (i = 6; i <= NF; i++) if (substr(\$i, 1, 1) == \"/\") print \$i}' | grep -vx /usr/libexec/kf6/kioworker | sort | uniq -c | paste -sd' '); echo \${c:-none}" '^none$'
+          chk "stability: File Explorer helper (kioworker) crashes, known open (B1)" 2 "coredumpctl list --no-legend --no-pager /usr/libexec/kf6/kioworker 2>/dev/null | wc -l" '.'
           chk "stability: kernel crash lines in dmesg (segfault / general protection / int3)" 2 "dmesg | grep -cE 'segfault|general protection|trap int3'" '.'
           # crash probe (kioworker, Dolphin's helper, crashes in the VM while core dumps are off): which /usr file is behind each hash. Never fails the run.
           cat > crash-probe.sh <<'SH'
@@ -1329,6 +1334,9 @@ jobs:
           done
           echo "== ldd kioworker"; ldd /usr/libexec/kf6/kioworker; echo "== kio plugins"; ls /usr/lib64/qt6/plugins/kf6/kio/
           echo "== journal: kioworker / kf.kio"; journalctl -b --no-pager | grep -iE 'kioworker|kf.kio' | tail -50
+          echo "== package"; rpm -qf /usr/lib64/libKF6KIOCore.so.6 /usr/libexec/kf6/kioworker
+          echo "== stack traces (first 3 crashes; the worker's command line names its protocol)"
+          for p in $(coredumpctl list --no-legend --no-pager /usr/libexec/kf6/kioworker 2>/dev/null | awk '{print $5}' | head -3); do coredumpctl info --no-pager "$p" 2>&1 | grep -E 'PID:|Command Line:|Signal:|Stack trace|^ +#[0-9]+ ' | head -40; done
           SH
           R "bash -s" < crash-probe.sh > crash-probe-log.txt 2>&1 || true
           chk "tearing: KWin never lets a window tear" 1 "$LT kreadconfig6 --file kwinrc --group Compositing --key AllowTearing" '^false$'
