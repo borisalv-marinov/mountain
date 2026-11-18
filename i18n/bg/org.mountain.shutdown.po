@@ -1,0 +1,56 @@
+# Bulgarian (bg) strings of org.mountain.shutdown, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "Cancel"
+msgstr "Отказ"
+
+msgid "Close"
+msgstr "Затваряне"
+
+msgid "Closes all apps and signs you out."
+msgstr "Затваря всички приложения и ви извежда от системата."
+
+msgid "Closes all apps and turns off the PC."
+msgstr "Затваря всички приложения и изключва компютъра."
+
+msgid "Closes all apps, turns off the PC, and then turns it on again."
+msgstr "Затваря всички приложения, изключва компютъра и после го включва отново."
+
+msgid "Keeps your apps open and lets someone else sign in."
+msgstr "Запазва приложенията ви отворени и позволява на друг да влезе."
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Restart"
+msgstr "Рестартиране"
+
+msgid "Restart into Windows"
+msgstr "Рестартиране в Windows"
+
+msgid "Restarts the PC into Windows once. Next time it starts Mountain again."
+msgstr "Рестартира компютъра в Windows веднъж. Следващия път отново стартира Mountain."
+
+msgid "Shut Down Mountain"
+msgstr "Изключване на Mountain"
+
+msgid "Shut down"
+msgstr "Изключване"
+
+msgid "Sign out"
+msgstr "Излизане"
+
+msgid "Sleep"
+msgstr "Режим на заспиване"
+
+msgid "Switch user"
+msgstr "Смяна на потребителя"
+
+msgid "The PC stays on but uses low power. Apps stay open so you can get right back to where you left off."
+msgstr "Компютърът остава включен, но използва малко енергия. Приложенията остават отворени и можете да продължите от същото място."
+
+msgid "What do you want the computer to do?"
+msgstr "Какво искате да направи компютърът?"

@@ -16,7 +16,7 @@ GlassCard {
     readonly property int percent: real ? Math.round(current.volume / PulseAudio.NormalVolume * 100) : 0
     padding: 6
 
-    CardHeader { title: card.title; subtitle: card.real ? (card.current.description || card.current.name) : "No " + (card.input ? "microphone" : "speakers") + " found" }
+    CardHeader { title: card.title; subtitle: card.real ? (card.current.description || card.current.name) : card.input ? i18n("No microphone found") : i18n("No speakers found") }
 
     RowLayout {
         Layout.fillWidth: true
@@ -31,7 +31,7 @@ GlassCard {
                                   : AudioIcon.forVolume(card.percent, card.real ? card.current.muted : true, "")
             icon.color: app.textColor
             display: QQC2.AbstractButton.IconOnly
-            text: card.real && card.current.muted ? "Unmute" : "Mute"
+            text: card.real && card.current.muted ? i18n("Unmute") : i18n("Mute")
             Accessible.name: text
             onClicked: card.current.muted = !card.current.muted
         }
@@ -42,7 +42,7 @@ GlassCard {
             to: PulseAudio.NormalVolume
             stepSize: PulseAudio.NormalVolume / 100
             opacity: card.real && card.current.muted ? 0.5 : 1
-            Accessible.name: card.title + " volume"
+            Accessible.name: i18n("%1 volume", card.title)
             // follow the device only while not dragging: its echo of our own change arrives late and made the knob jump back
             Binding on value { when: !slider.pressed; value: card.real ? card.current.volume : 0 }
             onMoved: {
@@ -56,7 +56,7 @@ GlassCard {
             Layout.preferredWidth: 44
             horizontalAlignment: Text.AlignRight
             text: card.percent + "%"
-            Accessible.name: card.percent + " percent"
+            Accessible.name: i18n("%1 percent", card.percent)
         }
     }
 

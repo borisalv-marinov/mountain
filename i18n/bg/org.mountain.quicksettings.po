@@ -1,0 +1,78 @@
+# Bulgarian (bg) strings of org.mountain.quicksettings, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "%1 settings"
+msgstr "Настройки на %1"
+
+msgid "Accessibility"
+msgstr "Достъпност"
+
+msgid "Airplane mode"
+msgstr "Самолетен режим"
+
+msgid "All settings"
+msgstr "Всички настройки"
+
+msgid "Audio muted"
+msgstr "Звукът е спрян"
+
+msgid "Battery at %1%"
+msgstr "Батерия: %1%"
+
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+msgid "Brightness"
+msgstr "Яркост"
+
+msgid "Choose audio output"
+msgstr "Избор на аудиоизход"
+
+msgid "Energy saver"
+msgstr "Икономия на енергия"
+
+msgid "Mute"
+msgstr "Спиране на звука"
+
+msgid "Network, volume and battery"
+msgstr "Мрежа, звук и батерия"
+
+msgid "Network, volume, battery"
+msgstr "Мрежа, звук, батерия"
+
+msgid "Night light"
+msgstr "Нощна светлина"
+
+msgid "No audio output"
+msgstr "Няма аудиоизход"
+
+msgid "Not available"
+msgstr "Не е налично"
+
+msgid "Not available on this display"
+msgstr "Не е налично на този екран"
+
+msgid "Quick settings"
+msgstr "Бързи настройки"
+
+msgid "Sound isn't available"
+msgstr "Звукът не е наличен"
+
+msgid "Unmute"
+msgstr "Включване на звука"
+
+msgid "Volume"
+msgstr "Сила на звука"
+
+msgid "Volume at %1%"
+msgstr "Сила на звука: %1%"
+
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+msgctxt "battery percentage"
+msgid "%1%"
+msgstr "%1%"

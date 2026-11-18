@@ -9,14 +9,14 @@ ColumnLayout {
     spacing: 12
 
     readonly property var tiles: [
-        { name: "Mountain Silk", url: "file:///usr/share/wallpapers/mountain-silk/contents/images/1920x1080.png" },
-        { name: "Mountain Silk dark", url: "file:///usr/share/wallpapers/mountain-silk-dark/contents/images/1920x1080.png" },
-        { name: "Mountain Peaks", url: "file:///usr/share/wallpapers/mountain-peaks/contents/images_dark/1920x1080.png" }
+        { name: i18n("Mountain Silk"), url: "file:///usr/share/wallpapers/mountain-silk/contents/images/1920x1080.png" },
+        { name: i18n("Mountain Silk dark"), url: "file:///usr/share/wallpapers/mountain-silk-dark/contents/images/1920x1080.png" },
+        { name: i18n("Mountain Peaks"), url: "file:///usr/share/wallpapers/mountain-peaks/contents/images_dark/1920x1080.png" }
     ]
 
     GText {
         Layout.topMargin: 6
-        text: "Home"
+        text: i18n("Home")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }
@@ -63,10 +63,10 @@ ColumnLayout {
             }
             QQC2.AbstractButton {
                 id: renameLink
-                text: "Rename"
+                text: i18n("Rename")
                 hoverEnabled: true
                 activeFocusOnTab: true
-                Accessible.name: "Rename this PC"
+                Accessible.name: i18n("Rename this PC")
                 onClicked: app.page = "about"
                 Keys.onReturnPressed: clicked()
                 contentItem: GText {
@@ -94,16 +94,16 @@ ColumnLayout {
             GlassCard {
                 Layout.fillWidth: true
                 padding: 6
-                CardHeader { title: "Recommended settings"; subtitle: "Recent and commonly used settings" }
-                SettingRow { text: "Sound"; iconName: "audio-speakers"; onClicked: app.page = "sound" }
-                SettingRow { text: "Power & battery"; iconName: "battery-080"; divider: true; onClicked: app.page = "power" }
-                SettingRow { text: "Display"; iconName: "monitor"; divider: true; onClicked: app.page = "display" }
+                CardHeader { title: i18n("Recommended settings"); subtitle: i18n("Recent and commonly used settings") }
+                SettingRow { text: i18n("Sound"); iconName: "audio-speakers"; onClicked: app.page = "sound" }
+                SettingRow { text: i18n("Power & battery"); iconName: "battery-080"; divider: true; onClicked: app.page = "power" }
+                SettingRow { text: i18n("Display"); iconName: "monitor"; divider: true; onClicked: app.page = "display" }
             }
 
             GlassCard {
                 Layout.fillWidth: true
                 padding: 6
-                CardHeader { title: "Personalize your device" }
+                CardHeader { title: i18n("Personalize your device") }
 
                 Flow {
                     Layout.fillWidth: true
@@ -122,7 +122,7 @@ ColumnLayout {
                             hoverEnabled: true
                             activeFocusOnTab: true
                             text: modelData.name
-                            Accessible.name: "Set background " + modelData.name
+                            Accessible.name: i18n("Set background %1", modelData.name)
                             onClicked: app.setWallpaper(modelData.url)
                             Keys.onReturnPressed: clicked()
                             background: Rectangle {
@@ -154,25 +154,25 @@ ColumnLayout {
                         Layout.preferredHeight: 24
                         source: "color-management-symbolic"; isMask: true; color: Kirigami.Theme.textColor
                     }
-                    GText { Layout.fillWidth: true; text: "Color mode" }
+                    GText { Layout.fillWidth: true; text: i18n("Color mode") }
                     GlassButton {
-                        text: "Dark"
+                        text: i18n("Dark")
                         implicitWidth: 80
                         highlighted: app.colorMode === "Dark"
-                        Accessible.name: "Color mode Dark"
+                        Accessible.name: i18n("Color mode Dark")
                         onClicked: app.setColorMode("Dark")
                     }
                     GlassButton {
-                        text: "Light"
+                        text: i18n("Light")
                         implicitWidth: 80
                         highlighted: app.colorMode === "Light"
-                        Accessible.name: "Color mode Light"
+                        Accessible.name: i18n("Color mode Light")
                         onClicked: app.setColorMode("Light")
                     }
                 }
 
                 SettingRow {
-                    text: "Browse more backgrounds, colors, and themes"
+                    text: i18n("Browse more backgrounds, colors, and themes")
                     divider: true
                     onClicked: app.page = "background"
                 }
@@ -198,9 +198,9 @@ ColumnLayout {
             GlassCard {
                 Layout.fillWidth: true
                 padding: 6
-                CardHeader { title: "Updates"; subtitle: "Updates are manual. Run them when you choose." }
+                CardHeader { title: i18n("Updates"); subtitle: i18n("Updates are manual. Run them when you choose.") }
                 SettingRow {
-                    text: "Check for updates"
+                    text: i18n("Check for updates")
                     iconName: "system-software-update"
                     onClicked: app.run("kstart --application io.github.rfrench3.bazzite-updater")
                 }

@@ -1,0 +1,148 @@
+# Bulgarian (bg) strings of menu.11.enhanced, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "Account settings, lock and sign out"
+msgstr "Настройки на акаунта, заключване и излизане"
+
+msgid "All"
+msgstr "Всички"
+
+msgid "All apps"
+msgstr "Всички приложения"
+
+msgid "Apps"
+msgstr "Приложения"
+
+msgid "Apps icon size:"
+msgstr "Размер на иконите на приложенията:"
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "Best match"
+msgstr "Най-добро съвпадение"
+
+msgid "Center"
+msgstr "Център"
+
+msgid "Center bottom"
+msgstr "Център отдолу"
+
+msgid "Change account settings"
+msgstr "Промяна на настройките на акаунта"
+
+msgid "Default"
+msgstr "По подразбиране"
+
+msgid "Docs icon size:"
+msgstr "Размер на иконите на документите:"
+
+msgid "Documents"
+msgstr "Документи"
+
+msgid "Edit Applications…"
+msgstr "Редактиране на приложения…"
+
+msgid "Enable"
+msgstr "Включване"
+
+msgid "Folders"
+msgstr "Папки"
+
+msgid "General"
+msgstr "Общи"
+
+msgid "Huge"
+msgstr "Огромни"
+
+msgid "Icon:"
+msgstr "Икона:"
+
+msgid "Large"
+msgstr "Големи"
+
+msgid "Lock"
+msgstr "Заключване"
+
+msgid "Medium"
+msgstr "Средни"
+
+msgid "Menu position"
+msgstr "Позиция на менюто"
+
+msgid "More"
+msgstr "Още"
+
+msgid "More recommended files"
+msgstr "Още препоръчани файлове"
+
+msgid "Number of columns"
+msgstr "Брой колони"
+
+msgid "Number of rows"
+msgstr "Брой редове"
+
+msgid "Pinned"
+msgstr "Закачени"
+
+msgid "Power"
+msgstr "Захранване"
+
+msgid "Recommended"
+msgstr "Препоръчани"
+
+msgid "Restart"
+msgstr "Рестартиране"
+
+msgid "Restart into Windows"
+msgstr "Рестартиране в Windows"
+
+msgid "Search for apps, settings, and documents"
+msgstr "Търсене на приложения, настройки и документи"
+
+msgid "Search the web"
+msgstr "Търсене в мрежата"
+
+msgid "Show descriptions:"
+msgstr "Показване на описания:"
+
+msgid "Show labels in two lines"
+msgstr "Показване на имената на два реда"
+
+msgid "Show recent documents:"
+msgstr "Показване на скорошни документи:"
+
+msgid "Shut down"
+msgstr "Изключване"
+
+msgid "Sign out"
+msgstr "Излизане"
+
+msgid "Sleep"
+msgstr "Режим на заспиване"
+
+msgid "Small"
+msgstr "Малки"
+
+msgid "Task Manager"
+msgstr "Диспечер на задачите"
+
+msgid "The more you use your device, the more recent files and new apps show up here."
+msgstr "Колкото повече използвате устройството си, толкова повече скорошни файлове и нови приложения се показват тук."
+
+msgid "Unhidden!"
+msgstr "Показани!"
+
+msgid "Unhide all hidden applications"
+msgstr "Показване на всички скрити приложения"
+
+msgctxt "@item:inmenu Open icon chooser dialog"
+msgid "Choose…"
+msgstr "Избор…"
+
+msgctxt "@item:inmenu Reset icon to default"
+msgid "Clear Icon"
+msgstr "Изчистване на иконата"

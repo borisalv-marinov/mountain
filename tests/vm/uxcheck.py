@@ -8,7 +8,7 @@ import difflib, json, os, re, subprocess, sys, tempfile
 from PIL import Image, ImageOps
 
 
-def ocr(img, tsv=False):
+def ocr(img, tsv=False, lang="eng"):
     g = ImageOps.grayscale(img)
     if sum(g.resize((64, 64)).getdata()) / 4096 < 128:  # light text on dark UI: tesseract reads dark on light best
         g = ImageOps.invert(g)
@@ -16,7 +16,7 @@ def ocr(img, tsv=False):
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
         g.save(f.name)
     try:
-        out = subprocess.run(["tesseract", f.name, "stdout", "--psm", "11"] + (["tsv"] if tsv else []),
+        out = subprocess.run(["tesseract", f.name, "stdout", "-l", lang, "--psm", "11"] + (["tsv"] if tsv else []),
                              capture_output=True, text=True, timeout=120).stdout
     finally:
         os.unlink(f.name)
@@ -57,13 +57,14 @@ def run(shots, rules):
                 fails += 1
                 continue
             text = None
+            lang = checks.get("ocr_lang", "eng")  # "eng+bul" reads Cyrillic (the bg-* shots)
             for phrase in checks.get("must_read", []):
-                text = text if text is not None else ocr(img)
+                text = text if text is not None else ocr(img, lang=lang)
                 ok = found(text, phrase, 0.85)
                 rows.append(("reads '%s' on %s" % (phrase, name), "PASS" if ok else "FAIL", norm(text)[:70]))
                 fails += not ok
             for phrase in checks.get("must_not_read", []):
-                text = text if text is not None else ocr(img)
+                text = text if text is not None else ocr(img, lang=lang)
                 bad = found(text, phrase, 0.9)
                 rows.append(("no '%s' on %s" % (phrase, name), "FAIL" if bad else "PASS", norm(text)[:70]))
                 fails += bad

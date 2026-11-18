@@ -34,12 +34,12 @@ ColumnLayout {
     }
     Component.onCompleted: load()
 
-    PageTitle { title: "Mouse & touchpad" }
+    PageTitle { title: i18n("Mouse & touchpad") }
 
-    GText { visible: !mp.mouse && !mp.pad; text: "No mouse or touchpad found."; dim: true }
+    GText { visible: !mp.mouse && !mp.pad; text: i18n("No mouse or touchpad found."); dim: true }
 
     Repeater {
-        model: [{ pad: false, title: "Mouse" }, { pad: true, title: "Touchpad" }]
+        model: [{ pad: false, title: i18n("Mouse") }, { pad: true, title: i18n("Touchpad") }]
         delegate: GlassCard {
             id: card
             required property var modelData
@@ -48,46 +48,46 @@ ColumnLayout {
             function flip(prop, key, cur) { mp.set(modelData.pad, prop, key, cur ? "false" : "true", "bool"); }
             Layout.fillWidth: true
             padding: 6
-            CardHeader { title: card.modelData.title; subtitle: "Changes apply to every " + card.modelData.title.toLowerCase() + " on this PC" }
+            CardHeader { title: card.modelData.title; subtitle: i18n("Changes apply to every %1 on this PC", card.modelData.title.toLowerCase()) }
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 20
                 Layout.rightMargin: 18
                 Layout.preferredHeight: 48
                 spacing: 14
-                GText { text: "Pointer speed" }
+                GText { text: i18n("Pointer speed") }
                 QQC2.Slider {
                     id: speed
                     Layout.fillWidth: true
                     from: -1
                     to: 1
                     stepSize: 0.1
-                    Accessible.name: card.modelData.title + " pointer speed"
+                    Accessible.name: i18n("%1 pointer speed", card.modelData.title)
                     Binding on value { when: !speed.pressed; value: card.s ? card.s.speed : 0 }
                     onPressedChanged: if (!pressed) mp.set(card.modelData.pad, "pointerAcceleration", "PointerAcceleration", value.toFixed(1), "double")
                 }
             }
             SettingRow {
-                text: "Natural scrolling"
-                description: "Content moves with your fingers"
+                text: i18n("Natural scrolling")
+                description: i18n("Content moves with your fingers")
                 chevron: false
                 onClicked: card.flip("naturalScroll", "NaturalScroll", card.s.natural)
-                trailing: PillSwitch { text: "Natural scrolling"; checked: card.s ? card.s.natural : false; onClicked: card.flip("naturalScroll", "NaturalScroll", card.s.natural) }
+                trailing: PillSwitch { text: i18n("Natural scrolling"); checked: card.s ? card.s.natural : false; onClicked: card.flip("naturalScroll", "NaturalScroll", card.s.natural) }
             }
             SettingRow {
-                text: "Swap left and right buttons"
+                text: i18n("Swap left and right buttons")
                 chevron: false
                 divider: true
                 onClicked: card.flip("leftHanded", "LeftHanded", card.s.left)
-                trailing: PillSwitch { text: "Swap left and right buttons"; checked: card.s ? card.s.left : false; onClicked: card.flip("leftHanded", "LeftHanded", card.s.left) }
+                trailing: PillSwitch { text: i18n("Swap left and right buttons"); checked: card.s ? card.s.left : false; onClicked: card.flip("leftHanded", "LeftHanded", card.s.left) }
             }
             SettingRow {
                 visible: card.modelData.pad
-                text: "Tap to click"
+                text: i18n("Tap to click")
                 chevron: false
                 divider: true
                 onClicked: card.flip("tapToClick", "TapToClick", card.s.tap)
-                trailing: PillSwitch { text: "Tap to click"; checked: card.s ? card.s.tap : false; onClicked: card.flip("tapToClick", "TapToClick", card.s.tap) }
+                trailing: PillSwitch { text: i18n("Tap to click"); checked: card.s ? card.s.tap : false; onClicked: card.flip("tapToClick", "TapToClick", card.s.tap) }
             }
         }
     }

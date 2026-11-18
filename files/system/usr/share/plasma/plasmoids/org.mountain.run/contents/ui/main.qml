@@ -51,7 +51,7 @@ PlasmoidItem {
                 if (app.box && app.history.length) { app.box.editText = app.history[0]; app.box.selectText(); } // last entry, selected, like Windows
             } else if (source === app.pending) {
                 app.pending = "";
-                if (data["exit code"] === 0) app.close(); else app.error = data.stdout.trim() || "That didn't open. Check the name and try again.";
+                if (data["exit code"] === 0) app.close(); else app.error = data.stdout.trim() || i18n("That didn't open. Check the name and try again.");
             }
             disconnectSource(source);
         }
@@ -59,7 +59,7 @@ PlasmoidItem {
 
     FileDialog {
         id: browse
-        title: "Browse"
+        title: i18n("Browse")
         onAccepted: {
             const p = decodeURIComponent(selectedFile.toString().replace(/^file:\/\//, ""));
             if (!app.box) return;
@@ -108,7 +108,7 @@ PlasmoidItem {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         Accessible.role: Accessible.Dialog
-        Accessible.name: "Run"
+        Accessible.name: i18n("Run")
         focus: true
         Keys.onEscapePressed: app.close()
 
@@ -125,14 +125,14 @@ PlasmoidItem {
             RowLayout { // title bar
                 spacing: 8
                 Kirigami.Icon { source: "system-run"; implicitWidth: 16; implicitHeight: 16 }
-                Text { text: "Run"; color: "#FFFFFF"; font: Kirigami.Theme.defaultFont; Layout.fillWidth: true }
+                Text { text: i18n("Run"); color: "#FFFFFF"; font: Kirigami.Theme.defaultFont; Layout.fillWidth: true }
                 QQC2.AbstractButton {
                     id: closeBtn
                     implicitWidth: 32; implicitHeight: 24
                     hoverEnabled: true
                     activeFocusOnTab: false
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Close"
+                    Accessible.name: i18n("Close")
                     onClicked: app.close()
                     background: Rectangle { radius: 4; color: closeBtn.hovered ? "#C42B1C" : "transparent" }
                     contentItem: Kirigami.Icon { source: "window-close-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#FFFFFF" }
@@ -144,7 +144,7 @@ PlasmoidItem {
                 Kirigami.Icon { source: "system-run"; implicitWidth: 32; implicitHeight: 32; Layout.alignment: Qt.AlignTop }
                 Text {
                     Layout.fillWidth: true
-                    text: "Type the name of a program, folder, document, or internet resource, and Mountain will open it for you."
+                    text: i18n("Type the name of a program, folder, document, or internet resource, and Mountain will open it for you.")
                     wrapMode: Text.WordWrap
                     color: "#FFFFFF"
                     font: Kirigami.Theme.defaultFont
@@ -153,14 +153,14 @@ PlasmoidItem {
 
             RowLayout {
                 spacing: 10
-                Text { text: "Open:"; color: "#FFFFFF"; font: Kirigami.Theme.defaultFont }
+                Text { text: i18n("Open:"); color: "#FFFFFF"; font: Kirigami.Theme.defaultFont }
                 QQC2.ComboBox {
                     id: field
                     Layout.fillWidth: true
                     editable: true
                     model: app.history
                     focus: true
-                    Accessible.name: "Open"
+                    Accessible.name: i18n("Open")
                     Accessible.description: app.error
                     Component.onCompleted: { app.box = field; forceActiveFocus(); app.reset(); }
                     onAccepted: app.open()
@@ -190,9 +190,9 @@ PlasmoidItem {
             RowLayout {
                 Layout.alignment: Qt.AlignRight
                 spacing: 8
-                GlassButton { text: "OK"; highlighted: true; enabled: field.editText.trim() !== "" && app.pending === ""; onClicked: app.open() }
-                GlassButton { text: "Cancel"; onClicked: app.close() }
-                GlassButton { text: "Browse..."; onClicked: browse.open() }
+                GlassButton { text: i18n("OK"); highlighted: true; enabled: field.editText.trim() !== "" && app.pending === ""; onClicked: app.open() }
+                GlassButton { text: i18n("Cancel"); onClicked: app.close() }
+                GlassButton { text: i18n("Browse..."); onClicked: browse.open() }
             }
         }
     }

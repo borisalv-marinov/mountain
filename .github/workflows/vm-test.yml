@@ -41,7 +41,7 @@ jobs:
           echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
           echo "Acquire::Retries \"5\";" | sudo tee /etc/apt/apt.conf.d/80retries
           sudo apt-get update
-          sudo apt-get install -y qemu-utils imagemagick socat skopeo tesseract-ocr python3-pil
+          sudo apt-get install -y qemu-utils imagemagick socat skopeo tesseract-ocr tesseract-ocr-bul python3-pil
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
@@ -1311,6 +1311,24 @@ jobs:
           sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
           for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20; shot relogin-desktop
           chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
+          # Bulgarian: what Language & region writes (plasma-localerc [Translations] LANGUAGE), sign out and in, look at KDE-owned and
+          # Mountain windows, then back to English. Only KDE's own text (Dolphin, Plasma menus) is Bulgarian: Mountain's plasmoids ship no bg catalog.
+          chk "Bulgarian: KDE catalogs are installed" 0 "ls /usr/share/locale/bg/LC_MESSAGES/dolphin.mo /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo" 'dolphin.mo'
+          R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE bg:en_US"
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
+          for _ in $(seq 30); do R "loginctl list-sessions --no-legend | grep -q looktest" || break; sleep 2; done
+          sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
+          for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20
+          R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE --delete" # English again for the next sign-in (this session keeps bg)
+          chk "Bulgarian: the shell runs in bg" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x plasmashell | head -1)/environ | grep '^LANGUAGE='" 'bg'
+          QM key meta_l; sleep 3; shot bg-start-menu; QM key esc; sleep 1
+          QM key meta_l a; sleep 2; shot bg-quick-settings; QM key esc; sleep 1
+          QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot bg-desktop-menu; QM key esc; sleep 1
+          QM key meta_l d; sleep 2; QM key alt f4; sleep 3; shot bg-dialog-shutdown; QM key esc; sleep 1
+          L "/usr/libexec/mountain-settings-open home"; sleep 8; shot bg-settings-home; K -f org.mountain.settings
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8; shot bg-taskmanager; K -f plasma-systemmonitor
+          L dolphin; sleep 8; shot bg-file-explorer; K -x dolphin
+          R "ls /usr/lib64/qt6/plugins/kf6/kfileitemaction/ /usr/share/kio/servicemenus/ 2>&1" > fileitemactions-log.txt 2>&1 || true # real names of the right-click plugins (folder-colour row)
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
           # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
           chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'

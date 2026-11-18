@@ -13,15 +13,15 @@ ColumnLayout {
         user = l[1] || l[0];
     })
 
-    PageTitle { title: "Your account" }
+    PageTitle { title: i18n("Your account") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        SettingRow { text: ac.full || ac.user; description: "Local account · " + ac.user; iconName: "user-identity"; chevron: false }
+        SettingRow { text: ac.full || ac.user; description: i18n("Local account · %1", ac.user); iconName: "user-identity"; chevron: false }
         SettingRow {
-            text: "Change your password"
-            description: "Opens a window where you type the old and new password"
+            text: i18n("Change your password")
+            description: i18n("Opens a window where you type the old and new password")
             iconName: "lock"
             divider: true
             onClicked: app.run("konsole -e passwd")

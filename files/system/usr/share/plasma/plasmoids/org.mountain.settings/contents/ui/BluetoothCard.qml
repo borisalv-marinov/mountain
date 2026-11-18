@@ -18,7 +18,7 @@ GlassCard {
         });
     }
 
-    CardHeader { title: "Bluetooth devices"; subtitle: "Manage, add, and remove devices" }
+    CardHeader { title: i18n("Bluetooth devices"); subtitle: i18n("Manage, add, and remove devices") }
 
     RowLayout {
         Layout.fillWidth: true
@@ -34,22 +34,22 @@ GlassCard {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 1
-            GText { Layout.fillWidth: true; text: "Bluetooth" }
+            GText { Layout.fillWidth: true; text: i18n("Bluetooth") }
             GText {
                 Layout.fillWidth: true
                 dim: true
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
-                text: !bt.hasAdapter ? "No Bluetooth adapter"
-                    : (bt.btOn && BluezQt.Manager.usableAdapter ? "Discoverable as \"" + BluezQt.Manager.usableAdapter.name + "\"" : "Off")
+                text: !bt.hasAdapter ? i18n("No Bluetooth adapter")
+                    : (bt.btOn && BluezQt.Manager.usableAdapter ? i18n("Discoverable as \"%1\"", BluezQt.Manager.usableAdapter.name) : i18n("Off"))
             }
         }
         GText {
             visible: bt.hasAdapter
-            text: bt.btOn ? "On" : "Off"
+            text: bt.btOn ? i18n("On") : i18n("Off")
         }
         PillSwitch {
             visible: bt.hasAdapter
-            text: "Bluetooth"
+            text: i18n("Bluetooth")
             checked: bt.btOn
             onClicked: bt.setEnabled(!bt.btOn)
         }
@@ -83,7 +83,7 @@ GlassCard {
                 GText { Layout.fillWidth: true; text: devRow.model.Name }
                 GText {
                     Layout.fillWidth: true
-                    text: devRow.model.Connected ? "Connected" : "Not connected"
+                    text: devRow.model.Connected ? i18n("Connected") : i18n("Not connected")
                     color: devRow.model.Connected ? app.accent : app.textDim
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
                 }
@@ -98,12 +98,12 @@ GlassCard {
         Layout.bottomMargin: 6
         spacing: 8
         SettingRow {
-            text: "View all devices"
+            text: i18n("View all devices")
             chevron: false
             onClicked: app.page = "bluetooth"
         }
         GlassButton {
-            text: "Add device"
+            text: i18n("Add device")
             enabled: bt.hasAdapter
             opacity: enabled ? 1 : 0.5
             onClicked: app.page = "bluetooth"

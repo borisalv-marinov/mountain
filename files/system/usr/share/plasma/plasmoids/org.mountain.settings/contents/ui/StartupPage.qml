@@ -18,13 +18,13 @@ ColumnLayout {
     }
     Component.onCompleted: load()
 
-    PageTitle { title: "Startup apps" }
+    PageTitle { title: i18n("Startup apps") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Apps that start when you sign in"; subtitle: "Turn off the ones you do not need" }
-        GText { visible: su.apps.length === 0; Layout.margins: 18; text: "No startup apps."; dim: true }
+        CardHeader { title: i18n("Apps that start when you sign in"); subtitle: i18n("Turn off the ones you do not need") }
+        GText { visible: su.apps.length === 0; Layout.margins: 18; text: i18n("No startup apps."); dim: true }
         Repeater {
             model: su.apps
             delegate: SettingRow {
@@ -35,7 +35,7 @@ ColumnLayout {
                 divider: index > 0
                 onClicked: su.flip(modelData)
                 trailing: [
-                    GText { text: modelData.on ? "On" : "Off" },
+                    GText { text: modelData.on ? i18n("On") : i18n("Off") },
                     PillSwitch { text: modelData.name; checked: modelData.on; onClicked: su.flip(modelData) }
                 ]
             }

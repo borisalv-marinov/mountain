@@ -12,6 +12,7 @@
     "Id": "org.mountain.settings",
     "License": "GPL-2.0+",
     "Name": "Settings",
+    "Name[bg]": "Настройки",
     "Version": "1.0"
   },
   "NoDisplay": true,

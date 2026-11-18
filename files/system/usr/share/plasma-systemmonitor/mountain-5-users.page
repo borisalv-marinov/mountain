@@ -4,6 +4,7 @@
 chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Users
+Title[bg]=Потребители
 
 [Face-880000000014][org.mountain.taskmanager.list][General]
 mode=users
@@ -15,6 +16,7 @@ loadType=
 margin=2
 version=1
 Title=Users
+Title[bg]=Потребители
 
 [page][row-0]
 Title=

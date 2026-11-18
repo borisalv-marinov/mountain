@@ -4,6 +4,7 @@
 chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Startup apps
+Title[bg]=Приложения при стартиране
 
 [Face-880000000013][org.mountain.taskmanager.list][General]
 mode=startup
@@ -15,6 +16,7 @@ loadType=
 margin=2
 version=1
 Title=Startup apps
+Title[bg]=Приложения при стартиране
 
 [page][row-0]
 Title=

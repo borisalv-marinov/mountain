@@ -13,6 +13,7 @@
     "Id": "org.mountain.quicksettings",
     "License": "GPL-2.0-or-later",
     "Name": "Quick settings",
+    "Name[bg]": "Бързи настройки",
     "Version": "1.0"
   },
   "X-Plasma-API-Minimum-Version": "6.0",
