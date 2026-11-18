@@ -1012,6 +1012,8 @@ jobs:
           chk "Active Protection: an EICAR member behind an encrypted member of the same zip is caught" 0 "test ! -e ~looktest/Downloads/apa-mixed.zip && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-mixed && echo caught" '^caught$'
           R "$LT pkill -TERM -f 'mountain-protect daemon'"; for _ in $(seq 25); do sleep 2; R "$LT systemctl --user is-active -q mountain-protect.service" && break; done
           chk "Active Protection: a clean exit of the watcher (SIGTERM) restarts it (Restart=always)" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
+          # measurement for raising the 400 MB scan limit: a 2 GB file with 4000M limits (ClamAV's maximum is just under 4 GB), capped at 1.5 GB of memory so the session is never pushed out
+          chk "scan limit: a 2 GB file with 4000M limits (time, memory)" 2 "f=/var/tmp/apa-scan2g.bin; head -c 2000M /dev/urandom > \$f; systemd-run --wait --pipe -p RuntimeMaxSec=900 -p MemoryAccounting=yes -p MemoryMax=1500M nice -n 19 ionice -c3 clamscan --no-summary --max-filesize=4000M --max-scansize=4000M --database=/var/lib/clamav \$f 2>&1 | grep -oE 'runtime: .*|Memory peak: .*|(OK|FOUND|ERROR.*|Killed.*)\$|result: .*' | paste -sd' '; rm -f \$f" '.'
           R "rm -f ~looktest/Downloads/apa-big.mkv ~looktest/Downloads/apa-150.bin ~looktest/Downloads/apa-swap.com ~looktest/Downloads/apa-enc.zip ~looktest/Downloads/apa-mixed.zip ~looktest/Documents/a.jpg ~looktest/.config/autostart-scripts/apa-as.sh"
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
           # the Active Protection page polls only while it is on screen: none at all with the window hidden (Win+D)
@@ -1123,7 +1125,22 @@ jobs:
           # so its traffic reaches the PC through firewalld's default zone, like another computer on the same network.
           R "ip netns add attacker && ip link add vatk type veth peer name vatk0 && ip link set vatk0 netns attacker && ip addr add 10.99.0.1/24 dev vatk && ip link set vatk up && ip netns exec attacker ip addr add 10.99.0.2/24 dev vatk0 && ip netns exec attacker ip link set vatk0 up"
           chk "attack: the attacker's network lands in zone" 2 "firewall-cmd --get-zone-of-interface=vatk 2>/dev/null || firewall-cmd --get-default-zone" '.'
-          OPEN=$(R "ip netns exec attacker bash -c 'for p in \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
+          # 64 ports at a time, each given 0.4 s as before (one by one the 1033 ports took 7 minutes); open ports print in the order given
+          R "cat > /tmp/vscan.py <<'PY'
+          import socket, sys
+          from concurrent.futures import ThreadPoolExecutor
+          def probe(p):
+              s = socket.socket(); s.settimeout(0.4)
+              try:
+                  s.connect((sys.argv[1], p)); return p
+              except OSError:
+                  return None
+              finally:
+                  s.close()
+          with ThreadPoolExecutor(64) as ex:
+              print(' '.join(str(p) for p in ex.map(probe, [int(a) for a in sys.argv[2:]]) if p))
+          PY"
+          OPEN=$(R "ip netns exec attacker python3 /tmp/vscan.py 10.99.0.1 \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989")
           [ "$OPEN" = 22 ] && r=PASS || r=FAIL; echo "| attack: port scan from the network (22 is this test's own SSH) | $r | open: ${OPEN:-none} |" >> report.md; echo "$r port scan"
           # S11: the same attacker on the Home profile: only the ports of the services in mountain-home.xml answer (listeners on every scanned port, so a closed firewall port is the only reason to stay shut)
           R "firewall-cmd --zone=mountain-home --change-interface=vatk >/dev/null; cat > /tmp/vtl.py <<'PY'
@@ -1135,7 +1152,7 @@ jobs:
           PY
           nohup setsid python3 /tmp/vtl.py >/dev/null 2>&1 &"
           sleep 2
-          OPENH=$(R "ip netns exec attacker bash -c 'for p in 22 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
+          OPENH=$(R "ip netns exec attacker python3 /tmp/vscan.py 10.99.0.1 22 1714 1716 3389 5900 5901 8080 27036 47984 47989")
           R "firewall-cmd --zone=mountain-home --remove-interface=vatk >/dev/null; pkill -f 'python3 /tmp/[v]tl[.]py'; rm -f /tmp/vtl.py" || true # zone first: a pkill pattern matching this shell's own command line killed it before the restore ran (back to the default zone, as at the start)
           BACK=$(R "ip netns exec attacker timeout 1 bash -c '</dev/tcp/10.99.0.1/22' 2>/dev/null && echo 22-open || echo 22-shut")
           [ "$OPENH" = "1714 1716 27036" ] && [ "$BACK" = 22-open ] && r=PASS || r=FAIL; echo "| attack: port scan on the Home profile (only KDE Connect 1714-1764 and Steam 27036 from mountain-home.xml) | $r | open: ${OPENH:-none}; after restore: $BACK |" >> report.md; echo "$r port scan home"

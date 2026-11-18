@@ -1140,6 +1140,7 @@ check_phase38() { # v7.3 style: one title-bar colour, Disks icon in the one icon
   assert_grep '@define-color window_bg_color #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css
   assert_grep 'window-bg-color: #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css # libadwaita 1.6+ reads only the variables
   assert_grep 'window.background { background-color: #121212; }' $X/etc/skel/.config/gtk-4.0/gtk.css # plain GTK 4 apps (Welcome) ignore the colour names
+  assert_grep 'frame > button, stackswitcher > button { background: #1e1e1e; }' $X/etc/skel/.config/gtk-4.0/gtk.css # Welcome's card rows and tabs were the theme's #3a3a3a (v7.3 run 4: luminance 0.22)
   assert_grep 'window.background, .background' $X/etc/skel/.config/gtk-3.0/gtk.css # Adwaita GTK 3 hard-codes its greys
   grep -q 'cat "\$g" 2>/dev/null || true; cat "\$t"' $X/usr/libexec/mountain-user-setup || fail "gtk.css must be appended after KDE's @import"
   assert_grep '@define-color theme_bg_color #121212;' $X/etc/skel/.config/gtk-3.0/gtk.css
