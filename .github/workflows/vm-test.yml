@@ -1268,7 +1268,7 @@ jobs:
           cat > crash-probe.sh <<'SH'
           exec 2>&1
           echo "== kernel trap lines"; dmesg | grep -E 'segfault|general protection|trap int3' | head -80
-          hs=$(dmesg | grep -E 'segfault|general protection|trap int3' | grep -oE '[0-9a-f]{64}' | sort -u)
+          hs=$(dmesg | grep -E 'segfault|general protection|trap int3' | grep -oE '[0-9a-f]{62,64}\.file' | sed 's/\.file$//' | sort -u) # composefs objects are XX/<62 hex>.file: the kernel prints the name only
           echo "== distinct hashes: $(echo $hs | wc -w)"
           command -v fsverity >/dev/null && timeout 300 sh -c 'find /usr/lib64 /usr/lib /usr/libexec -xdev -type f -print0 | xargs -0 -n 500 fsverity measure 2>/dev/null' > /tmp/fsv.txt
           timeout 300 getfattr -R -h -d -m 'overlay.redirect' --absolute-names /usr/lib64 /usr/lib /usr/libexec > /tmp/xattr.txt 2>/dev/null
@@ -1276,9 +1276,9 @@ jobs:
             echo "== hash $h"
             echo "-- composefs redirect xattr:"; awk -v h="$h" '/^# file:/{f=substr($0,9)} /redirect/{v=$0; gsub("/","",v); if (index(v,h)) print "  " f}' /tmp/xattr.txt
             echo "-- fsverity measure:"; grep -F "$h" /tmp/fsv.txt | sed 's/^/  /'
-            echo "-- object in the ostree repo:"; ls -l /sysroot/ostree/repo/objects/${h:0:2}/${h:2}.file 2>&1 | sed 's/^/  /'
+            echo "-- object in the ostree repo:"; ls -l /sysroot/ostree/repo/objects/*/$h.file /sysroot/composefs/objects/*/$h 2>&1 | sed 's/^/  /'
           done
-          echo "== ldd kioworker"; ldd "$(command -v kioworker || ls /usr/lib*/libexec/kf6/kioworker 2>/dev/null | head -1)"
+          echo "== ldd kioworker"; ldd /usr/libexec/kf6/kioworker; echo "== kio plugins"; ls /usr/lib64/qt6/plugins/kf6/kio/
           echo "== journal: kioworker / kf.kio"; journalctl -b --no-pager | grep -iE 'kioworker|kf.kio' | tail -50
           SH
           R "bash -s" < crash-probe.sh > crash-probe-log.txt 2>&1 || true

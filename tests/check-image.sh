@@ -448,7 +448,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '"iconSize", 3' "$L" # Medium icons
   bc=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit 2>/dev/null || true)
   assert_grep 'id: mtPower' "$bc/SessionManagementScreen.qml" # sign-in and lock screen: power menu at the bottom right
-  assert_grep 'title: "Protection history"' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  assert_grep 'title: i18n("Protection history")' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
   pt=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml # KDE's process lists
   assert_grep 'id: kthreads' $pt; assert_grep '"plasmashell": "Windows Explorer"' $pt; assert_grep 'mtUnits(model.display)' $pt
   assert_grep 'Threat quarantined: ' /usr/libexec/mountain-protect; assert_grep 'Threat quarantined: ' /usr/libexec/mountain-security
@@ -1105,7 +1105,7 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   assert_grep 'onClicked: list.visible = !wasOpen' $f # the list is the applet's own pop-up; the tray forwards each click too, so it toggles by what was open at the press
   assert_grep 'PlasmaCore.Dialog {' $f
   assert_grep 'height: (kbd.layoutsList.length + 1) \* rowHeight' $f # the list opens above the button, not behind the taskbar
-  assert_grep 'text: "More keyboard settings"' $f
+  assert_grep 'text: i18n("More keyboard settings")' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"
   # accounts from before v7.1 get Mountain's taskbar space (right-click = Task Manager) once, before the taskbar loads
