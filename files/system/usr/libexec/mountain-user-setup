@@ -39,10 +39,11 @@ url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(s
 # solid app windows (see-through ones made KWin redraw the blur behind every app: smearing); Windows' "Bulgarian (Phonetic)"
 [[ -f $cfg/Kvantum/kvantum.kvconfig ]] && sed -i 's/^theme=BlackGlass$/theme=BlackGlassSolid/' "$cfg/Kvantum/kvantum.kvconfig"
 # GTK/libadwaita apps get Mountain's dark (kde-gtk-config only adds "@import 'colors.css'" to gtk.css, and libadwaita ignores those names):
-# put the shipped gtk.css in front of whatever is there, once (marker mountain-gtk), so accounts from before v7.3 get it too
+# add the shipped gtk.css after whatever is there, once (marker mountain-gtk), so accounts from before v7.3 get it too;
+# after, because KDE's "@import 'colors.css'" must stay first (an @import after rules is dropped) and the later colours win
 for v in 3.0 4.0; do
   g=$cfg/gtk-$v/gtk.css; t=${MOUNTAIN_SKEL_GTK:-/etc/skel/.config}/gtk-$v/gtk.css
-  if [[ -f $t ]] && ! grep -qs mountain-gtk "$g"; then mkdir -p "$cfg/gtk-$v"; { cat "$t"; cat "$g" 2>/dev/null || true; } > "$g.new" && mv "$g.new" "$g"; fi
+  if [[ -f $t ]] && ! grep -qs mountain-gtk "$g"; then mkdir -p "$cfg/gtk-$v"; { cat "$g" 2>/dev/null || true; cat "$t"; } > "$g.new" && mv "$g.new" "$g"; fi
 done
 [[ -f $cfg/kxkbrc ]] && sed -i 's/^VariantList=,phonetic$/VariantList=,bas_phonetic/' "$cfg/kxkbrc"
 # File Explorer's Home on its real path too (the status bar said "0 B free" for /home/...)

@@ -1,9 +1,13 @@
-/* mountain-gtk: GTK 3 apps use Mountain's own dark (the BlackGlass colour scheme), same as the GTK 4 file */
+/* mountain-gtk: GTK 3 apps use Mountain's own dark (the BlackGlass colour scheme: window #121212), same as the GTK 4 file.
+   Adwaita's GTK 3 theme has its greys (#353535, #2d2d2d) written into its rules, so colour names alone change nothing:
+   the surfaces are set here (user CSS outranks the theme); selected and hovered rows keep the theme's colours */
 @define-color theme_bg_color #121212;
 @define-color theme_base_color #121212;
 @define-color theme_unfocused_bg_color #121212;
 @define-color theme_unfocused_base_color #121212;
 @define-color insensitive_bg_color #121212;
+window.background, .background, dialog .dialog-vbox, notebook > stack:not(:only-child), stack, .sidebar, placessidebar list,
+list, .view:not(:selected), iconview:not(:selected), textview text, treeview.view:not(:selected), scrolledwindow viewport { background-color: #121212; }
 headerbar, .titlebar { background: #121212; box-shadow: none; }
 headerbar button.titlebutton { border-radius: 0; min-width: 46px; min-height: 32px; margin: 0; padding: 0; background: none; box-shadow: none; }
 headerbar button.titlebutton:hover { background: alpha(white, 0.1); }

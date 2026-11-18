@@ -406,9 +406,9 @@ jobs:
           QM move $((1180*W/1280)) $((780*H/800)); sleep 3; shot taskbar-hover-clock; QM move $((640*W/1280)) $((400*H/800))
           QM rclick $((1000*W/1280)) $((780*H/800)); sleep 2; shot taskbar-context-menu; QM key esc; sleep 1
           QM key esc; sleep 1 # closes Start too (it stayed open after the search above): the Win key below opens it, never closes it
-          QM key meta_l; sleep 3; QM move $((915*W/1280)) $((194*H/800)); sleep 1; shot start-all-pill-hover
-          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-all-apps
-          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
+          QM key meta_l; sleep 3; QM move $((936*W/1280)) $((155*H/800)); sleep 1; shot start-all-pill-hover
+          QM click $((936*W/1280)) $((155*H/800)); sleep 2; shot start-all-apps
+          QM click $((936*W/1280)) $((155*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
           # the Win key toggles Start: it must be open for the All pill steps (an earlier Esc only clears the search; the taskbar menu's Esc leaves Start open)
           sdw() { convert "$(ls shots/*-$1.png | tail -1)" -negate - 2>/dev/null | tesseract - stdout --psm 11 2>/dev/null; } # OCR words of a shot (dark UI: inverted)
           for s in "start-all-pill-hover:Search for apps:Pinned" "start-all-apps:Search for apps:" "start-back-to-pinned:Pinned:"; do
@@ -992,17 +992,17 @@ jobs:
           chk "Active Protection: a threat in a folder moved to the Desktop is caught" 0 "test ! -e ~looktest/Desktop/apa-stage/apa-dir.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-dir && echo caught" '^caught$'
           R "rm -rf ~looktest/Desktop/apa-stage ~looktest/.config/systemd/user/apa-cfg.service ~looktest/.local/share/systemd/user/apa-data.service ~looktest/.config/autostart/apa-link.desktop"
           # v7.3 audit: big files, scan limits, ctime in the cache key, more sign-in files, a clean kill restarts, a program renamed .jpg, encrypted archives
-          R "$(TL 'truncate -s 450M ~/Downloads/apa-big.mkv; mkdir -p ~/.config/autostart-scripts; printf "#!/bin/sh\ntrue\n" > ~/.config/autostart-scripts/apa-as.sh; cp /usr/bin/true ~/Documents/a.jpg; head -c 150M /dev/zero > ~/Downloads/apa-150.bin; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d >> ~/Downloads/apa-150.bin')"
+          R "$(TL 'truncate -s 450M ~/Downloads/apa-big.mkv; mkdir -p ~/.config/autostart-scripts; printf "#!/bin/sh\ntrue\n" > ~/.config/autostart-scripts/apa-as.sh; cp /usr/bin/true ~/Documents/a.jpg;')"
           R "$(TL 'printf "%068d" 0 > ~/Downloads/apa-swap.com; touch -d 2020-01-01 ~/Downloads/apa-swap.com')"; sleep 20
           R "$(TL 'cp -p ~/Downloads/apa-swap.com /tmp/apa-ref; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/apa-swap.com; touch -r /tmp/apa-ref ~/Downloads/apa-swap.com; rm -f /tmp/apa-ref')"
           # the zips are built on the runner (the image has no zip) and copied in whole, so the watcher never sees a half-built archive
-          Z=$(mktemp -d); (cd "$Z" && echo secret > m1.txt && echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > m2.txt && zip -q -P pw enc.zip m1.txt && zip -q -P pw mixed.zip m1.txt && zip -q mixed.zip m2.txt)
+          Z=$(mktemp -d); (cd "$Z" && echo secret > m1.txt && echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > m2.txt && zip -q -P pw enc.zip m1.txt && zip -q -P pw mixed.zip m1.txt && zip -q mixed.zip m2.txt && head -c 150M /dev/zero > pad.bin && zip -q big.zip pad.bin m2.txt) # big.zip: EICAR after 150 MB unpacked (past the old 100 MB limit)
           put_dl() { R "cat > /tmp/apa-put && install -o looktest -g looktest -m 644 /tmp/apa-put /home/looktest/Downloads/$2; rm -f /tmp/apa-put" < "$Z/$1"; }
-          put_dl enc.zip apa-enc.zip
-          apwait /home/looktest/Downloads/apa-150.bin; apwait /home/looktest/Downloads/apa-swap.com; sleep 10
+          put_dl enc.zip apa-enc.zip; put_dl big.zip apa-150.zip
+          apwait /home/looktest/Downloads/apa-150.zip; apwait /home/looktest/Downloads/apa-swap.com; sleep 10
           AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
           chk "Active Protection: a 450 MB non-archive in Downloads is listed too large to scan" 0 "echo '$(grep -c 'ap_unverified=.*apa-big.mkv|too large to scan' <<<"$AP")'" '^1$'
-          chk "Active Protection: EICAR inside a 150 MB file is caught (scan size limits)" 0 "test ! -e ~looktest/Downloads/apa-150.bin && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-150 && echo caught" '^caught$'
+          chk "Active Protection: EICAR inside a 150 MB file is caught (scan size limits)" 0 "test ! -e ~looktest/Downloads/apa-150.zip && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-150 && echo caught" '^caught$'
           chk "Active Protection: a same-size swap with the old mtime is caught" 0 "test ! -e ~looktest/Downloads/apa-swap.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-swap && echo caught" '^caught$'
           chk "Active Protection: a script in autostart-scripts is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*autostart-scripts/apa-as.sh|starts at sign-in' <<<"$AP")'" '^1$'
           chk "Active Protection: a program renamed a.jpg in Documents is flagged" 0 "echo '$(grep -c 'ap_unverified=.*Documents/a.jpg|' <<<"$AP")'" '^1$'
@@ -1036,8 +1036,8 @@ jobs:
           chk "Active Protection: a restored file is not quarantined again" 0 "test -e ~looktest/Downloads/new-download.com && echo kept" '^kept$'
           R "rm -f ~looktest/Downloads/new-download.com"
           # a stopped watcher restarts by itself (RestartSec=30, no start limit): seen within 30 s, back 30 s later
-          R "pkill -u looktest -x inotifywait"
-          for _ in $(seq 40); do [[ $(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value") =~ ^[1-9] ]] && R "$LT systemctl --user is-active -q mountain-protect.service" && break; sleep 3; done
+          NR0=$(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value"); R "pkill -u looktest -x inotifywait"
+          for _ in $(seq 40); do (( $(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value") > ${NR0:-0} )) && R "$LT systemctl --user is-active -q mountain-protect.service" && break; sleep 3; done
           chk "Active Protection: a killed watcher restarts by itself" 0 "echo \$($LT systemctl --user show mountain-protect.service -p NRestarts --value) \$($LT systemctl --user is-active mountain-protect.service)" '^[1-9][0-9]* active$'
           chk "Active Protection: the stop is logged (the user gets a notification)" 2 "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c 'a watcher stopped'" '^[1-9]'
           # light: 50 ordinary saves in Documents start no scan
@@ -1126,7 +1126,6 @@ jobs:
           OPEN=$(R "ip netns exec attacker bash -c 'for p in \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
           [ "$OPEN" = 22 ] && r=PASS || r=FAIL; echo "| attack: port scan from the network (22 is this test's own SSH) | $r | open: ${OPEN:-none} |" >> report.md; echo "$r port scan"
           # S11: the same attacker on the Home profile: only the ports of the services in mountain-home.xml answer (listeners on every scanned port, so a closed firewall port is the only reason to stay shut)
-          ZB=$(R "firewall-cmd --get-zone-of-interface=vatk 2>/dev/null || firewall-cmd --get-default-zone")
           R "firewall-cmd --zone=mountain-home --change-interface=vatk >/dev/null; cat > /tmp/vtl.py <<'PY'
           import socket, time
           ss = []
@@ -1137,8 +1136,9 @@ jobs:
           nohup setsid python3 /tmp/vtl.py >/dev/null 2>&1 &"
           sleep 2
           OPENH=$(R "ip netns exec attacker bash -c 'for p in 22 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
-          R "pkill -f '[v]tl.py'; rm -f /tmp/vtl.py; firewall-cmd --zone=${ZB:-mountain} --change-interface=vatk >/dev/null" || true
-          [ "$OPENH" = "1714 1716 27036" ] && r=PASS || r=FAIL; echo "| attack: port scan on the Home profile (only KDE Connect 1714-1764 and Steam 27036 from mountain-home.xml) | $r | open: ${OPENH:-none}; zone restored to ${ZB:-mountain} |" >> report.md; echo "$r port scan home"
+          R "pkill -f '[v]tl.py'; rm -f /tmp/vtl.py; firewall-cmd --zone=mountain-home --remove-interface=vatk >/dev/null" || true # back to no zone of its own (the default zone), as at the start
+          BACK=$(R "ip netns exec attacker timeout 1 bash -c '</dev/tcp/10.99.0.1/22' 2>/dev/null && echo 22-open || echo 22-shut")
+          [ "$OPENH" = "1714 1716 27036" ] && [ "$BACK" = 22-open ] && r=PASS || r=FAIL; echo "| attack: port scan on the Home profile (only KDE Connect 1714-1764 and Steam 27036 from mountain-home.xml) | $r | open: ${OPENH:-none}; after restore: $BACK |" >> report.md; echo "$r port scan home"
           RTPW=$(openssl rand -hex 12); echo "::add-mask::$RTPW"
           R "useradd -G wheel rtadmin && echo rtadmin:$RTPW | chpasswd"
           R "printf '#!/bin/sh\necho wrongpass\n' > /tmp/rt-wrong.sh; printf '#!/bin/sh\necho $LPW\n' > /tmp/rt-right.sh; printf '#!/bin/sh\necho $RTPW\n' > /tmp/rt-admin.sh; chmod 755 /tmp/rt-wrong.sh /tmp/rt-right.sh /tmp/rt-admin.sh"

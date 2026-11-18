@@ -43,6 +43,8 @@ jobs:
         run: bash tests/test-windows-boot.sh
       - name: Test Active Protection rules
         run: bash tests/test-protect.sh
+      - name: Test virus scan moves threats to quarantine
+        run: bash tests/test-security-scan.sh
       - name: Test Active Protection watcher end to end
         run: sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools >/dev/null && bash tests/test-protect-daemon.sh
       - name: Workflow actions are pinned and build scripts executable

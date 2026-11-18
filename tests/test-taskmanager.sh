@@ -89,9 +89,12 @@ st 130 firefox 0 10; echo "0::/user.slice/user-1000.slice/user@1000.service/app.
 st 131 gwenview 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-flatpak-org.kde.plasma\x2dsystemmonitor-0123abcd.scope' > "$F/131/cgroup"
 st 132 dolphin 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-dbus\x2d:1.23\x2dorg.kde.dolphin@0.service' > "$F/132/cgroup"
 st 133 steam 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-steam@autostart.service' > "$F/133/cgroup"
+# KIO with systemd >= 250 (Start, taskbar): app-ID@UUID.service, UUID as 32 hex digits (kio systemdprocessrunner.cpp)
+st 134 kate 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.kate@0123456789abcdef0123456789abcdef.service' > "$F/134/cgroup"
 A=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash "$S" apps | cut -f1,2)
 ok 'grep -q $'"'"'^130\tfirefox$'"'"' <<<"$A" && grep -q $'"'"'^131\torg.kde.plasma-systemmonitor$'"'"' <<<"$A"' "apps: app scope and flatpak scope listed by app id"
 ok 'grep -q $'"'"'^132\torg.kde.dolphin$'"'"' <<<"$A"' "apps: D-Bus-activated service listed by app id"
+ok 'grep -q $'"'"'^134	org.kde.kate$'"'"' <<<"$A"' "apps: app started from Start or the taskbar (app-ID@UUID.service) listed"
 ok '! grep -q "^133" <<<"$A" && MOUNTAIN_PROC=$F bash "$S" processes | grep -q "^133"' "apps: autostart service stays a background process"
 ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
 ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"

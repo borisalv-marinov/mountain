@@ -135,7 +135,9 @@ scan() { # [--no-update] quick|full|DIR...
     awk '{ l[NR] = $0 } / FOUND$/ { p = $0; sub(/: [^:]* FOUND$/, "", p); F[p] = 1 }
          END { for (i = 1; i <= NR; i++) { x = l[i]; if (x ~ / (LOCKED|LIMIT)$/) { p = x; sub(/: [^:]* (LOCKED|LIMIT)$/, "", p); if (p in F) continue } print x } }')
   # a file named "x<newline>/other/file" makes clamscan print a forged line: each candidate is scanned again alone before it is moved
-  refound() { [[ $1 == /* ]] || set -- "./$1"; "${sb[@]}" nice -n 19 ionice -c3 clamscan --no-summary -i "${lim[@]}" --database="$db" "$1" 2>&1 | grep -v 'Heuristics\.' | grep -q ' FOUND$'; }
+  # output captured first: clamscan exits 1 on a find, which pipefail turned into "not found" (nothing was quarantined);
+  # stdin closed so systemd-run --pipe can't eat the list this loop reads
+  refound() { local o; [[ $1 == /* ]] || set -- "./$1"; o=$("${sb[@]}" nice -n 19 ionice -c3 clamscan --no-summary -i "${lim[@]}" --database="$db" "$1" </dev/null 2>&1); grep -v 'Heuristics\.' <<<"$o" | grep -q ' FOUND$'; }
   local f # clamscan's own move fails on FAT/exFAT USB drives: move what it found and left behind
   while IFS= read -r f; do
     if [[ -f $f ]] && refound "$f"; then local b=${f##*/}
