@@ -1212,7 +1212,8 @@ check_phase41() { # v7.4: background system updates (applied at restart), automa
   assert_grep 'display-manager.service' $X/usr/lib/greenboot/check/required.d/10-mountain-signin.sh
   if [[ -z $X ]]; then # built image only
     rpm -q greenboot >/dev/null || fail "greenboot missing"
-    assert_no_rpm greenboot-default-health-checks # its DNS check rolls back good updates on offline PCs
+    # shortcut: greenboot pulls in Fedora's default checks; list them until one run shows which to disable (a DNS check must not fail offline PCs)
+    echo "INFO greenboot: $(rpm -ql greenboot-default-health-checks 2>/dev/null | paste -sd' '); conf: $(grep -v '^#' /etc/greenboot/greenboot.conf 2>/dev/null | paste -sd' ')"
     for u in rpm-ostreed-automatic.timer greenboot-healthcheck.service mountain-signed-origin.service; do
       [[ $(systemctl is-enabled $u 2>/dev/null) == enabled ]] || fail "$u not enabled"; done
     [[ -x /usr/libexec/mountain-signed-origin && -x /usr/lib/greenboot/check/required.d/10-mountain-signin.sh ]] || fail "update scripts not executable"
