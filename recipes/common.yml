@@ -78,6 +78,7 @@ modules:
           - org.onlyoffice.desktopeditors
           - com.heroicgameslauncher.hgl
           - org.mozilla.firefox
+          - org.gnome.World.PikaBackup # Settings > Security > Back up my files
       - scope: user
 
   - type: systemd

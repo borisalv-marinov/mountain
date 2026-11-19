@@ -190,6 +190,17 @@ ColumnLayout {
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
+            iconName: "drive-removable-media"
+            title: i18n("Back up my files")
+            level: 1 // shortcut: always "recommended" (Pika's own state is not read yet); read its config once a run shows where it keeps it
+            details: i18n("Copies your files to a USB drive or another PC. Previous versions stay on this disk; a backup survives a broken disk.")
+            buttons: [
+                GlassButton { text: i18n("Set up backup"); onClicked: app.run("kstart --application org.gnome.World.PikaBackup") }
+            ]
+        }
+        SecurityCard {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
             iconName: "firewall-applet"
             title: i18n("Firewall & network protection")
             level: sec.lvFw

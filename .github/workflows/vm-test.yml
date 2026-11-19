@@ -1439,6 +1439,10 @@ jobs:
           chk "tearing: KWin support info" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /KWin org.kde.KWin.supportInformation | grep -iE 'tearing|atomic|Compositing Type|OpenGL renderer|Refresh' | head -8 | tr -s ' ' | paste -sd';'" '.'
           R "journalctl -b --no-pager -o cat | grep -o 'MWC|.*'" > perf/windows.txt 2>/dev/null || true
           echo "| window census | INFO | $(cut -d'|' -f3 perf/windows.txt | sort | uniq -c | tr -s ' ' | paste -sd',') |" >> report.md
+          # stray windows: every normal/dialog window class of the run is Mountain's own, an app the test opened, or a Start app (list from run 44591138155)
+          OWN='org[.]kde[.](dolphin|konsole|kate|kwrite|kcalc|gwenview|haruna|kamoso|kclock|okular|kolourpaint|krecorder|skanlite|spectacle|ark|filelight|kfind|kinfocenter|kmenuedit|krdc|krfb|kdeconnect[.]app|plasma-systemmonitor|plasma[.]emojier|plasmawindowed|polkit-kde-authentication-agent-1)|org[.]freedesktop[.]impl[.]portal[.]desktop[.]kde|org[.]gnome[.]World[.]PikaBackup|io[.]github[.](kolunmi[.]Bazaar|rfrench3[.]bazzite-updater|ublue_os[.]yafti_gtk)|com[.](brave[.]Browser|discordapp[.]Discord|heroicgameslauncher[.]hgl|microsoft[.](Edge|VSCode))|dev[.]vencord[.]Vesktop|org[.]mozilla[.]firefox|net[.]lutris[.]Lutris|gnome-disks|ONLYOFFICE|Waydroid|kwin_wayland|mountain-(boosteroid|geforcenow|xboxcloud)|webapp-manager[.]py|zenity'
+          UNEXP=$(awk -F'|' '$2=="add" && ($3=="normal"||$3=="dialog") && $4!=""{print $4}' perf/windows.txt | sort -u | grep -ivxE "$OWN" | paste -sd' ')
+          echo "| stray windows: every window class is Mountain's own or an app the test opened | $([ -z "$UNEXP" ] && echo PASS || echo INFO) | unexpected: ${UNEXP:-none} |" >> report.md
           echo "| windows drawing their own title bar | INFO | $(awk -F'|' '$3=="normal" && $7=="noborder"{print $4}' perf/windows.txt | sort -u | paste -sd' ') |" >> report.md
           echo "| on-screen pop-ups seen (volume, brightness, keyboard) | INFO | $(awk -F'|' '$3=="osd"{print $6}' perf/windows.txt | sort -u | paste -sd'/') |" >> report.md
 

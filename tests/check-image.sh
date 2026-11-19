@@ -1306,6 +1306,17 @@ check_phase45() { # v7.4 polish: Brave hardware video decoding seeded once for e
   true
 }
 
+check_phase46() { # v7.4 one app store (Bazaar) and "Back up my files" (Pika Backup)
+  local X=${MOUNTAIN_ROOT:-} f
+  assert_grep 'org.gnome.World.PikaBackup' $X/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  [[ -z $X ]] || { assert_grep 'org.kde.discover' files/scripts/windows-names.sh; assert_grep 'org.gnome.World.PikaBackup' recipes/common.yml; } # repo-only
+  [[ -n $X ]] || for f in /usr/share/applications/org.kde.discover*.desktop; do # image only: Discover may not be installed at all
+    [[ -f $f ]] || continue
+    grep -qx 'NoDisplay=true' "$f" || fail "$f is visible: a second app store next to Bazaar"
+  done
+  true
+}
+
 # every check_phaseN defined above runs, so a new phase can never be forgotten
 phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
 [[ -n $phases ]] || fail "no check_phase functions found"

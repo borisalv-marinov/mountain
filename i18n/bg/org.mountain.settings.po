@@ -175,6 +175,9 @@ msgstr "Удостоверяване, настройки на IP и DNS"
 msgid "Back to %1"
 msgstr "Назад към %1"
 
+msgid "Back up my files"
+msgstr "Архивиране на файловете ми"
+
 msgid "Background"
 msgstr "Фон"
 
@@ -303,6 +306,9 @@ msgstr "Свързани контролери"
 
 msgid "Content moves with your fingers"
 msgstr "Съдържанието се движи заедно с пръстите ви"
+
+msgid "Copies your files to a USB drive or another PC. Previous versions stay on this disk; a backup survives a broken disk."
+msgstr "Копира файловете ви на USB устройство или друг компютър. „Предишни версии“ остават на този диск; архивът оцелява, ако дискът се повреди."
 
 msgid "Custom scan"
 msgstr "Сканиране по избор"
@@ -993,6 +999,9 @@ msgstr "Задаване на фон %1"
 
 msgid "Set time automatically"
 msgstr "Автоматично задаване на часа"
+
+msgid "Set up backup"
+msgstr "Настройване на архивиране"
 
 msgid "Settings"
 msgstr "Настройки"
