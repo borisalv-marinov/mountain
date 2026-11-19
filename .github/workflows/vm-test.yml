@@ -324,6 +324,8 @@ jobs:
           }
           L() { R "$LT systemd-run --user --quiet --collect $*"; } # start like the app menu does: with the full session environment
           K() { R "pkill -u looktest $*" || true; sleep 1; }
+          # close like a person: KWin closes the windows of pid $1 (the X button), so the app ends its helpers in order; TERM only if it is still there after 15 s
+          XC() { R "printf \"for (const w of workspace.windowList()) if (w.pid === %s) w.closeWindow();\n\" $1 > /tmp/wclose.js && chmod 644 /tmp/wclose.js && i=\$($LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wclose.js string:mountain-wclose | awk '/int32/{print \$2}') && $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script\$i org.kde.kwin.Script.run >/dev/null; for _ in \$(seq 15); do kill -0 $1 2>/dev/null || break; sleep 1; done; kill -0 $1 2>/dev/null && kill -TERM $1; for _ in \$(seq 10); do kill -0 $1 2>/dev/null || break; sleep 1; done; $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:mountain-wclose >/dev/null" >/dev/null 2>&1 || true; }
           # yellow folder icons on the screen, found by colour (desktop icon size and spacing may change): "column row x y width"
           cat > /tmp/icons.py <<'PY'
           import sys
@@ -430,9 +432,8 @@ jobs:
                 echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm)
                 [ "$m" != "$m0" ] && break; [ $t -ge 30000 ] && break; sleep 0.05
               done
-              # TERM to the oldest match only (the main process, which closes its own helpers): TERM to all of VS Code at once crashed it ("GPU process isn't usable")
-              out="$out $i=${t}ms"; sleep 5; K -o -f "$3"
-              R "for _ in \$(seq 15); do pgrep -u looktest -f '$3' >/dev/null || break; sleep 1; done; pkill -u looktest -f '$3'" || true; sleep 3
+              # X-button close of the main window (a TERM to VS Code, all processes or the main one, crashed it: "GPU process isn't usable"); pkill only for what is left
+              out="$out $i=${t}ms"; sleep 5; p=$(R "pgrep -o -u looktest -f '$3'"); [[ $p =~ ^[0-9]+$ ]] && XC $p; K -f "$3"; sleep 3
             done
             echo "| open $1 (cold/warm) | INFO |$out |" >> report.md; echo "open $1:$out"
           }
@@ -622,7 +623,7 @@ jobs:
           L /usr/libexec/mountain-phonelink; wchk "Phone Link opens" 0 kdeconnect-app 25; sleep 5; shot app-phone-link; K -x kdeconnect-app; sleep 3
           chk "Phone Link's background service stops when it closes" 0 "pgrep -u looktest -x kdeconnectd || echo stopped" '^stopped$'; K -x kdeconnectd
           # title bars use the Windows names (en@mountain catalogs)
-          caps() { local s; s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; }
+          caps() { local s n0; n0=$(R "journalctl -b --no-pager | grep -c 'CAP|'"); s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; R "for _ in \$(seq 10); do [ \$(journalctl -b --no-pager | grep -c 'CAP|') -gt $n0 ] && break; sleep 1; done"; }
           for t in "Calculator:kcalc:org.kde.kcalc" "Paint:kolourpaint:org.kde.kolourpaint" "Notepad:kwrite:org.kde.kwrite" "Terminal:konsole:org.kde.konsole" "Task Manager:plasma-systemmonitor:org.kde.plasma-systemmonitor" "Camera:kamoso:org.kde.kamoso" "Scanner:skanlite:org.kde.skanlite" "Phone Link:kdeconnect-app:org.kde.kdeconnect.app"; do
             IFS=: read n app id <<<"$t"; L "$app"; PGF=-f wchk "title $n ($app) opens" 2 "$app" 25; sleep 5
             caps "$app"; shot "app-title-$app"
@@ -1331,7 +1332,7 @@ jobs:
             # close like a person: KWin closes the window (the X button), so apps end their helpers in order; a plain SIGTERM still crashed ONLYOFFICE
             # (stopping the whole scope at once made Heroic and ONLYOFFICE crash: runs 44451198420/44451211782); only a process this
             # launch started (its every-unit or a Flatpak app scope), never a long-lived one like the polkit agent
-            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "echo $id \$(cat /proc/$pid/cgroup) >> /tmp/every-cgroup.txt; { grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup || grep -E '/app-[^/]*[.]scope' /proc/$pid/cgroup | grep -qvE 'plasma|kde|baloo'; } && { printf \"for (const w of workspace.windowList()) if (w.pid === %s) w.closeWindow();\n\" $pid > /tmp/wclose.js && chmod 644 /tmp/wclose.js && i=\$($LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wclose.js string:mountain-wclose | awk '/int32/{print \$2}') && $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script\$i org.kde.kwin.Script.run >/dev/null; for _ in \$(seq 15); do kill -0 $pid 2>/dev/null || break; sleep 1; done; kill -0 $pid 2>/dev/null && kill -TERM $pid; for _ in \$(seq 10); do kill -0 $pid 2>/dev/null || break; sleep 1; done; $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:mountain-wclose >/dev/null; }" >/dev/null 2>&1 || true
+            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "echo $id \$(cat /proc/$pid/cgroup) >> /tmp/every-cgroup.txt; { grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup || grep -E '/app-[^/]*[.]scope' /proc/$pid/cgroup | grep -qvE 'plasma|kde|baloo'; } && true" >/dev/null 2>&1 && XC $pid || true
             R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
