@@ -917,8 +917,8 @@ jobs:
           K -f plasma-systemmonitor
           # sharpness at 1920x1080 (screenshots only)
           KS="$LT WAYLAND_DISPLAY=wayland-0 kscreen-doctor"
-          OUT=$(R "$KS -o" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
-          R "$KS output.$OUT.mode.1920x1080@60" >/dev/null 2>&1; sleep 6; shot fhd-desktop
+          OUT=$(R "$KS -o" 2>&1 | tee kscreen-log.txt | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
+          R "$KS output.$OUT.mode.1920x1080@60" >>kscreen-log.txt 2>&1; sleep 6; shot fhd-desktop
           # 0 B free hunt: the mount table File Explorer reads, its versions, then the same window once the home folder is its own mount entry
           R "cat /proc/self/mountinfo; for m in / /var /var/home /var/home/looktest; do stat -f -c '%n type=%T avail=%a blocks=%b' \$m; stat -c '%n st_dev=%D' \$m; done; rpm -q qt6-qtbase kf6-kio-core dolphin" > explorer-space-log.txt 2>&1
           L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 dolphin; sleep 7; shot fhd-file-explorer
@@ -930,7 +930,8 @@ jobs:
           R "$(TL 'python3 /tmp/mountprobe.py')" >> explorer-space-log.txt 2>&1 || true
           QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot fhd-menu-context; QM key esc
-          R "$KS output.$OUT.mode.1280x800@60" >/dev/null 2>&1; sleep 6; shot back-to-1280
+          R "$KS output.$OUT.mode.1280x800@60" >>kscreen-log.txt 2>&1; sleep 6; shot back-to-1280
+          R "rpm -q libkscreen kscreen qt6-qtbase qt6-qtwayland code; coredumpctl list --no-pager kscreen-doctor; journalctl -b --no-pager -o cat _COMM=kscreen-doctor | tail -20" >>kscreen-log.txt 2>&1 || true
 
           QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu; QM key esc; QM key esc
           fi # part taskmgr
@@ -1345,6 +1346,7 @@ jobs:
           for e in $(coredumpctl list --no-legend --no-pager 2>/dev/null | awk '{for (i = 6; i <= NF; i++) if (substr($i, 1, 1) == "/") print $i}' | sort -u); do
             p=$(coredumpctl list --no-legend --no-pager "$e" 2>/dev/null | awk '{print $5}' | head -1); [ "$e" = /usr/libexec/kf6/kioworker ] && n=20 || n=60
             echo "-- $e"; coredumpctl info --no-pager "$p" 2>&1 | grep -E 'PID:|Command Line:|Signal:|Stack trace|^ +#[0-9]+ ' | head -$n
+            journalctl -b --no-pager -o cat _PID="$p" 2>/dev/null | grep -v '^$' | tail -12 | cut -c1-300
           done
           SH
           R "bash -s" < crash-probe.sh > crash-probe-log.txt 2>&1 || true
