@@ -123,13 +123,24 @@ scan() { # [--no-update] quick|full|DIR...
     ex+=("--exclude-dir=^$h/$(re_esc "$x")(/|\$)")
   done
   ex+=("--exclude-dir=^$(re_esc "$quarantine")(/|\$)")
-  out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i --database="$db" "${mvq[@]}" \
+  # --allmatch: every match prints, so a virus next to an encrypted member of the same archive is still reported
+  local lim=(--max-filesize=400M --max-scansize=400M --alert-encrypted-archive --alert-exceeds-max=yes --allmatch)
+  out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i "${lim[@]}" --database="$db" \
         "${ex[@]}" \
         --exclude='\.(part|crdownload)$' "$@" 2>&1)
   rc=$?
+  # a password-protected archive (LOCKED) or one over the limits (LIMIT) can't be scanned but is no threat: never quarantined;
+  # a real FOUND for the same path wins over both
+  out=$(sed -E -e 's/^(.*: Heuristics\.Encrypted[^ :]*) FOUND$/\1 LOCKED/' -e 's/^(.*: Heuristics\.Limits\.Exceeded[^ :]*) FOUND$/\1 LIMIT/' <<<"$out" |
+    awk '{ l[NR] = $0 } / FOUND$/ { p = $0; sub(/: [^:]* FOUND$/, "", p); F[p] = 1 }
+         END { for (i = 1; i <= NR; i++) { x = l[i]; if (x ~ / (LOCKED|LIMIT)$/) { p = x; sub(/: [^:]* (LOCKED|LIMIT)$/, "", p); if (p in F) continue } print x } }')
+  # a file named "x<newline>/other/file" makes clamscan print a forged line: each candidate is scanned again alone before it is moved
+  # output captured first: clamscan exits 1 on a find, which pipefail turned into "not found" (nothing was quarantined);
+  # stdin closed so systemd-run --pipe can't eat the list this loop reads
+  refound() { local o; [[ $1 == /* ]] || set -- "./$1"; o=$("${sb[@]}" nice -n 19 ionice -c3 clamscan --no-summary -i "${lim[@]}" --database="$db" "$1" </dev/null 2>&1); grep -v 'Heuristics\.' <<<"$o" | grep -q ' FOUND$'; }
   local f # clamscan's own move fails on FAT/exFAT USB drives: move what it found and left behind
   while IFS= read -r f; do
-    if [[ -f $f ]]; then local b=${f##*/}
+    if [[ -f $f ]] && refound "$f"; then local b=${f##*/}
       if [[ -e $quarantine/$b ]] && cmp -s -- "$f" "$quarantine/$b"; then rm -f -- "$f" # clamscan copied it but couldn't unlink
       else mv -n -- "$f" "$quarantine/"; [[ -e $f ]] && mv -n -- "$f" "$quarantine/$b.$(date +%s)"; fi
       [[ -e $f ]] && echo "note=could not quarantine $f" # shows in the scan output and the Active Protection log
@@ -137,7 +148,7 @@ scan() { # [--no-update] quick|full|DIR...
     rmdir "${f%/*}"/.clamav-unlink-* 2>/dev/null
   done < <([[ -n ${mvq[*]} ]] && sed -n 's/: [^:]* FOUND$//p' <<<"$out")
   find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
-  found=$(awk -F': *' '/^Infected files:/ {print $2}' <<<"$out")
+  found=$(grep -c ' FOUND$' <<<"$out"); ((found == 0 && rc == 1)) && rc=0
   case $rc in 0) r=clean ;; 1) r=found ;; *) r=error ;; esac
   [[ ${found:-0} -gt 0 ]] && r=found # a failed move is an error too, but the threat was found
   printf 'av_last=%s\nav_result=%s\nav_found=%s\n' "$now" "$r" "${found:-0}" > "$state/last-scan"
@@ -148,7 +159,7 @@ scan() { # [--no-update] quick|full|DIR...
   fi
   [[ $(wc -l < "$state/scan-history") -gt 1000 ]] && { tail -n 500 "$state/scan-history" > "$state/scan-history.new" && mv -f "$state/scan-history.new" "$state/scan-history"; }
   echo "av_result=$r"; echo "av_found=${found:-0}"
-  grep ' FOUND$' <<<"$out" | head -20
+  grep -E ' (FOUND|LOCKED|LIMIT)$' <<<"$out" | head -20
   [[ $r == error ]] && return 2 || return 0
 }
 
@@ -177,7 +188,7 @@ restore() { # NAME: back to Downloads, and tell Active Protection so it is not q
   echo "restored=$d/$1"
 }
 
-qname() { [[ $1 =~ ^[^/]+$ && -e $quarantine/$1 ]] || { echo "not in quarantine: $1" >&2; exit 2; }; }
+qname() { [[ $1 =~ ^[^/]+$ && $1 != . && $1 != .. && -e $quarantine/$1 ]] || { echo "not in quarantine: $1" >&2; exit 2; }; }
 
 allow() { # SERVICE on|off [public]: only the services in the "Allow an app" list; Home zone, Public only when asked
   local svc=${1:-} want=${2:-} z zones=(mountain-home)

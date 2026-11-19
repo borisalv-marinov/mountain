@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail # not -e: a failed step must not end the script early (never fail the login)
 # File Explorer: folders inside your Desktop open through desktop:/, which shows shortcuts by their name ("Terminal", not
 # "Terminal.desktop", as Windows hides ".lnk"); Plasma's desktop opens them by their file:// path. Everything else passes through.
 d=$(xdg-user-dir DESKTOP 2>/dev/null); [[ -n $d && $d != "$HOME" ]] || d=$HOME/Desktop

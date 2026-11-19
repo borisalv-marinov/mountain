@@ -1,0 +1,11 @@
+# Bulgarian (bg) strings of org.mountain.taskbarspace, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "Task Manager"
+msgstr "Диспечер на задачите"
+
+msgid "Taskbar settings"
+msgstr "Настройки на лентата на задачите"

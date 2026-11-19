@@ -13,24 +13,24 @@ ColumnLayout {
         def = (l.find(x => x.indexOf("system default destination: ") === 0) || "").replace("system default destination: ", "");
     })
 
-    PageTitle { title: "Printers & scanners" }
+    PageTitle { title: i18n("Printers & scanners") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Printers"; subtitle: "Printers on your network are added automatically" }
-        GText { visible: pr.printers.length === 0; Layout.margins: 18; text: "No printers yet. Join the same network as your printer, or plug it in by USB."; dim: true }
+        CardHeader { title: i18n("Printers"); subtitle: i18n("Printers on your network are added automatically") }
+        GText { visible: pr.printers.length === 0; Layout.margins: 18; text: i18n("No printers yet. Join the same network as your printer, or plug it in by USB."); dim: true }
         Repeater {
             model: pr.printers
             delegate: SettingRow {
                 required property var modelData
                 required property int index
                 text: modelData.name
-                description: modelData.status + (modelData.name === pr.def ? " · Default" : "")
+                description: modelData.status + (modelData.name === pr.def ? i18n(" · Default") : "")
                 iconName: "printer"
                 chevron: false
                 divider: index > 0
-                trailing: GlassButton { text: "Print test page"; onClicked: app.run("lp -d '" + modelData.name + "' /usr/share/cups/data/testprint") }
+                trailing: GlassButton { text: i18n("Print test page"); onClicked: app.run("lp -d '" + modelData.name + "' /usr/share/cups/data/testprint") }
             }
         }
     }

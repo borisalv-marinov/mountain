@@ -13,6 +13,7 @@
     "Id": "org.mountain.taskbarspace",
     "License": "GPL-2.0-or-later",
     "Name": "Taskbar space",
+    "Name[bg]": "Място в лентата на задачите",
     "Version": "1.0"
   },
   "X-Plasma-API-Minimum-Version": "6.0"

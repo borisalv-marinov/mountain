@@ -3,11 +3,13 @@
 # /usr/lib/plasmalogin/defaults.conf); the deck variants use SDDM. PNG is the safest format for both.
 set -euo pipefail
 m=/usr/share/mountain
+tmp=$(mktemp --suffix=.svg)
+trap 'rm -f "$tmp"' EXIT
 # Login screen: the dark silk wallpaper, softly blurred (like Windows' sign-in screen). Scaled 110 % about the
 # centre inside the blur, so the blur never samples past the picture (no light band at the top and bottom edges).
-sed -e '0,/<svg[^>]*>/s//&<filter id="mtblur" x="0" y="0" width="1" height="1"><feGaussianBlur stdDeviation="26" edgeMode="duplicate"\/><\/filter><g filter="url(#mtblur)"><g transform="matrix(1.1 0 0 1.1 -192 -108)">/'     -e 's|</svg>|</g></g></svg>|' $m/wallpaper-silk-dark.svg > /tmp/wallpaper-blur.svg
-grep -q mtblur /tmp/wallpaper-blur.svg # the blur filter really went in
-rsvg-convert -w 2560 -h 1440 -f png -o $m/wallpaper.png /tmp/wallpaper-blur.svg
+sed -e '0,/<svg[^>]*>/s//&<filter id="mtblur" x="0" y="0" width="1" height="1"><feGaussianBlur stdDeviation="26" edgeMode="duplicate"\/><\/filter><g filter="url(#mtblur)"><g transform="matrix(1.1 0 0 1.1 -192 -108)">/'     -e 's|</svg>|</g></g></svg>|' "$m/wallpaper-silk-dark.svg" > "$tmp"
+grep -q mtblur "$tmp" # the blur filter really went in
+rsvg-convert -w 2560 -h 1440 -f png -o "$m/wallpaper.png" "$tmp"
 # Desktop wallpaper packages: Plasma picks the closest size; images_dark is used with a dark colour scheme.
 # Mountain Silk (default, our own render; the same light-to-black picture in dark mode, like the owner's desktop),
 # Mountain Silk Dark (lock screen) and Mountain Peaks (second choice).

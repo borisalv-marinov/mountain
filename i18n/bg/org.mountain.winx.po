@@ -1,0 +1,65 @@
+# Bulgarian (bg) strings of org.mountain.winx, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "Desktop"
+msgstr "Работен плот"
+
+msgid "Disk Management"
+msgstr "Управление на дискове"
+
+msgid "File Explorer"
+msgstr "Файлов мениджър"
+
+msgid "Installed apps"
+msgstr "Инсталирани приложения"
+
+msgid "Network Connections"
+msgstr "Мрежови връзки"
+
+msgid "Power Options"
+msgstr "Опции на захранването"
+
+msgid "Quick Link menu"
+msgstr "Меню за бърза връзка"
+
+msgid "Restart"
+msgstr "Рестартиране"
+
+msgid "Restart into Windows"
+msgstr "Рестартиране в Windows"
+
+msgid "Run"
+msgstr "Изпълнение"
+
+msgid "Search"
+msgstr "Търсене"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Shut down"
+msgstr "Изключване"
+
+msgid "Shut down or sign out"
+msgstr "Изключване или излизане"
+
+msgid "Sign out"
+msgstr "Излизане"
+
+msgid "Sleep"
+msgstr "Режим на заспиване"
+
+msgid "System"
+msgstr "Система"
+
+msgid "Task Manager"
+msgstr "Диспечер на задачите"
+
+msgid "Terminal"
+msgstr "Терминал"
+
+msgid "Terminal (Admin)"
+msgstr "Терминал (администратор)"

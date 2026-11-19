@@ -8,7 +8,7 @@ import difflib, json, os, re, subprocess, sys, tempfile
 from PIL import Image, ImageOps
 
 
-def ocr(img, tsv=False):
+def ocr(img, tsv=False, lang="eng"):
     g = ImageOps.grayscale(img)
     if sum(g.resize((64, 64)).getdata()) / 4096 < 128:  # light text on dark UI: tesseract reads dark on light best
         g = ImageOps.invert(g)
@@ -16,7 +16,7 @@ def ocr(img, tsv=False):
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
         g.save(f.name)
     try:
-        out = subprocess.run(["tesseract", f.name, "stdout", "--psm", "11"] + (["tsv"] if tsv else []),
+        out = subprocess.run(["tesseract", f.name, "stdout", "-l", lang, "--psm", "11"] + (["tsv"] if tsv else []),
                              capture_output=True, text=True, timeout=120).stdout
     finally:
         os.unlink(f.name)
@@ -57,13 +57,14 @@ def run(shots, rules):
                 fails += 1
                 continue
             text = None
+            lang = checks.get("ocr_lang", "eng")  # "eng+bul" reads Cyrillic (the bg-* shots)
             for phrase in checks.get("must_read", []):
-                text = text if text is not None else ocr(img)
+                text = text if text is not None else ocr(img, lang=lang)
                 ok = found(text, phrase, 0.85)
                 rows.append(("reads '%s' on %s" % (phrase, name), "PASS" if ok else "FAIL", norm(text)[:70]))
                 fails += not ok
             for phrase in checks.get("must_not_read", []):
-                text = text if text is not None else ocr(img)
+                text = text if text is not None else ocr(img, lang=lang)
                 bad = found(text, phrase, 0.9)
                 rows.append(("no '%s' on %s" % (phrase, name), "FAIL" if bad else "PASS", norm(text)[:70]))
                 fails += bad
@@ -79,8 +80,9 @@ def run(shots, rules):
                         rows.append(("window is dark: %s" % name, "INFO", "window too small %s" % geo))
                     else:
                         lum = luminance(img.crop(box))
-                        ok = lum <= 0.30
-                        rows.append(("window is dark: %s" % name, "PASS" if ok else "FAIL", "median luminance %.2f (<= 0.30) %s" % (lum, json.load(open(meta)).get("class", ""))))
+                        lim = 0.30 if checks["dark_window"] is True else checks["dark_window"]  # a number = a tighter limit (GTK apps: Mountain dark #121212 is 0.07, Adwaita grey #2d2d2d 0.18)
+                        ok = lum <= lim
+                        rows.append(("window is dark: %s" % name, "PASS" if ok else "FAIL", "median luminance %.2f (<= %.2f) %s" % (lum, lim, json.load(open(meta)).get("class", ""))))
                         fails += not ok
             if checks.get("ocr_quality"):
                 words = [l.split("\t") for l in ocr(img, tsv=True).splitlines()[1:]]

@@ -12,6 +12,7 @@
     "Id": "org.mountain.shutdown",
     "License": "GPL-2.0+",
     "Name": "Shut Down Mountain",
+    "Name[bg]": "Изключване на Mountain",
     "Version": "1.0"
   },
   "NoDisplay": true,

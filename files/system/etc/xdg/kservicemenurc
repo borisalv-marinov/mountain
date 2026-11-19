@@ -4,3 +4,5 @@ kactivitymanagerd_fileitem_linking_plugin=false
 kdeconnectfileitemaction=false
 forgetfileitemaction=false
 sharefileitemaction=false
+# Filelight's "View Disk Usage Statistics" (a KDE tool; Windows has no such row)
+filelight=false

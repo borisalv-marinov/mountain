@@ -163,14 +163,23 @@ icons='kwin_wayland=preferences-system-windows|plasmashell=system-file-manager|k
 
 processes() { # [apps]: background processes (default), or the Apps table: processes in app scopes, one row per app
   printf 'id\tName\tCPU\tMemory\tLocked\tIcon\n'
-  local d own=() a b cg nm="" id f want=${1:-background}
-  for d in "$proc"/[0-9]*; do [[ -O $d && ${d##*/} != "$$" && ${d##*/} != "$PPID" ]] && own+=("$d"); done
+  local d c own=() a b cg nm="" id f want=${1:-background}
+  for d in "$proc"/[0-9]*; do
+    [[ -O $d && ${d##*/} != "$$" ]] || continue
+    # the parent is the sh -c wrapper, or Task Manager itself when sh execs this script: Windows lists Task Manager in Apps
+    if [[ ${d##*/} == "$PPID" ]]; then c=$(cat "$d/stat" 2>/dev/null); c=${c#*\(}; [[ ${c%%)*} =~ ^(sh|bash|dash)$ ]] && continue; fi
+    own+=("$d")
+  done
   ((${#own[@]})) || return 0
   a=$(cat "${own[@]/%//stat}" 2>/dev/null); sleep 0.5; b=$(cat "${own[@]/%//stat}" 2>/dev/null)
-  # pid and app id from the scope Plasma starts each app in: app-[flatpak-]ID-RANDOM.scope ('-' in ID is \x2d);
-  # autostart services (app-ID@autostart.service) stay background processes
-  cg=$(grep -H '/app-[^/]*\.scope$' "${own[@]/%//cgroup}" 2>/dev/null |
-    sed -E 's|.*/([0-9]+)/cgroup:.*/app-([^/]*)\.scope$|\1 \2|; s/ flatpak-/ /; s/ (.*)-[^-]*$/ \1/; s/[\]x2d/-/g')
+  # pid and app id from the unit Plasma starts each app in: app-ID@UUID.service (KIO with systemd >= 250: Start, taskbar;
+  # UUID is 32 hex digits), app-[flatpak-]ID-RANDOM.scope (older KIO, Flatpak), or (D-Bus-activated apps such as Dolphin
+  # from "Open folder") [app-]dbus[\]x2d:1.N[\]x2dID@N.service; '-' in ID is [\]x2d. Autostart services (app-ID@autostart.service)
+  # stay background processes
+  cg=$(grep -HE '/app-[^/]*\.scope$|/app-[^/@]*@[0-9a-f]{32}\.service$|/(app-)?dbus[\]x2d:[0-9.]+[\]x2d[^/]*@[0-9]+\.service$' "${own[@]/%//cgroup}" 2>/dev/null |
+    sed -E '/dbus[\]x2d:/{s|.*/([0-9]+)/cgroup:.*/(app-)?dbus[\]x2d:[0-9.]+[\]x2d([^/]*)@[0-9]+\.service$|\1 \3|; s/[\]x2d/-/g; b;}
+      /@[0-9a-f]{32}\.service$/{s|.*/([0-9]+)/cgroup:.*/app-([^/@]*)@[0-9a-f]{32}\.service$|\1 \2|; s/[\]x2d/-/g; b;}
+      s|.*/([0-9]+)/cgroup:.*/app-([^/]*)\.scope$|\1 \2|; s/ flatpak-/ /; s/ (.*)-[^-]*$/ \1/; s/[\]x2d/-/g')
   if [[ $want == apps ]]; then # app names and icons from their launchers, like Windows
     while read -r id; do
       [[ -n $id ]] || continue

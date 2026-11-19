@@ -12,6 +12,7 @@
     "Id": "org.mountain.run",
     "License": "GPL-2.0+",
     "Name": "Run",
+    "Name[bg]": "Изпълнение",
     "Version": "1.0"
   },
   "NoDisplay": true,

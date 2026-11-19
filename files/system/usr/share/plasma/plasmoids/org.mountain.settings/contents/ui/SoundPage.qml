@@ -9,7 +9,7 @@ ColumnLayout {
     SinkModel { id: sinks }
     SourceModel { id: sources }
 
-    PageTitle { title: "Sound" }
-    DeviceCard { Layout.fillWidth: true; title: "Output"; current: PreferredDevice.sink; devices: sinks }
-    DeviceCard { Layout.fillWidth: true; title: "Input"; input: true; current: PreferredDevice.source; devices: sources }
+    PageTitle { title: i18n("Sound") }
+    DeviceCard { Layout.fillWidth: true; title: i18n("Output"); current: PreferredDevice.sink; devices: sinks }
+    DeviceCard { Layout.fillWidth: true; title: i18n("Input"); input: true; current: PreferredDevice.source; devices: sources }
 }

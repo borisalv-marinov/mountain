@@ -9,7 +9,7 @@ ColumnLayout {
     id: disp
     spacing: 10
     property var outputs: []
-    property string status: "Looking for screens..."
+    property string status: i18n("Looking for screens...")
     property string undoCmd: ""
     property int countdown: 0
     readonly property var scales: [1, 1.25, 1.5, 1.75, 2]
@@ -20,10 +20,10 @@ ColumnLayout {
         app.sh("kscreen-doctor -j # " + Date.now(), out => {
             try {
                 outputs = JSON.parse(out).outputs.filter(o => o.enabled && safe(o.name));
-                status = outputs.length ? "" : "No screens found.";
+                status = outputs.length ? "" : i18n("No screens found.");
             } catch (e) {
                 outputs = [];
-                status = "Display information is not available.";
+                status = i18n("Display information is not available.");
             }
         });
     }
@@ -57,18 +57,18 @@ ColumnLayout {
     }
     Component.onCompleted: load()
 
-    PageTitle { title: "Display" }
+    PageTitle { title: i18n("Display") }
 
     GlassCard {
         Layout.fillWidth: true
         visible: disp.busy
         padding: 6
-        CardHeader { title: "Keep these display settings?"; subtitle: "Going back in " + disp.countdown + " seconds" }
+        CardHeader { title: i18n("Keep these display settings?"); subtitle: i18n("Going back in %1 seconds", disp.countdown) }
         RowLayout {
             Layout.margins: 12
             spacing: 8
-            GlassButton { text: "Keep changes"; highlighted: true; onClicked: disp.keep() }
-            GlassButton { text: "Revert"; onClicked: disp.revert() }
+            GlassButton { text: i18n("Keep changes"); highlighted: true; onClicked: disp.keep() }
+            GlassButton { text: i18n("Revert"); onClicked: disp.revert() }
         }
     }
 
@@ -84,11 +84,11 @@ ColumnLayout {
             readonly property var cur: disp.modeOf(o)
             Layout.fillWidth: true
             padding: 6
-            CardHeader { title: "Display " + (card.index + 1); subtitle: card.o.name + " · " + card.cur.size.width + " x " + card.cur.size.height }
+            CardHeader { title: i18n("Display %1", card.index + 1); subtitle: card.o.name + " · " + card.cur.size.width + " x " + card.cur.size.height }
 
             ChoiceRow {
                 locked: disp.busy
-                label: "Resolution"
+                label: i18n("Resolution")
                 model: disp.sizes(card.o).map(m => m.size.width + " x " + m.size.height)
                 currentIndex: disp.sizes(card.o).findIndex(m => disp.sizeKey(m) === disp.sizeKey(card.cur))
                 onPicked: i => {
@@ -99,14 +99,14 @@ ColumnLayout {
             }
             ChoiceRow {
                 locked: disp.busy
-                label: "Refresh rate"
+                label: i18n("Refresh rate")
                 model: disp.rates(card.o).map(m => m.refreshRate.toFixed(0) + " Hz")
                 currentIndex: disp.rates(card.o).findIndex(m => String(m.id) === String(card.cur.id))
                 onPicked: i => disp.change(card.o, "mode", disp.rates(card.o)[i].id, card.cur.id)
             }
             ChoiceRow {
                 locked: disp.busy
-                label: "Scale"
+                label: i18n("Scale")
                 model: disp.scales.map(s => Math.round(s * 100) + "%")
                 currentIndex: disp.scales.findIndex(s => Math.abs(s - card.o.scale) < 0.05)
                 onPicked: i => disp.change(card.o, "scale", disp.scales[i], card.o.scale)
@@ -117,8 +117,8 @@ ColumnLayout {
                 Layout.leftMargin: 20
                 Layout.rightMargin: 18
                 Layout.preferredHeight: 48
-                GText { Layout.fillWidth: true; text: "HDR" }
-                PillSwitch { text: "HDR"; checked: card.o.hdr === true; onClicked: disp.setNow(card.o, "hdr", card.o.hdr ? "disable" : "enable") }
+                GText { Layout.fillWidth: true; text: i18n("HDR") }
+                PillSwitch { text: i18n("HDR"); checked: card.o.hdr === true; onClicked: disp.setNow(card.o, "hdr", card.o.hdr ? "disable" : "enable") }
             }
             RowLayout {
                 visible: card.o.vrrPolicy !== undefined
@@ -126,8 +126,8 @@ ColumnLayout {
                 Layout.leftMargin: 20
                 Layout.rightMargin: 18
                 Layout.preferredHeight: 48
-                GText { Layout.fillWidth: true; text: "Variable refresh rate (adaptive sync)" }
-                PillSwitch { text: "Variable refresh rate"; checked: card.o.vrrPolicy !== 0; onClicked: disp.setNow(card.o, "vrrpolicy", card.o.vrrPolicy === 0 ? "automatic" : "never") }
+                GText { Layout.fillWidth: true; text: i18n("Variable refresh rate (adaptive sync)") }
+                PillSwitch { text: i18n("Variable refresh rate"); checked: card.o.vrrPolicy !== 0; onClicked: disp.setNow(card.o, "vrrpolicy", card.o.vrrPolicy === 0 ? "automatic" : "never") }
             }
             Item { Layout.preferredHeight: 6 }
         }

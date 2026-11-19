@@ -8,12 +8,12 @@ ColumnLayout {
     property var pads: []
     Component.onCompleted: app.sh("cat /sys/class/input/js*/device/name 2>/dev/null | grep -viE 'tablet|mouse|touchpad|keyboard'; true", out => { pads = out === "" ? [] : out.split("\n"); })
 
-    PageTitle { title: "Game controllers" }
+    PageTitle { title: i18n("Game controllers") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Connected controllers"; subtitle: pad.pads.length === 0 ? "None found. Plug one in or pair it in Bluetooth & devices." : "" }
+        CardHeader { title: i18n("Connected controllers"); subtitle: pad.pads.length === 0 ? i18n("None found. Plug one in or pair it in Bluetooth & devices.") : "" }
         Repeater {
             model: pad.pads
             delegate: SettingRow {

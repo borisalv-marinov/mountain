@@ -2,6 +2,10 @@
   "_doc": "uxcheck.py rules: shot name (without the NN- prefix) as a regex -> checks. must_read / must_not_read: text a user must (not) see (OCR). dark_window: the app window (geometry from NAME.json) is dark like the rest of the system. ocr_quality: INFO baseline of unreadable words (overdrawn rows read as garbage).",
   "dialog-shutdown": {"must_read": ["Shut down"]},
   "file-explorer|explorer-home|fhd-file-explorer": {"must_not_read": ["0 B free"]},
+  "menu-context|fhd-menu-context|explorer-context-menu": {"must_not_read": ["Enter Edit Mode", "Show Logout Screen", "View Disk Usage Statistics"]},
+  "bg-file-explorer": {"ocr_lang": "eng+bul", "must_read": ["Филтър"]},
+  "bg-desktop-menu": {"ocr_lang": "eng+bul", "must_read": ["Създаване"], "must_not_read": ["Enter Edit Mode", "Show Logout Screen"]},
+  "_bg": "bg-start-menu, bg-settings-home, bg-taskmanager, bg-quick-settings, bg-dialog-shutdown are shots for a person to review: Mountain's own windows have no Bulgarian text yet (see vm-test 'Bulgarian'), so no OCR rule asserts them",
   "taskbar-context-menu": {"must_read": ["Task Manager"], "must_not_read": ["Add or Manage Widgets", "Panel Configuration"]},
   "taskmanager-processes|taskmanager": {"must_read": ["End task"], "must_not_read": ["Quit Application"]},
   "taskmanager-apphistory": {"must_read": ["App history"], "must_not_read": ["Quit Application"]},
@@ -10,5 +14,8 @@
   "kbd-flyout": {"must_read": ["ENG", "Bulgarian", "More keyboard settings"], "must_not_read": ["traditional phonetic"]},
   "start-search-.*|search-settings|ux-search-.*": {"ocr_quality": true},
   "every-(?!com[.]brave[.]Browser$).*": {"dark_window": true},
+  "every-(io[.]github[.]kolunmi[.]Bazaar|net[.]lutris[.]Lutris|org[.]gnome[.]DiskUtility|io[.]github[.]ublue_os[.]yafti_gtk)": {"dark_window": 0.12},
+  "notification-stack-expired": {"must_not_read": ["Test notification"]},
+  "toast-pointer-away": {"must_not_read": ["Pointer toast test"]},
   "_brave": "Brave's frame is dark; its first-run page is purple web artwork, not the theme"
 }

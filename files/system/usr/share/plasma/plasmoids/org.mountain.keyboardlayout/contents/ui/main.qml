@@ -26,8 +26,8 @@ PlasmoidItem {
 
     Plasmoid.status: kbd.layoutsList.length > 1 ? PlasmaCore.Types.ActiveStatus
                    : inEmbeddedContainment ? PlasmaCore.Types.HiddenStatus : PlasmaCore.Types.PassiveStatus
-    toolTipMainText: "Input language"
-    toolTipSubText: current.longName + "\nWin+Space to switch"
+    toolTipMainText: i18n("Input language")
+    toolTipSubText: current.longName + "\n" + i18n("Win+Space to switch")
     preferredRepresentation: fullRepresentation
     Plasmoid.onActivated: list.visible = !list.visible
 
@@ -132,7 +132,7 @@ PlasmoidItem {
             PlasmaComponents3.ItemDelegate {
                 Layout.fillWidth: true
                 Layout.preferredHeight: column.rowHeight
-                text: "More keyboard settings"
+                text: i18n("More keyboard settings")
                 onClicked: {
                     exec.connectSource("/usr/libexec/mountain-settings-open typing >/dev/null 2>&1 &");
                     list.visible = false;

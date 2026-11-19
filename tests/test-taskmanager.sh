@@ -84,6 +84,21 @@ ok 'grep -q $'"'"'^106,107	Accessibility (2)	0.0 %	10.0 MB\tlocked\tpreferences-
 ok 'grep -q $'"'"'^108,109	Search Indexer (2)	'"'"' <<<"$L" && ! grep -q baloorunner <<<"$L"' "processes: baloorunner named, merged"
 ok 'grep -q $'"'"'^110	Print Spooler	'"'"' <<<"$L" && grep -q $'"'"'^111	File System Helper	'"'"' <<<"$L" && grep -q $'"'"'^112	Container Helper	'"'"' <<<"$L" && grep -q $'"'"'^113	Active Protection	'"'"' <<<"$L" && grep -q $'"'"'^114	Power Profiles Service	'"'"' <<<"$L" && grep -q $'"'"'^115	Command Shell	'"'"' <<<"$L"' "processes: service helpers named (cupsd, gvfsd, catatonit, inotifywait, tuned-ppd, bash)"
 ok '! grep -q "^105" <<<"$L"' "processes: apps (app scopes) left out"
+# Apps table: scope, flatpak scope, D-Bus-activated service, autostart service (background)
+st 130 firefox 0 10; echo "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-firefox-0123abcd.scope" > "$F/130/cgroup"
+st 131 gwenview 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-flatpak-org.kde.plasma\x2dsystemmonitor-0123abcd.scope' > "$F/131/cgroup"
+st 132 dolphin 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-dbus\x2d:1.23\x2dorg.kde.dolphin@0.service' > "$F/132/cgroup"
+st 133 steam 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-steam@autostart.service' > "$F/133/cgroup"
+# KIO with systemd >= 250 (Start, taskbar): app-ID@UUID.service, UUID as 32 hex digits (kio systemdprocessrunner.cpp)
+st 134 kate 0 10; echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.kate@0123456789abcdef0123456789abcdef.service' > "$F/134/cgroup"
+A=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash "$S" apps | cut -f1,2)
+ok 'grep -q $'"'"'^130\tfirefox$'"'"' <<<"$A" && grep -q $'"'"'^131\torg.kde.plasma-systemmonitor$'"'"' <<<"$A"' "apps: app scope and flatpak scope listed by app id"
+ok 'grep -q $'"'"'^132\torg.kde.dolphin$'"'"' <<<"$A"' "apps: D-Bus-activated service listed by app id"
+ok 'grep -q $'"'"'^134	org.kde.kate$'"'"' <<<"$A"' "apps: app started from Start or the taskbar (app-ID@UUID.service) listed"
+# Task Manager runs the helper through sh -c, which execs it: the parent is then Task Manager itself, and must stay a row
+A2=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash -c 'mkdir -p "$1/$$"; printf "%s (plasma-systemmo) S 1 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 0 0 100 0\n" $$ > "$1/$$/stat"; echo "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.plasma\x2dsystemmonitor@0123456789abcdef0123456789abcdef.service" > "$1/$$/cgroup"; bash "$2" apps; rm -r "${1:?}/$$"' _ "$F" "$S" | cut -f2)
+ok 'grep -qx org.kde.plasma-systemmonitor <<<"$A2"' "apps: Task Manager itself (the helper's parent) listed"
+ok '! grep -q "^133" <<<"$A" && MOUNTAIN_PROC=$F bash "$S" processes | grep -q "^133"' "apps: autostart service stays a background process"
 ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
 ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"
 if ((EUID != 0)) && [[ -e /proc/1 && ! -O /proc/1 ]]; then ok '! bash "$S" end 1 2>/dev/null' "end: refuses another user's process"; fi

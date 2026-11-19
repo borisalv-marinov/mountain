@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail # not -e: a failed step must not end the script early (never fail the login)
 # Phone Link works on Home networks only (the firewall opens KDE Connect in the mountain-home zone, not Public).
 # shortcut: conn() is a copy of mountain-security's, keep both the same
 conn() { # UUID of the connection that carries the default route (not whichever VPN, bridge or docker link nmcli lists first)

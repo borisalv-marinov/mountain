@@ -35,12 +35,12 @@ games=(.local/share/Steam .var/app/com.valvesoftware.Steam .var/app/com.heroicga
 # once per account (new accounts get them at first sign-in from mountain-user-setup): a folder you deleted is not made again
 for h in "$src"/*/; do
   u=$(stat -c %U "$h"); n=$(id -u "$u" 2>/dev/null || echo 0); (( n >= 1000 && n < 60000 )) || continue
-  [[ -e $dir/.games-$n ]] && continue; touch "$dir/.games-$n"
-  runuser -u "$u" -- /bin/sh -c 'cd "$1" && shift && for p; do
+  [[ -e $dir/.games-$n ]] && continue
+  runuser -u "$u" -- /bin/sh -c 'cd "$1" && shift && rc=0 && for p; do
     [ -L "$p" ] && continue
     if [ -d "$p" ]; then [ "$(stat -c %i "$p")" = 256 ] || [ -n "$(ls -A "$p")" ] || { rmdir "$p" && btrfs subvolume create "$p"; }
-    elif [ ! -e "$p" ]; then mkdir -p "$(dirname "$p")" && btrfs subvolume create "$p"; fi >/dev/null
-  done' sh "$h" "${games[@]}" || true
+    elif [ ! -e "$p" ]; then mkdir -p "$(dirname "$p")" && btrfs subvolume create "$p"; fi >/dev/null || rc=1
+  done; exit $rc' sh "$h" "${games[@]}" && touch "$dir/.games-$n" || true # marker only after success: a failed run is retried
 done
 # Btrfs reports space late after a big write: flush first, or a just-filled disk reads as roomy and gets snapshotted
 btrfs filesystem sync "$src" >/dev/null 2>&1 || sync

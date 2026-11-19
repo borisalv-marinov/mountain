@@ -10,9 +10,9 @@ ColumnLayout {
     property var secs: ({}) // "AC.off" -> seconds
     property string mode: ""
     readonly property var times: [0, 60, 120, 300, 600, 900, 1800, 3600]
-    readonly property var names: ["Never", "1 minute", "2 minutes", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "1 hour"]
+    readonly property var names: [i18n("Never"), i18n("1 minute"), i18n("2 minutes"), i18n("5 minutes"), i18n("10 minutes"), i18n("15 minutes"), i18n("30 minutes"), i18n("1 hour")]
     readonly property var modes: ["power-saver", "balanced", "performance"]
-    readonly property var cards: [{ g: "AC", title: "Plugged in", off: 300, sleep: 900 }, { g: "Battery", title: "On battery", off: 120, sleep: 600 }]
+    readonly property var cards: [{ g: "AC", title: i18n("Plugged in"), off: 300, sleep: 900 }, { g: "Battery", title: i18n("On battery"), off: 120, sleep: 600 }]
     readonly property string rc: "kwriteconfig6 --file powerdevilrc --group "
 
     function load() {
@@ -35,15 +35,15 @@ ColumnLayout {
     function reload() { return "qdbus6 org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement org.kde.Solid.PowerManagement.reparseConfiguration # " + Date.now(); }
     Component.onCompleted: load()
 
-    PageTitle { title: "Power & battery" }
+    PageTitle { title: i18n("Power & battery") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Power mode"; subtitle: "Battery saver, balanced or best performance" }
+        CardHeader { title: i18n("Power mode"); subtitle: i18n("Battery saver, balanced or best performance") }
         ChoiceRow {
-            label: "Power mode"
-            model: ["Best power efficiency", "Balanced", "Best performance"]
+            label: i18n("Power mode")
+            model: [i18n("Best power efficiency"), i18n("Balanced"), i18n("Best performance")]
             currentIndex: pw.modes.indexOf(pw.mode)
             onPicked: i => app.sh("powerprofilesctl set " + pw.modes[i] + " # " + Date.now(), pw.load)
         }
@@ -57,15 +57,15 @@ ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
             padding: 6
-            CardHeader { title: card.modelData.title; subtitle: "Screen and sleep" }
+            CardHeader { title: card.modelData.title; subtitle: i18n("Screen and sleep") }
             ChoiceRow {
-                label: "Turn off my screen after"
+                label: i18n("Turn off my screen after")
                 model: pw.names
                 currentIndex: pw.times.indexOf(pw.secs[card.modelData.g + ".off"])
                 onPicked: i => pw.setOff(card.modelData.g, pw.times[i])
             }
             ChoiceRow {
-                label: "Put my PC to sleep after"
+                label: i18n("Put my PC to sleep after")
                 model: pw.names
                 currentIndex: pw.times.indexOf(pw.secs[card.modelData.g + ".sleep"])
                 onPicked: i => pw.setSleep(card.modelData.g, pw.times[i])

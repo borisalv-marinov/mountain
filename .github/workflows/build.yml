@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install yamllint
         run: pip install yamllint
       - name: Check recipe YAML
@@ -43,10 +43,16 @@ jobs:
         run: bash tests/test-windows-boot.sh
       - name: Test Active Protection rules
         run: bash tests/test-protect.sh
+      - name: Test virus scan moves threats to quarantine
+        run: bash tests/test-security-scan.sh
       - name: Test Active Protection watcher end to end
         run: sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools >/dev/null && bash tests/test-protect-daemon.sh
+      - name: Workflow actions are pinned and build scripts executable
+        run: bash tests/test-workflow-pins.sh
       - name: Test snapshot keep rule
         run: bash tests/test-snapshot-prune.sh
+      - name: Mountain's own windows have Bulgarian (catalogs built, no English text outside i18n)
+        run: bash tests/test-i18n.sh
       - name: vm-test carries the current hwsim.sh
         run: bash -n tests/vm/hwsim.sh && grep -oE 'echo [A-Za-z0-9+/=]+ \| base64 -d > /tmp/hwsim.sh' .github/workflows/vm-test.yml | cut -d' ' -f2 | base64 -d | cmp - tests/vm/hwsim.sh
       - name: File Explorer opens Desktop folders through desktop:/
@@ -85,13 +91,13 @@ jobs:
           - recipe-nvidia.yml
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # Publish gate: check-image.sh is the last recipe module, so a failing check fails the build before the push.
       # The generated copy is not committed (.gitignore: files/scripts/check-image.sh).
       - name: Add the image checker as the last recipe step
         run: cp tests/check-image.sh files/scripts/check-image.sh
       - name: Build Custom Image
-        uses: blue-build/github-action@v1.13
+        uses: blue-build/github-action@c295af864f2802fc6aea227507af43d35823db81 # v1.13
         with:
           skip_checkout: true
           recipe: ${{ matrix.recipe }}
@@ -115,7 +121,7 @@ jobs:
         image: [mountain, mountain-nvidia]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Log in to ghcr.io
         run: echo ${{ github.token }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Install skopeo

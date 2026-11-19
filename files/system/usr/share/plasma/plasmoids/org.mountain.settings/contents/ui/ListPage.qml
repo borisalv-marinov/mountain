@@ -12,14 +12,14 @@ ColumnLayout {
         Layout.topMargin: 6
         Layout.bottomMargin: 14
         Layout.fillWidth: true
-        text: searching ? "Results for \"" + app.query.trim() + "\"" : app.currentCategory.name
+        text: searching ? i18n("Results for \"%1\"", app.query.trim()) : app.currentCategory.name
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }
 
     GText {
         visible: searching && items.length === 0
-        text: "No settings found. Try another word."
+        text: i18n("No settings found. Try another word.")
         dim: true
     }
 
@@ -41,7 +41,7 @@ ColumnLayout {
     GText {
         visible: searching && items.length > 0
         Layout.topMargin: 6
-        text: "Press Enter to open the first result."
+        text: i18n("Press Enter to open the first result.")
         dim: true
         font.pointSize: Kirigami.Theme.smallFont.pointSize
     }

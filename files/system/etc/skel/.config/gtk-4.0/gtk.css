@@ -1,0 +1,29 @@
+/* mountain-gtk: libadwaita apps use Mountain's own dark (the BlackGlass colour scheme: window #121212, buttons #1e1e1e), not Adwaita grey.
+   libadwaita 1.6 and newer read the --variables, older ones the @define-color names: both are set */
+:root {
+  --window-bg-color: #121212; --view-bg-color: #121212; --headerbar-bg-color: #121212; --headerbar-backdrop-color: #121212;
+  --sidebar-bg-color: #121212; --sidebar-backdrop-color: #121212; --secondary-sidebar-bg-color: #121212; --secondary-sidebar-backdrop-color: #121212;
+  --dialog-bg-color: #121212; --card-bg-color: #1e1e1e; --popover-bg-color: #1e1e1e; --thumbnail-bg-color: #1e1e1e;
+}
+@define-color window_bg_color #121212;
+@define-color view_bg_color #121212;
+@define-color headerbar_bg_color #121212;
+@define-color headerbar_backdrop_color #121212;
+@define-color sidebar_bg_color #121212;
+@define-color sidebar_backdrop_color #121212;
+@define-color secondary_sidebar_bg_color #121212;
+@define-color dialog_bg_color #121212;
+@define-color card_bg_color #1e1e1e;
+@define-color popover_bg_color #1e1e1e;
+/* plain GTK 4 apps (no libadwaita, e.g. Welcome) take the theme's compiled greys: set the surfaces themselves, as in gtk-3.0.
+   Not a bare .background: popovers carry it too, and a filled popover node shows square corners */
+window.background { background-color: #121212; }
+.card, .boxed-list { background-color: #1e1e1e; }
+/* plain GTK 4 card rows and tabs (Welcome: a button in a frame, a stack switcher) took the theme's #3a3a3a; shorthand clears its gradient */
+frame > button, stackswitcher > button { background: #1e1e1e; }
+frame > button:hover, stackswitcher > button:hover { background: #2a2a2a; }
+stackswitcher > button:checked { background: #2d2d2d; }
+/* Windows-style caption buttons: flat 46x32 rectangles like the window decoration, red close on hover */
+windowcontrols button { border-radius: 0; min-width: 46px; min-height: 32px; margin: 0; padding: 0; background: none; box-shadow: none; }
+windowcontrols button:hover { background: alpha(white, 0.1); }
+windowcontrols button.close:hover { background: #c42b1c; }

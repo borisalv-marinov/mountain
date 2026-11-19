@@ -448,7 +448,7 @@ check_phase28() { # v5 black glass: lock/login greeting, Silk wallpaper, Windows
   assert_grep '"iconSize", 3' "$L" # Medium icons
   bc=$(find /usr/lib64/qt6/qml /usr/lib/qt6/qml -type d -path '*/org/kde/breeze/components' -print -quit 2>/dev/null || true)
   assert_grep 'id: mtPower' "$bc/SessionManagementScreen.qml" # sign-in and lock screen: power menu at the bottom right
-  assert_grep 'title: "Protection history"' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  assert_grep 'title: i18n("Protection history")' /usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
   pt=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml # KDE's process lists
   assert_grep 'id: kthreads' $pt; assert_grep '"plasmashell": "Windows Explorer"' $pt; assert_grep 'mtUnits(model.display)' $pt
   assert_grep 'Threat quarantined: ' /usr/libexec/mountain-protect; assert_grep 'Threat quarantined: ' /usr/libexec/mountain-security
@@ -884,7 +884,7 @@ PY
   assert_file $su/NetworkPage.qml
   assert_grep 'NetworkPage.qml' $su/main.qml
   assert_grep 'app.netFailed' $su/main.qml # falls back to the plain rows without plasma-nm
-  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode'; do assert_grep "{ t: \"$t\"" $su/main.qml; done # v7: Proxy and Advanced network removed (they opened KDE windows)
+  for t in 'Wi-Fi' 'Ethernet' 'VPN' 'Mobile hotspot' 'Airplane mode'; do assert_grep "{ t: i18n(\"$t\")" $su/main.qml; done # v7: Proxy and Advanced network removed (they opened KDE windows)
   assert_grep 'handler.enableAirplaneMode(on)' $su/NetworkPage.qml
   n=$({ grep -c 'Timer' $su/NetworkPage.qml || true; }); [[ $n == 0 ]] || fail "Network page polls"
   assert_grep 'navButton.visualFocus ? 2 : 0' $su/main.qml
@@ -1105,7 +1105,7 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   assert_grep 'onClicked: list.visible = !wasOpen' $f # the list is the applet's own pop-up; the tray forwards each click too, so it toggles by what was open at the press
   assert_grep 'PlasmaCore.Dialog {' $f
   assert_grep 'height: (kbd.layoutsList.length + 1) \* rowHeight' $f # the list opens above the button, not behind the taskbar
-  assert_grep 'text: "More keyboard settings"' $f
+  assert_grep 'text: i18n("More keyboard settings")' $f
   grep -q 'switchToNextLayout()$' $f && fail "language button switches on a click again"
   [[ -n $X ]] || [[ -f /usr/lib64/qt6/qml/org/kde/plasma/workspace/keyboardlayout/qmldir ]] || fail "keyboard layout QML module missing (language button)"
   # accounts from before v7.1 get Mountain's taskbar space (right-click = Task Manager) once, before the taskbar loads
@@ -1119,6 +1119,84 @@ check_phase36() { # v7.2 (owner 2026-11-16): Task Manager End task, startup apps
   [[ -n $X ]] || [[ -e /etc/systemd/user/default.target.wants/mountain-gamemode.service || -e /usr/lib/systemd/user/default.target.wants/mountain-gamemode.service ]] || fail "Game Mode service not enabled"
   # Active Protection: a new folder is an extraction for 2 minutes (the EICAR-as-.txt hole)
   grep -qF 'printf "$now\t%p\n" >> "$pdir/xdirs"' $X/usr/libexec/mountain-protect || fail "Active Protection: new folders are not treated as extractions"
+  true
+}
+
+check_phase37() { # v7.3 audit: helpers that got set -u/pipefail keep it (a lost line would hide unset-variable bugs again)
+  local X=${MOUNTAIN_ROOT:-} f
+  for f in ai explorer gpu-check lite-mode phonelink settings-open; do
+    grep -q '^set -uo pipefail' "$X/usr/libexec/mountain-$f" || fail "mountain-$f lost set -uo pipefail"
+  done
+  true
+}
+
+check_phase38() { # v7.3 style: one title-bar colour, Disks icon in the one icon style
+  local X=${MOUNTAIN_ROOT:-}
+  # title bar = window colour in every state: no see-through fills (they showed the blurred wallpaper as navy, maximized was greyer)
+  grep -qE 'fill-opacity="0\.(8|92)"' $X/usr/share/aurorae/themes/BlackGlass/decoration.svg && fail "title bar is see-through: navy over the wallpaper, not the window colour"
+  [[ -z $X ]] || assert_grep 'org.gnome.DiskUtility drive-harddisk' files/scripts/app-icons.sh # repo-only: the script is not in the image
+  # GTK/libadwaita apps: Mountain's dark and flat caption buttons for new accounts (skel) and old ones (mountain-user-setup); Flatpak apps read the folders
+  for v in 3.0 4.0; do assert_grep 'mountain-gtk' $X/etc/skel/.config/gtk-$v/gtk.css; done
+  assert_grep '@define-color window_bg_color #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css
+  assert_grep 'window-bg-color: #121212;' $X/etc/skel/.config/gtk-4.0/gtk.css # libadwaita 1.6+ reads only the variables
+  assert_grep 'window.background { background-color: #121212; }' $X/etc/skel/.config/gtk-4.0/gtk.css # plain GTK 4 apps (Welcome) ignore the colour names
+  assert_grep 'frame > button, stackswitcher > button { background: #1e1e1e; }' $X/etc/skel/.config/gtk-4.0/gtk.css # Welcome's card rows and tabs were the theme's #3a3a3a (v7.3 run 4: luminance 0.22)
+  assert_grep 'window.background, .background' $X/etc/skel/.config/gtk-3.0/gtk.css # Adwaita GTK 3 hard-codes its greys
+  grep -q 'cat "\$g" 2>/dev/null || true; cat "\$t"' $X/usr/libexec/mountain-user-setup || fail "gtk.css must be appended after KDE's @import"
+  assert_grep '@define-color theme_bg_color #121212;' $X/etc/skel/.config/gtk-3.0/gtk.css
+  assert_grep 'windowcontrols button { border-radius: 0;' $X/etc/skel/.config/gtk-4.0/gtk.css
+  assert_grep 'grep -qs mountain-gtk' $X/usr/libexec/mountain-user-setup
+  assert_grep 'xdg-config/gtk-4.0:ro' $X/usr/libexec/mountain-flatpak-policy
+  true
+}
+
+check_phase39() { # v7.3 menus: right-click menus without KDE-only rows (desktop: edit mode, logout screen; File Explorer: disk usage)
+  local X=${MOUNTAIN_ROOT:-}
+  assert_grep 'RightButton;NoModifier' $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh
+  for k in _logout _lock_screen '"desktop edit mode"'; do assert_grep "$k" $X/etc/xdg/plasma-workspace/env/mountain-migrate.sh; done
+  assert_grep '^filelight=false$' $X/etc/xdg/kservicemenurc
+  [[ -z $X ]] || { assert_grep 'Филтър' tests/vm/ux-rules.json; } # repo-only
+  true
+}
+
+check_phase40() { # v7.3 Bulgarian: Mountain's own windows (Settings, Shut Down, Quick Settings, Start, Run, Win+X ...) speak Bulgarian
+  local X=${MOUNTAIN_ROOT:-} d id
+  for d in $X/usr/share/plasma/plasmoids/org.mountain.* $X/usr/share/plasma/plasmoids/menu.11.enhanced; do
+    id=${d##*/}
+    # libplasma reads contents/locale/<lang>/LC_MESSAGES/plasma_applet_<pluginId>.mo (KPackage "translations")
+    [[ -f $d/contents/locale/bg/LC_MESSAGES/plasma_applet_$id.mo ]] || fail "no Bulgarian catalog for $id"
+    [[ -z $X ]] || [[ -f i18n/bg/$id.po ]] || fail "no Bulgarian .po for $id (tools/po2mo.py builds the .mo from it)"
+  done
+  python3 -I - "$X/usr/share/plasma/plasmoids" <<'PY' || fail "Bulgarian catalogs: a window title or menu word is missing or still English"
+import gettext, sys
+root = sys.argv[1]
+want = {  # plasmoid -> words that Windows 11 shows in Bulgarian
+    'org.mountain.settings': ['Settings', 'Home', 'System', 'Privacy & security', 'Display', 'Sound', 'Storage', 'About', 'Virus & threat protection'],
+    'org.mountain.shutdown': ['Shut Down Mountain', 'Shut down', 'Restart', 'Sleep', 'Sign out', 'Switch user', 'Cancel'],
+    'org.mountain.quicksettings': ['Quick settings', 'Airplane mode', 'Bluetooth', 'Brightness', 'Volume', 'Night light', 'Energy saver'],
+    'org.mountain.winx': ['Quick Link menu', 'Task Manager', 'File Explorer', 'Settings', 'Run', 'Shut down'],
+    'org.mountain.run': ['Run', 'Open:', 'Cancel'],
+    'org.mountain.taskbarspace': ['Task Manager', 'Taskbar settings'],
+    'org.mountain.showdesktop': ['Show desktop'],
+    'org.mountain.keyboardlayout': ['Input language'],
+    'menu.11.enhanced': ['All apps', 'Pinned', 'Recommended', 'Shut down', 'Restart', 'Sleep', 'Sign out', 'Lock'],
+}
+bad = []
+for pid, words in want.items():
+    t = gettext.GNUTranslations(open(f'{root}/{pid}/contents/locale/bg/LC_MESSAGES/plasma_applet_{pid}.mo', 'rb'))
+    for w in words:
+        s = t.gettext(w)
+        if s == w or not any('Ѐ' <= c <= 'ӿ' for c in s):
+            if not (w == 'Bluetooth' and s == w):  # product name: the same in Bulgarian
+                bad.append(f'{pid}: {w!r} -> {s!r}')
+print('\n'.join(bad)); sys.exit(1 if bad else 0)
+PY
+  # window titles of the plasmoid windows come from Name[bg]; Task Manager tabs from Title[bg]; File Explorer and friends from bg@mountain
+  for id in settings quicksettings shutdown run winx taskbarspace showdesktop keyboardlayout; do assert_grep '"Name\[bg\]": "' $X/usr/share/plasma/plasmoids/org.mountain.$id/metadata.json; done
+  assert_grep '^Title\[bg\]=Процеси$' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep '^Title\[bg\]=Приложения$' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page
+  assert_grep 'bg@mountain' $X/etc/xdg/plasma-workspace/env/mountain-names.sh
+  [[ -z $X ]] || { assert_grep "'Dolphin': 'Файлов мениджър'" files/scripts/windows-names.sh; assert_grep '^title=Настройки$' files/system/etc/xdg/kwinrulesrc; } # repo-only
   true
 }
 

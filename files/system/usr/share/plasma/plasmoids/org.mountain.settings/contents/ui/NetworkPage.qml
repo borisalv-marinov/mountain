@@ -32,12 +32,12 @@ ColumnLayout {
     function sub(it) {
         const l = it.net === "wifi" ? lineFor(/Wi-?Fi|Wireless/i) : it.net === "ethernet" ? lineFor(/Ethernet|Wired/i) : it.net === "vpn" ? lineFor(/VPN|WireGuard/i) : "";
         switch (it.net) {
-        case "wifi": return !devices.wirelessDeviceAvailable ? "No Wi-Fi adapter" : airplane ? "Off: airplane mode is on" : !nmEnabled.wirelessEnabled ? "Off" : l ? statusOf(l) : "Not connected";
-        case "ethernet": return !devices.wiredDeviceAvailable ? "No Ethernet adapter" : l ? statusOf(l) : "Not connected";
+        case "wifi": return !devices.wirelessDeviceAvailable ? i18n("No Wi-Fi adapter") : airplane ? i18n("Off: airplane mode is on") : !nmEnabled.wirelessEnabled ? i18n("Off") : l ? statusOf(l) : i18n("Not connected");
+        case "ethernet": return !devices.wiredDeviceAvailable ? i18n("No Ethernet adapter") : l ? statusOf(l) : i18n("Not connected");
         case "vpn": return l ? statusOf(l) : it.d;
-        case "hotspot": return handler.hotspotActive ? "On: sharing as \"" + PlasmaNM.Configuration.hotspotName + "\""
-                             : !devices.wirelessDeviceAvailable ? "Needs a Wi-Fi adapter"
-                             : !handler.hotspotSupported ? "Turn on Wi-Fi and disconnect from it (or add a second adapter) to share" : it.d;
+        case "hotspot": return handler.hotspotActive ? i18n("On: sharing as \"%1\"", PlasmaNM.Configuration.hotspotName)
+                             : !devices.wirelessDeviceAvailable ? i18n("Needs a Wi-Fi adapter")
+                             : !handler.hotspotSupported ? i18n("Turn on Wi-Fi and disconnect from it (or add a second adapter) to share") : it.d;
         default: return it.d;
         }
     }
@@ -67,7 +67,7 @@ ColumnLayout {
             disconnectSource(source);
             const n = (data["stdout"] || "").trim().split(/\s+/).map(Number).filter(x => x >= 0);
             const b = n.length === 2 ? n[0] + n[1] : -1;
-            net.usage = b < 0 ? "" : (b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB") + " since you turned on this PC";
+            net.usage = b < 0 ? "" : i18n("%1 since you turned on this PC", b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB");
         }
     }
     onHeroLineChanged: readUsage()
@@ -108,7 +108,7 @@ ColumnLayout {
                     spacing: 2
                     GText {
                         Layout.fillWidth: true
-                        text: net.online ? net.nameOf(net.heroLine) : "Not connected"
+                        text: net.online ? net.nameOf(net.heroLine) : i18n("Not connected")
                         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.3
                         font.weight: Font.DemiBold
                     }
@@ -121,8 +121,8 @@ ColumnLayout {
             }
             SettingRow {
                 Layout.preferredWidth: 1
-                text: "Data usage"
-                description: net.usage || "Not connected"
+                text: i18n("Data usage")
+                description: net.usage || i18n("Not connected")
                 iconName: "network-wired"
                 onClicked: app.run("kstart --application org.kde.plasma-systemmonitor")
             }
@@ -142,7 +142,7 @@ ColumnLayout {
                 trailing: [
                     GText {
                         visible: net.hasSwitch(modelData)
-                        text: net.isOn(modelData) ? "On" : "Off"
+                        text: net.isOn(modelData) ? i18n("On") : i18n("Off")
                     },
                     PillSwitch {
                         visible: net.hasSwitch(modelData)

@@ -4,6 +4,7 @@
 chartFace=org.mountain.taskmanager.list
 showTitle=true
 Title=Services
+Title[bg]=Услуги
 
 [Face-880000000016][org.mountain.taskmanager.list][General]
 mode=services
@@ -15,6 +16,7 @@ loadType=
 margin=2
 version=1
 Title=Services
+Title[bg]=Услуги
 
 [page][row-0]
 Title=

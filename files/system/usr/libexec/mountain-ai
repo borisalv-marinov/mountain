@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail # not -e: a failed step must not end the script early (never fail the login)
 # Launch an AI agent CLI, installing it per-user on first use.
 # Test overrides: MOUNTAIN_AI_DRYRUN=1 prints the install command; MOUNTAIN_AI_OFFLINE=1 fakes no network.
 export PATH="$HOME/.local/bin:$PATH"

@@ -15,11 +15,11 @@ ColumnLayout {
             const l = out.split("\n");
             host = l[0];
             rows = [
-                { t: "Device name", v: l[0], i: "computer" },
-                { t: "Processor", v: l[2] || "Unknown", i: "computer" },
-                { t: "Installed RAM", v: l[3] > 0 ? (l[3] / 1073741824).toFixed(1) + " GB" : "Unknown", i: "media-flash" },
-                { t: "Graphics", v: l[4] || "Unknown", i: "monitor" },
-                { t: "Mountain version", v: l[1] || "Unknown", i: "help-about" }
+                { t: i18n("Device name"), v: l[0], i: "computer" },
+                { t: i18n("Processor"), v: l[2] || i18n("Unknown"), i: "computer" },
+                { t: i18n("Installed RAM"), v: l[3] > 0 ? (l[3] / 1073741824).toFixed(1) + " GB" : i18n("Unknown"), i: "media-flash" },
+                { t: i18n("Graphics"), v: l[4] || i18n("Unknown"), i: "monitor" },
+                { t: i18n("Mountain version"), v: l[1] || i18n("Unknown"), i: "help-about" }
             ];
         });
     }
@@ -30,12 +30,12 @@ ColumnLayout {
     }
     Component.onCompleted: load()
 
-    PageTitle { title: "About" }
+    PageTitle { title: i18n("About") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Rename this PC"; subtitle: "Letters, digits and hyphens. You will be asked for your password." }
+        CardHeader { title: i18n("Rename this PC"); subtitle: i18n("Letters, digits and hyphens. You will be asked for your password.") }
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 12
@@ -44,17 +44,17 @@ ColumnLayout {
                 id: nameField
                 Layout.fillWidth: true
                 placeholderText: ab.host
-                Accessible.name: "New PC name"
+                Accessible.name: i18n("New PC name")
                 onAccepted: ab.rename(text)
             }
-            GlassButton { text: "Rename"; highlighted: true; enabled: nameField.text !== ""; onClicked: ab.rename(nameField.text) }
+            GlassButton { text: i18n("Rename"); highlighted: true; enabled: nameField.text !== ""; onClicked: ab.rename(nameField.text) }
         }
     }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        CardHeader { title: "Device specifications" }
+        CardHeader { title: i18n("Device specifications") }
         Repeater {
             model: ab.rows
             delegate: SettingRow {

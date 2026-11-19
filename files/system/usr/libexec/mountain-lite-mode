@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail # not -e: a failed step must not end the script early (never fail the login)
 # Turn off blur/animations on weak PCs (software rendering or < 4 GB RAM).
 # Usage: mountain-lite-mode [--dry-run]. Only writes to the user's ~/.config. Never fails the login.
 DRY=0; [[ ${1:-} == --dry-run ]] && DRY=1

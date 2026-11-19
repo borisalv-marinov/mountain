@@ -1,0 +1,14 @@
+# Bulgarian (bg) strings of org.mountain.keyboardlayout, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid "Input language"
+msgstr "Език на въвеждане"
+
+msgid "More keyboard settings"
+msgstr "Още настройки на клавиатурата"
+
+msgid "Win+Space to switch"
+msgstr "Win+Space за превключване"

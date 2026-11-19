@@ -25,27 +25,27 @@ ColumnLayout {
     function toggleLock() { app.sh(rc + "--group Notifications --key ShowOnLockscreen --type bool " + (lockScreen ? "false" : "true") + " # " + Date.now(), load); }
     Component.onCompleted: load()
 
-    PageTitle { title: "Notifications" }
+    PageTitle { title: i18n("Notifications") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
         SettingRow {
-            text: "Do not disturb"
-            description: "Silence pop-ups until you turn this off"
+            text: i18n("Do not disturb")
+            description: i18n("Silence pop-ups until you turn this off")
             iconName: "notifications-disabled"
             chevron: false
             onClicked: np.toggleDnd()
-            trailing: PillSwitch { text: "Do not disturb"; checked: np.dnd; onClicked: np.toggleDnd() }
+            trailing: PillSwitch { text: i18n("Do not disturb"); checked: np.dnd; onClicked: np.toggleDnd() }
         }
         SettingRow {
-            text: "Show notifications on the lock screen"
-            description: "Other people near your PC could read them"
+            text: i18n("Show notifications on the lock screen")
+            description: i18n("Other people near your PC could read them")
             iconName: "system-lock-screen"
             chevron: false
             divider: true
             onClicked: np.toggleLock()
-            trailing: PillSwitch { text: "Show notifications on the lock screen"; checked: np.lockScreen; onClicked: np.toggleLock() }
+            trailing: PillSwitch { text: i18n("Show notifications on the lock screen"); checked: np.lockScreen; onClicked: np.toggleLock() }
         }
     }
 }

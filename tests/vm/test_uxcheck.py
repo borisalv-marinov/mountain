@@ -46,4 +46,7 @@ expect({"every-.*": {"dark_window": True}}, lambda: app((18, 18, 18)), False)
 expect({"every-.*": {"dark_window": True}}, lambda: app((245, 245, 245)), True)
 # a sleeping screen (all black) must fail, not pass as "dark"
 expect({"every-.*": {"dark_window": True}}, lambda: (app((18, 18, 18)), Image.new("RGB", (1280, 800)).save(os.path.join(d, "03-every-x.png"))), True)
+# GTK apps: libadwaita grey (#2d) is too light, Mountain dark (#121212) passes
+expect({"every-.*": {"dark_window": 0.12}}, lambda: app((45, 45, 45)), True)
+expect({"every-.*": {"dark_window": 0.12}}, lambda: app((18, 18, 18)), False)
 shutil.rmtree(d); sys.exit(rc)

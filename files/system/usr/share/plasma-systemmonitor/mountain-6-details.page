@@ -4,6 +4,7 @@
 chartFace=org.kde.ksysguard.processtable
 showTitle=false
 Title=Details
+Title[bg]=Подробности
 
 [Face-880000000015][org.kde.ksysguard.processtable][General]
 sortedColumns=name,pid,status,username,usage,memory,command
@@ -22,6 +23,7 @@ loadType=
 margin=0
 version=1
 Title=Details
+Title[bg]=Подробности
 
 [page][row-0]
 Title=

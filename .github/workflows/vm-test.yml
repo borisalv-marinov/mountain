@@ -28,7 +28,7 @@ jobs:
       IMG: ${{ matrix.image }}
       BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4 # tests/vm: user-view checks (OCR, window census, every Start app)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 # tests/vm: user-view checks (OCR, window census, every Start app)
         with:
           sparse-checkout: tests/vm
       - name: Enable KVM and install tools
@@ -41,7 +41,7 @@ jobs:
           echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
           echo "Acquire::Retries \"5\";" | sudo tee /etc/apt/apt.conf.d/80retries
           sudo apt-get update
-          sudo apt-get install -y qemu-utils imagemagick socat skopeo tesseract-ocr python3-pil
+          sudo apt-get install -y qemu-utils imagemagick socat skopeo tesseract-ocr tesseract-ocr-bul python3-pil
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
@@ -405,9 +405,18 @@ jobs:
           QM type firewall; sleep 3; shot start-search-firewall; QM key esc; sleep 1 # Mountain's Security, no KDE or firewalld pages
           QM move $((1180*W/1280)) $((780*H/800)); sleep 3; shot taskbar-hover-clock; QM move $((640*W/1280)) $((400*H/800))
           QM rclick $((1000*W/1280)) $((780*H/800)); sleep 2; shot taskbar-context-menu; QM key esc; sleep 1
-          QM key meta_l; sleep 3; QM move $((915*W/1280)) $((194*H/800)); sleep 1; shot start-all-pill-hover
-          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-all-apps
-          QM click $((915*W/1280)) $((194*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
+          QM key esc; sleep 1 # closes Start too (it stayed open after the search above): the Win key below opens it, never closes it
+          QM key meta_l; sleep 3; QM move $((936*W/1280)) $((155*H/800)); sleep 1; shot start-all-pill-hover
+          QM click $((936*W/1280)) $((155*H/800)); sleep 2; shot start-all-apps
+          QM click $((936*W/1280)) $((155*H/800)); sleep 2; shot start-back-to-pinned; QM key esc; sleep 1
+          # the Win key toggles Start: it must be open for the All pill steps (an earlier Esc only clears the search; the taskbar menu's Esc leaves Start open)
+          sdw() { convert "$(ls shots/*-$1.png | tail -1)" -negate - 2>/dev/null | tesseract - stdout --psm 11 2>/dev/null; } # OCR words of a shot (dark UI: inverted)
+          for s in "start-all-pill-hover:for apps:Pinned" "start-all-apps:for apps:" "start-back-to-pinned:Pinned:"; do
+            IFS=: read -r sn sw sx <<<"$s"; o=$(sdw "$sn"); ok=PASS
+            grep -qi -- "$sw" <<<"$o" || ok=FAIL
+            if [ "$sn" = start-all-apps ] && grep -qi 'Pinned' <<<"$o"; then ok=FAIL; fi # the All apps list replaces the pinned grid
+            echo "| Start open in step $sn | $ok | needs \"$sw\" |" >> report.md; echo "$ok Start open in step $sn"
+          done
           QM key meta_l; sleep 3; QM type calc; sleep 3; shot start-search-best-match; QM key esc; QM key esc; sleep 1
           chk "start search has Best match" 0 "grep -c 'i18n(\"Best match\")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemMultiGridView.qml" '^1$'
           QM key meta_l; sleep 3 # the start menu open again for the steps below
@@ -455,7 +464,8 @@ jobs:
           for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount; do
             L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
             R "$LT python3 /tmp/names.py plasmawindowed 20 > /tmp/set-names.txt 2>&1; true"
-            chk "Settings $p: page shows its title" 2 "grep -ciF '${PT[$p]}' /tmp/set-names.txt" "^[1-9]"
+            chk "Settings $p: page shows its title" 0 "grep -ciF '${PT[$p]}' /tmp/set-names.txt" "^[1-9]"
+            if [ "$p" = storage ]; then chk "Settings Storage: one Local Disk (C:), no /etc or /boot drive" 0 "echo etc=\$(grep -c '^/etc' /tmp/set-names.txt) boot=\$(grep -c '^/boot' /tmp/set-names.txt) c=\$(grep -c 'Local Disk (C:)' /tmp/set-names.txt)" '^etc=0 boot=0 c=[1-9]'; fi
             chk "Settings $p: no systemsettings or kcmshell6" 0 "pgrep -u looktest -f 'systemsettings|kcmshell6' || echo none" '^none$'
             K -f org.mountain.settings
           done
@@ -839,6 +849,10 @@ jobs:
           R "cat /tmp/tm-names.txt" > tm-names.txt 2>&1 || true
           R "cat /usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/ProcessTableView.qml" > processtable-qml.txt 2>&1 || true
           R "journalctl -b --no-pager | grep -iE 'processtable|ProcessTableView|plasma-systemmonitor' | tail -80" > processtable-log.txt 2>&1 || true
+          # Apps list: an app started in its app scope (like Start and the taskbar do) is listed; Task Manager itself must be a row
+          K -f plasma-systemmonitor; L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 systemd-run --user --scope --unit=app-org.kde.plasma-systemmonitor-7001 plasma-systemmonitor --page-id mountain-1-processes.page; sleep 10; shot taskmanager-apps
+          R "$LT python3 /tmp/names.py plasma-systemmonitor 50 > /tmp/apps-names.txt 2>&1; true"
+          chk "Apps list has a row (Task Manager itself) while windows are open" 0 "grep -cxF 'Task Manager' /tmp/apps-names.txt" '^[1-9]'
           # End task: Mountain's Background processes list (Windows names, own processes only)
           K -f plasma-systemmonitor; L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 10; shot taskmanager-background
           R "$LT python3 /tmp/names.py plasma-systemmonitor 50 > /tmp/bg-names.txt 2>&1; true"
@@ -977,6 +991,30 @@ jobs:
           chk "Active Protection: a link into autostart is flagged, not followed" 0 "echo '$(grep -c 'ap_unverified=.*/apa-link\.desktop|link that starts at sign-in' <<<"$AP")'" '^1$'
           chk "Active Protection: a threat in a folder moved to the Desktop is caught" 0 "test ! -e ~looktest/Desktop/apa-stage/apa-dir.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-dir && echo caught" '^caught$'
           R "rm -rf ~looktest/Desktop/apa-stage ~looktest/.config/systemd/user/apa-cfg.service ~looktest/.local/share/systemd/user/apa-data.service ~looktest/.config/autostart/apa-link.desktop"
+          # v7.3 audit: big files, scan limits, ctime in the cache key, more sign-in files, a clean kill restarts, a program renamed .jpg, encrypted archives
+          R "$(TL 'truncate -s 450M ~/Downloads/apa-big.mkv; mkdir -p ~/.config/autostart-scripts; printf "#!/bin/sh\ntrue\n" > ~/.config/autostart-scripts/apa-as.sh; cp /usr/bin/true ~/Documents/a.jpg;')"
+          R "$(TL 'printf "%068d" 0 > ~/Downloads/apa-swap.com; touch -d 2020-01-01 ~/Downloads/apa-swap.com')"; sleep 20
+          R "$(TL 'cp -p ~/Downloads/apa-swap.com /tmp/apa-ref; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/apa-swap.com; touch -r /tmp/apa-ref ~/Downloads/apa-swap.com; rm -f /tmp/apa-ref')"
+          # the zips are built on the runner (the image has no zip) and copied in whole, so the watcher never sees a half-built archive
+          Z=$(mktemp -d); (cd "$Z" && echo secret > m1.txt && echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > m2.txt && zip -q -P pw enc.zip m1.txt && zip -q -P pw mixed.zip m1.txt && zip -q mixed.zip m2.txt && head -c 150M /dev/zero > pad.bin && zip -q big.zip pad.bin m2.txt) # big.zip: EICAR after 150 MB unpacked (past the old 100 MB limit)
+          put_dl() { R "cat > /tmp/apa-put && install -o looktest -g looktest -m 644 /tmp/apa-put /home/looktest/Downloads/$2; rm -f /tmp/apa-put" < "$Z/$1"; }
+          put_dl enc.zip apa-enc.zip; put_dl big.zip apa-150.zip
+          apwait /home/looktest/Downloads/apa-150.zip; apwait /home/looktest/Downloads/apa-swap.com; sleep 10
+          AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
+          chk "Active Protection: a 450 MB non-archive in Downloads is listed too large to scan" 0 "echo '$(grep -c 'ap_unverified=.*apa-big.mkv|too large to scan' <<<"$AP")'" '^1$'
+          chk "Active Protection: EICAR inside a 150 MB file is caught (scan size limits)" 0 "test ! -e ~looktest/Downloads/apa-150.zip && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-150 && echo caught" '^caught$'
+          chk "Active Protection: a same-size swap with the old mtime is caught" 0 "test ! -e ~looktest/Downloads/apa-swap.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-swap && echo caught" '^caught$'
+          chk "Active Protection: a script in autostart-scripts is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*autostart-scripts/apa-as.sh|starts at sign-in' <<<"$AP")'" '^1$'
+          chk "Active Protection: a program renamed a.jpg in Documents is flagged" 0 "echo '$(grep -c 'ap_unverified=.*Documents/a.jpg|' <<<"$AP")'" '^1$'
+          chk "Active Protection: a password-protected zip is listed as unscannable and stays in place" 0 "echo '$(grep -c 'apa-enc.zip|can.t be scanned (password-protected)' <<<"$AP")' \$(test -e ~looktest/Downloads/apa-enc.zip && echo kept)" '^1 kept$'
+          # an encrypted member FIRST, then a plain EICAR member: the virus must still be found (--allmatch), the zip quarantined
+          put_dl mixed.zip apa-mixed.zip; rm -rf "$Z"; sleep 20
+          chk "Active Protection: an EICAR member behind an encrypted member of the same zip is caught" 0 "test ! -e ~looktest/Downloads/apa-mixed.zip && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-mixed && echo caught" '^caught$'
+          R "$LT pkill -TERM -f 'mountain-protect daemon'"; for _ in $(seq 25); do sleep 2; R "$LT systemctl --user is-active -q mountain-protect.service" && break; done
+          chk "Active Protection: a clean exit of the watcher (SIGTERM) restarts it (Restart=always)" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
+          # measurement for raising the 400 MB scan limit: a 2 GB file with 4000M limits (ClamAV's maximum is just under 4 GB), capped at 1.5 GB of memory so the session is never pushed out
+          chk "scan limit: a 2 GB file with 4000M limits (time, memory)" 2 "f=/var/tmp/apa-scan2g.bin; head -c 2000M /dev/urandom > \$f; systemd-run --wait --pipe -p RuntimeMaxSec=900 -p MemoryAccounting=yes -p MemoryMax=1500M nice -n 19 ionice -c3 clamscan --no-summary --max-filesize=4000M --max-scansize=4000M --database=/var/lib/clamav \$f 2>&1 | grep -oE 'runtime: .*|Memory peak: .*|(OK|FOUND|ERROR.*|Killed.*)\$|result: .*' | paste -sd' '; rm -f \$f" '.'
+          R "rm -f ~looktest/Downloads/apa-big.mkv ~looktest/Downloads/apa-150.bin ~looktest/Downloads/apa-swap.com ~looktest/Downloads/apa-enc.zip ~looktest/Downloads/apa-mixed.zip ~looktest/Documents/a.jpg ~looktest/.config/autostart-scripts/apa-as.sh"
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
           # the Active Protection page polls only while it is on screen: none at all with the window hidden (Win+D)
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot settings-protection
@@ -1000,8 +1038,8 @@ jobs:
           chk "Active Protection: a restored file is not quarantined again" 0 "test -e ~looktest/Downloads/new-download.com && echo kept" '^kept$'
           R "rm -f ~looktest/Downloads/new-download.com"
           # a stopped watcher restarts by itself (RestartSec=30, no start limit): seen within 30 s, back 30 s later
-          R "pkill -u looktest -x inotifywait"
-          for _ in $(seq 40); do [[ $(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value") =~ ^[1-9] ]] && R "$LT systemctl --user is-active -q mountain-protect.service" && break; sleep 3; done
+          NR0=$(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value"); R "pkill -u looktest -x inotifywait"
+          for _ in $(seq 40); do (( $(R "$LT systemctl --user show mountain-protect.service -p NRestarts --value") > ${NR0:-0} )) && R "$LT systemctl --user is-active -q mountain-protect.service" && break; sleep 3; done
           chk "Active Protection: a killed watcher restarts by itself" 0 "echo \$($LT systemctl --user show mountain-protect.service -p NRestarts --value) \$($LT systemctl --user is-active mountain-protect.service)" '^[1-9][0-9]* active$'
           chk "Active Protection: the stop is logged (the user gets a notification)" 2 "$LT journalctl --user -u mountain-protect --no-pager -o cat | grep -c 'a watcher stopped'" '^[1-9]'
           # light: 50 ordinary saves in Documents start no scan
@@ -1047,7 +1085,13 @@ jobs:
           chk "Phone Link open only on Home networks" 0 "{ firewall-cmd --zone=mountain --query-service=kdeconnect; firewall-cmd --zone=mountain-home --query-service=kdeconnect; } | paste -sd' '" '^no yes$'
           chk "network profile Home, then Public" 0 "/usr/libexec/mountain-security profile home >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1; /usr/libexec/mountain-security profile public >/dev/null; sleep 3; firewall-cmd --get-active-zones | head -1" 'mountain-home'
           chk "USB protection on keeps the plugged-in mouse, then off" 0 "{ /usr/libexec/mountain-usbguard on >/dev/null; systemctl is-active usbguard; usbguard list-devices | grep -c allow; /usr/libexec/mountain-usbguard off >/dev/null; systemctl is-active usbguard; } | paste -sd' '" '^active.*inactive$'
+          # S9: a device hot-plugged while protection is on is blocked (QEMU monitor hot-plug, like plugging a stick in)
+          R "/usr/libexec/mountain-usbguard on >/dev/null"; echo "device_add usb-mouse,id=hotplug1" | Q >/dev/null; sleep 4
+          HB=$(R "usbguard list-devices --blocked | grep -c block"); echo "device_del hotplug1" | Q >/dev/null; R "/usr/libexec/mountain-usbguard off >/dev/null"
+          [ "${HB:-0}" -ge 1 ] 2>/dev/null && r=PASS || r=FAIL; echo "| USB protection on: a newly plugged-in device is blocked | $r | blocked: ${HB:-none} |" >> report.md; echo "$r usb hot-plug blocked"
           chk "core dumps off" 0 "systemd-analyze cat-config systemd/coredump.conf | grep -E '^Storage='" 'Storage=none'
+          chk "signed updates: policy.json requires a signature for Mountain" 0 "python3 -c \"import json;p=json.load(open('/etc/containers/policy.json'));d=p['transports']['docker'];k=[x for x in d if 'borisalv-marinov' in x];print(k and all(e['type']=='sigstoreSigned' for x in k for e in d[x]) and 'signed-required')\"" 'signed-required'
+          chk "signed updates: bootc upgrade --check (the test image is local, so INFO)" 2 "bootc upgrade --check >/dev/null 2>&1; echo rc=\$?" 'rc=0'
           # Restart into Windows: hidden without a Windows boot entry; with a fake one it sets a one-time boot
           chk "Restart into Windows hidden without Windows" 0 "/usr/libexec/mountain-windows-boot check || echo hidden" '^hidden$'
           R "efibootmgr --create --disk /dev/vda --part 1 --label 'Windows Boot Manager' --loader '\\EFI\\Microsoft\\Boot\\bootmgfw.efi' >/dev/null"
@@ -1081,8 +1125,37 @@ jobs:
           # so its traffic reaches the PC through firewalld's default zone, like another computer on the same network.
           R "ip netns add attacker && ip link add vatk type veth peer name vatk0 && ip link set vatk0 netns attacker && ip addr add 10.99.0.1/24 dev vatk && ip link set vatk up && ip netns exec attacker ip addr add 10.99.0.2/24 dev vatk0 && ip netns exec attacker ip link set vatk0 up"
           chk "attack: the attacker's network lands in zone" 2 "firewall-cmd --get-zone-of-interface=vatk 2>/dev/null || firewall-cmd --get-default-zone" '.'
-          OPEN=$(R "ip netns exec attacker bash -c 'for p in \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989; do timeout 0.4 bash -c \"</dev/tcp/10.99.0.1/\$p\" 2>/dev/null && echo \$p; done' | paste -sd' '")
+          # 64 ports at a time, each given 0.4 s as before (one by one the 1033 ports took 7 minutes); open ports print in the order given
+          R "cat > /tmp/vscan.py <<'PY'
+          import socket, sys
+          from concurrent.futures import ThreadPoolExecutor
+          def probe(p):
+              s = socket.socket(); s.settimeout(0.4)
+              try:
+                  s.connect((sys.argv[1], p)); return p
+              except OSError:
+                  return None
+              finally:
+                  s.close()
+          with ThreadPoolExecutor(64) as ex:
+              print(' '.join(str(p) for p in ex.map(probe, [int(a) for a in sys.argv[2:]]) if p))
+          PY"
+          OPEN=$(R "ip netns exec attacker python3 /tmp/vscan.py 10.99.0.1 \$(seq 1 1024) 1714 1716 3389 5900 5901 8080 27036 47984 47989")
           [ "$OPEN" = 22 ] && r=PASS || r=FAIL; echo "| attack: port scan from the network (22 is this test's own SSH) | $r | open: ${OPEN:-none} |" >> report.md; echo "$r port scan"
+          # S11: the same attacker on the Home profile: only the ports of the services in mountain-home.xml answer (listeners on every scanned port, so a closed firewall port is the only reason to stay shut)
+          R "firewall-cmd --zone=mountain-home --change-interface=vatk >/dev/null; cat > /tmp/vtl.py <<'PY'
+          import socket, time
+          ss = []
+          for p in (1714, 1716, 3389, 5900, 5901, 8080, 27036, 47984, 47989):
+              s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(('0.0.0.0', p)); s.listen(5); ss.append(s)
+          time.sleep(60)
+          PY
+          nohup setsid python3 /tmp/vtl.py >/dev/null 2>&1 &"
+          sleep 2
+          OPENH=$(R "ip netns exec attacker python3 /tmp/vscan.py 10.99.0.1 22 1714 1716 3389 5900 5901 8080 27036 47984 47989")
+          R "firewall-cmd --zone=mountain-home --remove-interface=vatk >/dev/null; pkill -f 'python3 /tmp/[v]tl[.]py'; rm -f /tmp/vtl.py" || true # zone first: a pkill pattern matching this shell's own command line killed it before the restore ran (back to the default zone, as at the start)
+          BACK=$(R "ip netns exec attacker timeout 1 bash -c '</dev/tcp/10.99.0.1/22' 2>/dev/null && echo 22-open || echo 22-shut")
+          [ "$OPENH" = "1714 1716 27036" ] && [ "$BACK" = 22-open ] && r=PASS || r=FAIL; echo "| attack: port scan on the Home profile (only KDE Connect 1714-1764 and Steam 27036 from mountain-home.xml) | $r | open: ${OPENH:-none}; after restore: $BACK |" >> report.md; echo "$r port scan home"
           RTPW=$(openssl rand -hex 12); echo "::add-mask::$RTPW"
           R "useradd -G wheel rtadmin && echo rtadmin:$RTPW | chpasswd"
           R "printf '#!/bin/sh\necho wrongpass\n' > /tmp/rt-wrong.sh; printf '#!/bin/sh\necho $LPW\n' > /tmp/rt-right.sh; printf '#!/bin/sh\necho $RTPW\n' > /tmp/rt-admin.sh; chmod 755 /tmp/rt-wrong.sh /tmp/rt-right.sh /tmp/rt-admin.sh"
@@ -1185,8 +1258,14 @@ jobs:
             t0=$(R "date +%s")
             R "$LT systemd-run --user --quiet -p RemainAfterExit=yes --unit=every-$n gio launch '$f'" >/dev/null 2>&1
             sleep 12; shot "every-$id"
+            # which toolkit Welcome really draws with (it stayed Adwaita grey while libadwaita and GTK 3 apps took Mountain's dark)
+            [ "$id" = io.github.ublue_os.yafti_gtk ] && R "p=\$(pgrep -n -u looktest -f yafti); readlink /proc/\$p/exe; tr '\0' '\n' </proc/\$p/environ | grep -E '^(GTK|ADW|GDK)'; grep -oE 'lib(gtk-3|gtk-4|adwaita-1)[^ ]*' /proc/\$p/maps | sort -u" > perf/yafti-toolkit.txt 2>&1
             # added or activated since the launch (apps started from ssh may open without focus, so 'add' counts too)
-            act=$(R "journalctl -b --since @$t0 --no-pager -o cat | grep -oE 'MWC[|](add|act)[|](normal|dialog)[|].*' | grep -v 'plasmashell[|]' | tail -1")
+            # judge the window of the app launched: class or desktop file equal to its id; else the last window, listed in every-alias.txt
+            # (by design some apps open another program's window: Settings in plasmawindowed, Terminal tools in konsole; see EVERY_ALIAS)
+            wl="journalctl -b --since @$t0 --no-pager -o cat | grep -oE 'MWC[|](add|act)[|](normal|dialog)[|].*' | grep -v 'plasmashell[|]'"
+            act=$(R "$wl | awk -F'|' -v id='$id' 'tolower(\$4)==tolower(id) || tolower(\$5)==tolower(id)' | tail -1")
+            [ -n "$act" ] || { act=$(R "$wl | tail -1"); [ -z "$act" ] || echo "$id=$(cut -d'|' -f4 <<<"$act")" >> perf/every-alias.txt; }
             if [ -n "$act" ]; then
               IFS='|' read -r _ _ kind cls dfile cap deco op geo pid <<<"$act"
               printf '{"geom": [%s], "class": "%s", "kind": "%s", "deco": "%s"}\n' "$geo" "$cls" "$kind" "$deco" > "$(printf 'shots/%02d-every-%s.json' $SN "$id")"
@@ -1197,9 +1276,34 @@ jobs:
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
           done
+          EVERY_ALIAS='btrfs-assistant=org.kde.polkit-kde-authentication-agent-1|mountain-node=org.kde.konsole|mountain-python=org.kde.konsole|org.gnome.DiskUtility=gnome-disks|org.kde.krfb=org.freedesktop.impl.portal.desktop.kde|org.mountain.(protection|run|security|settings)=org.kde.plasmawindowed|webapp-manager=webapp-manager.py|org.onlyoffice.desktopeditors=ONLYOFFICE'
+          touch perf/every-alias.txt
+          echo "| Start apps: each judged by its own window | $(grep -qvE "^($EVERY_ALIAS)$" perf/every-alias.txt && echo FAIL || echo PASS) | other window judged: $(grep -vE "^($EVERY_ALIAS)$" perf/every-alias.txt | paste -sd' ') |" >> report.md
           chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
           chk "stability: no program crashed during the run" 0 "c=\$(coredumpctl list --no-legend --no-pager 2>/dev/null | grep -oE '/[^ ]+\$' | sort | uniq -c | paste -sd' '); echo \${c:-none}" '^none$'
+          chk "stability: kernel crash lines in dmesg (segfault / general protection / int3)" 2 "dmesg | grep -cE 'segfault|general protection|trap int3'" '.'
+          # crash probe (kioworker, Dolphin's helper, crashes in the VM while core dumps are off): which /usr file is behind each hash. Never fails the run.
+          cat > crash-probe.sh <<'SH'
+          exec 2>&1
+          echo "== kernel trap lines"; dmesg | grep -E 'segfault|general protection|trap int3' | head -80
+          hs=$(dmesg | grep -E 'segfault|general protection|trap int3' | grep -oE '[0-9a-f]{62,64}\.file' | sed 's/\.file$//' | sort -u) # composefs objects are XX/<62 hex>.file: the kernel prints the name only
+          echo "== distinct hashes: $(echo $hs | wc -w)"
+          command -v fsverity >/dev/null && timeout 300 sh -c 'find /usr/lib64 /usr/lib /usr/libexec -xdev -type f -print0 | xargs -0 -n 500 fsverity measure 2>/dev/null' > /tmp/fsv.txt
+          timeout 300 getfattr -R -h -d -m 'overlay.redirect' --absolute-names /usr/lib64 /usr/lib /usr/libexec > /tmp/xattr.txt 2>/dev/null
+          for h in $hs; do
+            echo "== hash $h"
+            echo "-- composefs redirect xattr:"; awk -v h="$h" '/^# file:/{f=substr($0,9)} /redirect/{v=$0; gsub("/","",v); if (index(v,h)) print "  " f}' /tmp/xattr.txt
+            echo "-- fsverity measure:"; grep -F "$h" /tmp/fsv.txt | sed 's/^/  /'
+            echo "-- object in the ostree repo:"; ls -l /sysroot/ostree/repo/objects/*/$h.file /sysroot/composefs/objects/*/$h 2>&1 | sed 's/^/  /'
+            # the redirect and fsverity reads came back empty: name the library by size, confirmed byte for byte
+            o=$(ls /sysroot/ostree/repo/objects/*/$h.file 2>/dev/null | head -1); sz=$(stat -c %s "$o" 2>/dev/null)
+            [ -n "$sz" ] && { echo "-- /usr files with its size ($sz bytes), = when identical:"; find /usr -xdev -type f -size "${sz}c" 2>/dev/null | head -8 | while read -r u; do cmp -s "$o" "$u" && echo "  = $u" || echo "    $u"; done; }
+          done
+          echo "== ldd kioworker"; ldd /usr/libexec/kf6/kioworker; echo "== kio plugins"; ls /usr/lib64/qt6/plugins/kf6/kio/
+          echo "== journal: kioworker / kf.kio"; journalctl -b --no-pager | grep -iE 'kioworker|kf.kio' | tail -50
+          SH
+          R "bash -s" < crash-probe.sh > crash-probe-log.txt 2>&1 || true
           chk "tearing: KWin never lets a window tear" 1 "$LT kreadconfig6 --file kwinrc --group Compositing --key AllowTearing" '^false$'
           chk "tearing: Wayland session (X11 tears)" 1 "loginctl show-session \$(loginctl list-sessions --no-legend | awk '/looktest/{print \$1; exit}') -p Type" 'Type=wayland'
           chk "tearing: KWin support info" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /KWin org.kde.KWin.supportInformation | grep -iE 'tearing|atomic|Compositing Type|OpenGL renderer|Refresh' | head -8 | tr -s ' ' | paste -sd';'" '.'
@@ -1208,6 +1312,11 @@ jobs:
           echo "| windows drawing their own title bar | INFO | $(awk -F'|' '$3=="normal" && $7=="noborder"{print $4}' perf/windows.txt | sort -u | paste -sd' ') |" >> report.md
           echo "| on-screen pop-ups seen (volume, brightness, keyboard) | INFO | $(awk -F'|' '$3=="osd"{print $6}' perf/windows.txt | sort -u | paste -sd'/') |" >> report.md
 
+          # v7.3 style: a toast leaves after 5 s unless the pointer rests on it (Plasma pauses the timer only while hovered, no idle logic)
+          # and GTK apps get Mountain's dark (shipped gtk.css; their body colour is judged on the every-* shots by tests/vm/ux-rules.json)
+          chk "v7.3 style: gtk.css (libadwaita colours) in the account" 0 "grep -c mountain-gtk ~looktest/.config/gtk-4.0/gtk.css ~looktest/.config/gtk-3.0/gtk.css | paste -sd' '" 'gtk-4.0/gtk.css:1 .*gtk-3.0/gtk.css:1'
+          chk "v7.3 style: Flatpak apps see the GTK css folders" 0 "flatpak override --system --show 2>/dev/null | grep -c 'xdg-config/gtk-4.0:ro'" '^1$'
+          R "$LT notify-send -a 'Test app' 'Pointer toast test' 'Leaves by itself.'"; sleep 1; QM move $((W/2)) $((H/3)); sleep 8; shot toast-pointer-away # ux-rules: no "Pointer toast test" left
           # 11. logout
           K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
           R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
@@ -1224,6 +1333,24 @@ jobs:
           sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
           for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20; shot relogin-desktop
           chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
+          # Bulgarian: what Language & region writes (plasma-localerc [Translations] LANGUAGE), sign out and in, look at KDE-owned and
+          # Mountain windows, then back to English. Only KDE's own text (Dolphin, Plasma menus) is Bulgarian: Mountain's plasmoids ship no bg catalog.
+          chk "Bulgarian: KDE catalogs are installed" 0 "ls /usr/share/locale/bg/LC_MESSAGES/dolphin.mo /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo" 'dolphin.mo'
+          R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE bg:en_US"
+          R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
+          for _ in $(seq 30); do R "loginctl list-sessions --no-legend | grep -q looktest" || break; sleep 2; done
+          sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
+          for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20
+          R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE --delete" # English again for the next sign-in (this session keeps bg)
+          chk "Bulgarian: the shell runs in bg" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x plasmashell | head -1)/environ | grep '^LANGUAGE='" 'bg'
+          QM key meta_l; sleep 3; shot bg-start-menu; QM key esc; sleep 1
+          QM key meta_l a; sleep 2; shot bg-quick-settings; QM key esc; sleep 1
+          QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot bg-desktop-menu; QM key esc; sleep 1
+          QM key meta_l d; sleep 2; QM key alt f4; sleep 3; shot bg-dialog-shutdown; QM key esc; sleep 1
+          L "/usr/libexec/mountain-settings-open home"; sleep 8; shot bg-settings-home; K -f org.mountain.settings
+          K -f plasma-systemmonitor; L "plasma-systemmonitor --page-id mountain-1-processes.page"; sleep 8; shot bg-taskmanager; K -f plasma-systemmonitor
+          L dolphin; sleep 8; shot bg-file-explorer; K -x dolphin
+          R "ls /usr/lib64/qt6/plugins/kf6/kfileitemaction/ /usr/share/kio/servicemenus/ 2>&1" > fileitemactions-log.txt 2>&1 || true # real names of the right-click plugins (folder-colour row)
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
           # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
           chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
@@ -1269,7 +1396,7 @@ jobs:
         run: sudo chown -R "$USER" "$HOME/vm" || true
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: vm-test-report
           path: |

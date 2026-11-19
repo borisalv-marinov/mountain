@@ -1,0 +1,1328 @@
+# Bulgarian (bg) strings of org.mountain.settings, compiled by tools/po2mo.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg\n"
+
+msgid " · %1 found"
+msgstr " · намерени: %1"
+
+msgid " · Default"
+msgstr " · По подразбиране"
+
+msgid " · Disk encryption: %1"
+msgstr " · Шифроване на диска: %1"
+
+msgid " · In quarantine: %1"
+msgstr " · В карантина: %1"
+
+msgid " · Screen lock: %1"
+msgstr " · Заключване на екрана: %1"
+
+msgid " · Security policy: %1"
+msgstr " · Политика за сигурност: %1"
+
+msgid " · TPM: %1"
+msgstr " · TPM: %1"
+
+msgid " · no threats"
+msgstr " · няма заплахи"
+
+msgid " · signed updates"
+msgstr " · подписани актуализации"
+
+msgid "%1 files to review"
+msgstr "%1 файла за преглед"
+
+msgid "%1 for %2"
+msgstr "%1 за %2"
+
+msgid "%1 languages are installed"
+msgstr "Инсталирани са %1 езика"
+
+msgid "%1 percent"
+msgstr "%1 процента"
+
+msgid "%1 pointer speed"
+msgstr "Скорост на показалеца: %1"
+
+msgid "%1 since you turned on this PC"
+msgstr "%1 от включването на този компютър"
+
+msgid "%1 used of %2 · %3 free"
+msgstr "%1 използвани от %2 · %3 свободни"
+
+msgid "%1 volume"
+msgstr "Сила на звука на %1"
+
+msgid ". They update only when you press Update or a scan button."
+msgstr ". Те се обновяват само когато натиснете „Актуализиране“ или бутон за сканиране."
+
+msgid "1 hour"
+msgstr "1 час"
+
+msgid "1 minute"
+msgstr "1 минута"
+
+msgid "10 minutes"
+msgstr "10 минути"
+
+msgid "15 minutes"
+msgstr "15 минути"
+
+msgid "2 minutes"
+msgstr "2 минути"
+
+msgid "30 minutes"
+msgstr "30 минути"
+
+msgid "5 minutes"
+msgstr "5 минути"
+
+msgid "A new picture every 30 minutes"
+msgstr "Нова снимка на всеки 30 минути"
+
+msgid "A picture you choose"
+msgstr "Снимка по ваш избор"
+
+msgid "About"
+msgstr "Относно"
+
+msgid "Accent color"
+msgstr "Акцентен цвят"
+
+msgid "Accent color %1"
+msgstr "Акцентен цвят %1"
+
+msgid "Accessibility"
+msgstr "Достъпност"
+
+msgid "Account protection"
+msgstr "Защита на акаунта"
+
+msgid "Accounts"
+msgstr "Акаунти"
+
+msgid "Action needed"
+msgstr "Нужно е действие"
+
+msgid "Action recommended"
+msgstr "Препоръчва се действие"
+
+msgid "Active Protection"
+msgstr "Активна защита"
+
+msgid "Adaptive sync and HDR for your monitor"
+msgstr "Адаптивна синхронизация и HDR за вашия монитор"
+
+msgid "Add a language"
+msgstr "Добавяне на език"
+
+msgid "Add device"
+msgstr "Добавяне на устройство"
+
+msgid "Add, connect, manage"
+msgstr "Добавяне, свързване, управление"
+
+msgid "Admin tasks always ask for your password."
+msgstr "Администраторските задачи винаги искат паролата ви."
+
+msgid "After sleep, the lock screen asks for your password"
+msgstr "След заспиване заключеният екран иска паролата ви"
+
+msgid "Airplane mode"
+msgstr "Самолетен режим"
+
+msgid "Alerts from apps and system, do not disturb"
+msgstr "Известия от приложения и системата, не ме безпокойте"
+
+msgid "All day"
+msgstr "През целия ден"
+
+msgid "Allow"
+msgstr "Разрешаване"
+
+msgid "Allow %1"
+msgstr "Разрешаване на %1"
+
+msgid "Allow an app through the firewall"
+msgstr "Разрешаване на приложение през защитната стена"
+
+msgid "Allowed"
+msgstr "Разрешено"
+
+msgid "App & browser protection"
+msgstr "Защита на приложенията и браузъра"
+
+msgid "App Store"
+msgstr "App Store"
+
+msgid "Apps"
+msgstr "Приложения"
+
+msgid "Apps from the App Store run in their own protected space. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog. Game launchers keep their own access."
+msgstr "Приложенията от App Store работят в собствено защитено пространство. Приложенията за чат, браузърите и офис приложенията не виждат личната ви папка: файловете избирате в диалога „Отвори“. Игровите стартери запазват собствения си достъп."
+
+msgid "Apps that start when you sign in"
+msgstr "Приложения, които стартират при влизане"
+
+msgid "Ask for my password when the PC wakes up"
+msgstr "Искане на парола при събуждане на компютъра"
+
+msgid "Authentication, IP and DNS settings"
+msgstr "Удостоверяване, настройки на IP и DNS"
+
+msgid "Back to %1"
+msgstr "Назад към %1"
+
+msgid "Background"
+msgstr "Фон"
+
+msgid "Background: %1"
+msgstr "Фон: %1"
+
+msgid "Balanced"
+msgstr "Балансиран"
+
+msgid "Battery saver, balanced or best performance"
+msgstr "Икономия на батерията, балансиран или най-добра производителност"
+
+msgid "Best performance"
+msgstr "Най-добра производителност"
+
+msgid "Best power efficiency"
+msgstr "Най-добра енергийна ефективност"
+
+msgid "Block"
+msgstr "Блокиране"
+
+msgid "Blocked"
+msgstr "Блокирано"
+
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+msgid "Bluetooth & devices"
+msgstr "Bluetooth и устройства"
+
+msgid "Bluetooth devices"
+msgstr "Bluetooth устройства"
+
+msgid "Browse"
+msgstr "Преглед"
+
+msgid "Browse more backgrounds, colors, and themes"
+msgstr "Още фонове, цветове и теми"
+
+msgid "Browse photos"
+msgstr "Преглед на снимки"
+
+msgid "Browser, mail, music, video"
+msgstr "Браузър, поща, музика, видео"
+
+msgid "Bulgarian (Phonetic)"
+msgstr "Българска (фонетична)"
+
+msgid "Buttons, links and selections use this color"
+msgstr "Бутоните, връзките и избраното използват този цвят"
+
+msgid "Cancel"
+msgstr "Отказ"
+
+msgid "Center"
+msgstr "Център"
+
+msgid "Change your password"
+msgstr "Промяна на паролата"
+
+msgid "Changes apply to every %1 on this PC"
+msgstr "Промените се прилагат за „%1“ на този компютър"
+
+msgid "Check for updates"
+msgstr "Проверка за актуализации"
+
+msgid "Check game support"
+msgstr "Проверка за поддръжка на игри"
+
+msgid "Checking your device…"
+msgstr "Проверка на устройството…"
+
+msgid "Choose"
+msgstr "Избор"
+
+msgid "Choose a fit for your desktop image"
+msgstr "Изберете как да се побира изображението на работния плот"
+
+msgid "Choose a photo"
+msgstr "Изберете снимка"
+
+msgid "Choose a photo from your PC"
+msgstr "Изберете снимка от компютъра си"
+
+msgid "Choose a picture album for a slideshow"
+msgstr "Изберете албум със снимки за слайдшоу"
+
+msgid "Choose your background color"
+msgstr "Изберете цвят на фона"
+
+msgid "Choose your mode"
+msgstr "Изберете режим"
+
+msgid "Click to add or remove a top bar with CPU and memory"
+msgstr "Щракнете, за да добавите или премахнете горна лента с процесор и памет"
+
+msgid "Click to switch between center and left"
+msgstr "Щракнете за превключване между център и ляво"
+
+msgid "Color %1"
+msgstr "Цвят %1"
+
+msgid "Color mode"
+msgstr "Цветови режим"
+
+msgid "Color mode Dark"
+msgstr "Цветови режим: тъмен"
+
+msgid "Color mode Light"
+msgstr "Цветови режим: светъл"
+
+msgid "Colors"
+msgstr "Цветове"
+
+msgid "Connect"
+msgstr "Свързване"
+
+msgid "Connect, manage known networks"
+msgstr "Свързване, управление на познати мрежи"
+
+msgid "Connected"
+msgstr "Свързано"
+
+msgid "Connected controllers"
+msgstr "Свързани контролери"
+
+msgid "Content moves with your fingers"
+msgstr "Съдържанието се движи заедно с пръстите ви"
+
+msgid "Custom scan"
+msgstr "Сканиране по избор"
+
+msgid "Dark"
+msgstr "Тъмен"
+
+msgid "Dark and light mode, accent color"
+msgstr "Тъмен и светъл режим, акцентен цвят"
+
+msgid "Data usage"
+msgstr "Използване на данни"
+
+msgid "Date & time"
+msgstr "Дата и час"
+
+msgid "Default apps"
+msgstr "Приложения по подразбиране"
+
+msgid "Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have (off). Games are never scanned. Right-click any file: Scan with Mountain Security."
+msgstr "Дефинициите се изтеглят само когато натиснете бутон за сканиране. Новите файлове в Изтегляния се проверяват с дефинициите, които имате (изключено). Игрите никога не се сканират. Щракнете с десния бутон върху файл: „Сканиране с Mountain Security“."
+
+msgid "Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have. Games are never scanned. Right-click any file: Scan with Mountain Security."
+msgstr "Дефинициите се изтеглят само когато натиснете бутон за сканиране. Новите файлове в Изтегляния се проверяват с дефинициите, които имате. Игрите никога не се сканират. Щракнете с десния бутон върху файл: „Сканиране с Mountain Security“."
+
+msgid "Definitions: %1"
+msgstr "Дефиниции: %1"
+
+msgid "Delete"
+msgstr "Изтриване"
+
+msgid "Delete %1"
+msgstr "Изтриване на %1"
+
+msgid "Details"
+msgstr "Подробности"
+
+msgid "Device name"
+msgstr "Име на устройството"
+
+msgid "Device security"
+msgstr "Сигурност на устройството"
+
+msgid "Device specifications"
+msgstr "Спецификации на устройството"
+
+msgid "Device specifications, PC name"
+msgstr "Спецификации на устройството, име на компютъра"
+
+msgid "Devices"
+msgstr "Устройства"
+
+msgid "Disconnect"
+msgstr "Прекъсване на връзката"
+
+msgid "Discoverable as \"%1\""
+msgstr "Видим като „%1“"
+
+msgid "Display"
+msgstr "Дисплей"
+
+msgid "Display %1"
+msgstr "Дисплей %1"
+
+msgid "Display information is not available."
+msgstr "Информацията за екрана не е налична."
+
+msgid "Display language"
+msgstr "Език на показване"
+
+msgid "Display: VRR and HDR"
+msgstr "Дисплей: VRR и HDR"
+
+msgid "Do not disturb"
+msgstr "Не ме безпокойте"
+
+msgid "Done. Restart your PC to go back to the previous version."
+msgstr "Готово. Рестартирайте компютъра, за да се върнете към предишната версия."
+
+msgid "Download the newest definitions now (they never download in the background)"
+msgstr "Изтегляне на най-новите дефиниции сега (никога не се изтеглят на заден план)"
+
+msgid "Driver lockdown: %1"
+msgstr "Заключване на драйверите: %1"
+
+msgid "Drives and partitions"
+msgstr "Дискове и дялове"
+
+msgid "ENG"
+msgstr "ENG"
+
+msgid "Email"
+msgstr "Имейл"
+
+msgid "English (US)"
+msgstr "Английска (САЩ)"
+
+msgid "Ethernet"
+msgstr "Ethernet"
+
+msgid "File manager"
+msgstr "Файлов мениджър"
+
+msgid "Files checked today: %1 · Threats blocked: %2 · Unverified to review: %3"
+msgstr "Проверени файлове днес: %1 · Блокирани заплахи: %2 · Непотвърдени за преглед: %3"
+
+msgid "Fill"
+msgstr "Запълване"
+
+msgid "Find a setting"
+msgstr "Намерете настройка"
+
+msgid "Firewall & network protection"
+msgstr "Защитна стена и мрежова защита"
+
+msgid "Firewall is off. Other devices could reach apps on this PC."
+msgstr "Защитната стена е изключена. Други устройства могат да достигат приложенията на този компютър."
+
+msgid "Firewall is on. Apps allowed through: %1."
+msgstr "Защитната стена е включена. Разрешени приложения: %1."
+
+msgid "Fit"
+msgstr "Побиране"
+
+msgid "Fit: %1"
+msgstr "Побиране: %1"
+
+msgid "Flatpak sandbox tightened for %1 apps."
+msgstr "Изолацията на Flatpak е затегната за %1 приложения."
+
+msgid "Four rows of pinned apps, fewer recommendations"
+msgstr "Четири реда закачени приложения, по-малко препоръки"
+
+msgid "Full power while a game runs, your power mode back after (on by default): click to turn on or off"
+msgstr "Пълна мощност, докато върви игра, и върнат режим на захранване след това (включено по подразбиране): щракнете за включване или изключване"
+
+msgid "Full scan"
+msgstr "Пълно сканиране"
+
+msgid "GTA Online and FiveM"
+msgstr "GTA Online и FiveM"
+
+msgid "Game Mode"
+msgstr "Игрови режим"
+
+msgid "Game controllers"
+msgstr "Игрови контролери"
+
+msgid "Game overlay"
+msgstr "Игрови панел"
+
+msgid "Gamepads and joysticks"
+msgstr "Геймпадове и джойстици"
+
+msgid "Gaming"
+msgstr "Игри"
+
+msgid "Glass on the taskbar, start menu and flyouts: click to turn on or off (off is faster on weak PCs)"
+msgstr "Стъкло върху лентата на задачите, менюто „Старт“ и панелите: щракнете за включване или изключване (изключено е по-бързо на слаби компютри)"
+
+msgid "Go back to the previous version"
+msgstr "Връщане към предишната версия"
+
+msgid "Go back to the previous version, reset this PC"
+msgstr "Връщане към предишната версия, нулиране на този компютър"
+
+msgid "Going back in %1 seconds"
+msgstr "Връщане след %1 секунди"
+
+msgid "Going back was cancelled."
+msgstr "Връщането беше отменено."
+
+msgid "Graphics"
+msgstr "Графика"
+
+msgid "HDR"
+msgstr "HDR"
+
+msgid "Hide details"
+msgstr "Скриване на подробностите"
+
+msgid "History"
+msgstr "История"
+
+msgid "Home"
+msgstr "Начало"
+
+msgid "How to turn these on"
+msgstr "Как да ги включите"
+
+msgid "Input"
+msgstr "Вход"
+
+msgid "Install and remove apps"
+msgstr "Инсталиране и премахване на приложения"
+
+msgid "Installed RAM"
+msgstr "Инсталирана RAM памет"
+
+msgid "It uses almost no memory until a file appears, and never watches games."
+msgstr "Почти не използва памет, докато не се появи файл, и никога не следи игрите."
+
+msgid "Keep changes"
+msgstr "Запазване на промените"
+
+msgid "Keep these display settings?"
+msgstr "Да се запазят ли тези настройки на дисплея?"
+
+msgid "Keeps other people out when you step away"
+msgstr "Не допуска други, когато се отдалечите"
+
+msgid "Keyboard"
+msgstr "Клавиатура"
+
+msgid "Keyboard layouts"
+msgstr "Клавиатурни подредби"
+
+msgid "Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches"
+msgstr "Клавиатурни подредби (английска и българска фонетична): превключване с Alt+Shift или Win+Space"
+
+msgid "Language & region"
+msgstr "Език и регион"
+
+msgid "Language, formats, region"
+msgstr "Език, формати, регион"
+
+msgid "Last scan: %1"
+msgstr "Последно сканиране: %1"
+
+msgid "Layouts and keys"
+msgstr "Подредби и клавиши"
+
+msgid "Letters, digits and hyphens. You will be asked for your password."
+msgstr "Букви, цифри и тирета. Ще бъдете помолени за паролата си."
+
+msgid "Light"
+msgstr "Светъл"
+
+msgid "Local account"
+msgstr "Локален акаунт"
+
+msgid "Local account · %1"
+msgstr "Локален акаунт · %1"
+
+msgid "Lock automatically, require password"
+msgstr "Автоматично заключване, изискване на парола"
+
+msgid "Lock my screen after"
+msgstr "Заключване на екрана след"
+
+msgid "Lock screen"
+msgstr "Заключен екран"
+
+msgid "Lock screen picture and timeout"
+msgstr "Снимка и време на заключения екран"
+
+msgid "Looking for screens..."
+msgstr "Търсене на екрани..."
+
+msgid "Manage, add, and remove devices"
+msgstr "Управление, добавяне и премахване на устройства"
+
+msgid "Menus, settings and apps appear in this language"
+msgstr "Менюта, настройки и приложения се показват на този език"
+
+msgid "Mobile hotspot"
+msgstr "Мобилна точка за достъп"
+
+msgid "Monitors, brightness, resolution, scale"
+msgstr "Монитори, яркост, резолюция, мащаб"
+
+msgid "Mountain Peaks"
+msgstr "Mountain Peaks"
+
+msgid "Mountain Silk"
+msgstr "Mountain Silk"
+
+msgid "Mountain Silk dark"
+msgstr "Mountain Silk тъмен"
+
+msgid "Mountain looks best in Dark"
+msgstr "Mountain изглежда най-добре в тъмен режим"
+
+msgid "Mountain pictures"
+msgstr "Снимки на Mountain"
+
+msgid "Mountain version"
+msgstr "Версия на Mountain"
+
+msgid "Mouse"
+msgstr "Мишка"
+
+msgid "Mouse & touchpad"
+msgstr "Мишка и тъчпад"
+
+msgid "Mute"
+msgstr "Спиране на звука"
+
+msgid "Name and account picture"
+msgstr "Име и снимка на акаунта"
+
+msgid "Natural scrolling"
+msgstr "Естествено превъртане"
+
+msgid "Needs a Wi-Fi adapter"
+msgstr "Нужен е Wi-Fi адаптер"
+
+msgid "Network & internet"
+msgstr "Мрежа и интернет"
+
+msgid "Network profile: %1"
+msgstr "Мрежов профил: %1"
+
+msgid "Never"
+msgstr "Никога"
+
+msgid "New PC name"
+msgstr "Ново име на компютъра"
+
+msgid "New files in Downloads, Desktop, Documents and USB drives are checked as they arrive. When you extract an archive, you get one result."
+msgstr "Новите файлове в Изтегляния, Работен плот, Документи и USB устройства се проверяват при пристигането им. Когато разархивирате архив, получавате един резултат."
+
+msgid "Night light"
+msgstr "Нощна светлина"
+
+msgid "Night light warmth"
+msgstr "Топлина на нощната светлина"
+
+msgid "No Bluetooth adapter"
+msgstr "Няма Bluetooth адаптер"
+
+msgid "No Ethernet adapter"
+msgstr "Няма Ethernet адаптер"
+
+msgid "No Wi-Fi adapter"
+msgstr "Няма Wi-Fi адаптер"
+
+msgid "No action needed"
+msgstr "Не е нужно действие"
+
+msgid "No drives found."
+msgstr "Не са намерени дискове."
+
+msgid "No mouse or touchpad found."
+msgstr "Не са намерени мишка или тъчпад."
+
+msgid "No previous version yet (it appears after your first update)."
+msgstr "Още няма предишна версия (появява се след първата ви актуализация)."
+
+msgid "No printers yet. Join the same network as your printer, or plug it in by USB."
+msgstr "Все още няма принтери. Свържете се към мрежата на принтера или го включете по USB."
+
+msgid "No recent protection actions."
+msgstr "Няма скорошни действия на защитата."
+
+msgid "No scan yet."
+msgstr "Все още няма сканиране."
+
+msgid "No screens found."
+msgstr "Не са намерени екрани."
+
+msgid "No settings found. Try another word."
+msgstr "Не са намерени настройки. Опитайте с друга дума."
+
+msgid "No startup apps."
+msgstr "Няма приложения при стартиране."
+
+msgid "No virus definitions yet. Connect to the internet and press Scan now to download them."
+msgstr "Все още няма вирусни дефиниции. Свържете се с интернет и натиснете „Сканиране сега“, за да ги изтеглите."
+
+msgid "No virus definitions — press Update"
+msgstr "Няма вирусни дефиниции — натиснете „Актуализиране“"
+
+msgid "No virus definitions — press Update (Scan now downloads them)"
+msgstr "Няма вирусни дефиниции — натиснете „Актуализиране“ („Сканиране сега“ ги изтегля)"
+
+msgid "None found. Plug one in or pair it in Bluetooth & devices."
+msgstr "Не са намерени. Включете контролер или го сдвоете в Bluetooth и устройства."
+
+msgid "Not connected"
+msgstr "Не е свързано"
+
+msgid "Not paired"
+msgstr "Не е сдвоено"
+
+msgid "Nothing needs your attention. New files are checked as they arrive, on this PC only."
+msgstr "Нищо не изисква вашето внимание. Новите файлове се проверяват при пристигането им само на този компютър."
+
+msgid "Notifications"
+msgstr "Известия"
+
+msgid "Off"
+msgstr "Изключено"
+
+msgid "Off. New files are not checked until you scan by hand."
+msgstr "Изключена. Новите файлове не се проверяват, докато не сканирате ръчно."
+
+msgid "Off: Previous versions need the standard disk layout the installer creates."
+msgstr "Изключено: „Предишни версии“ изискват стандартното разпределение на диска, което създава инсталаторът."
+
+msgid "Off: airplane mode is on"
+msgstr "Изключено: самолетният режим е включен"
+
+msgid "On"
+msgstr "Включено"
+
+msgid "On battery"
+msgstr "На батерия"
+
+msgid "On. Files checked today: %1 · Threats blocked: %2"
+msgstr "Включена. Проверени файлове днес: %1 · Блокирани заплахи: %2"
+
+msgid "On: sharing as \"%1\""
+msgstr "Включено: споделяне като „%1“"
+
+msgid "One color for your desktop"
+msgstr "Един цвят за работния плот"
+
+msgid "Open Active Protection"
+msgstr "Отваряне на Активната защита"
+
+msgid "Open File Explorer"
+msgstr "Отваряне на Файлов мениджър"
+
+msgid "Open Previous versions"
+msgstr "Отваряне на „Предишни версии“"
+
+msgid "Open Steam"
+msgstr "Отваряне на Steam"
+
+msgid "Open quarantine"
+msgstr "Отваряне на карантината"
+
+msgid "Opens a window where you type the old and new password"
+msgstr "Отваря прозорец, в който въвеждате старата и новата парола"
+
+msgid "Other people near your PC could read them"
+msgstr "Хора около компютъра ви биха могли да ги прочетат"
+
+msgid "Output"
+msgstr "Изход"
+
+msgid "Pair"
+msgstr "Сдвояване"
+
+msgid "Pair and manage Bluetooth devices"
+msgstr "Сдвояване и управление на Bluetooth устройства"
+
+msgid "Paired"
+msgstr "Сдвоено"
+
+msgid "Paired devices and devices found nearby"
+msgstr "Сдвоени устройства и устройства наблизо"
+
+msgid "Password"
+msgstr "Парола"
+
+msgid "Password: %1"
+msgstr "Парола: %1"
+
+msgid "Permissions"
+msgstr "Разрешения"
+
+msgid "Personalization"
+msgstr "Персонализиране"
+
+msgid "Personalization  ›  Background"
+msgstr "Персонализиране  ›  Фон"
+
+msgid "Personalize your background"
+msgstr "Персонализирайте фона си"
+
+msgid "Personalize your device"
+msgstr "Персонализирайте устройството си"
+
+msgid "Phone Link"
+msgstr "Връзка с телефона"
+
+msgid "Picture"
+msgstr "Снимка"
+
+msgid "Picture, solid color, slideshow"
+msgstr "Снимка, плътен цвят, слайдшоу"
+
+msgid "Plugged in"
+msgstr "Включен в захранването"
+
+msgid "Pointer speed"
+msgstr "Скорост на показалеца"
+
+msgid "Pointer speed, scrolling, buttons, taps"
+msgstr "Скорост на показалеца, превъртане, бутони, докосвания"
+
+msgid "Power & battery"
+msgstr "Захранване и батерия"
+
+msgid "Power mode"
+msgstr "Режим на захранване"
+
+msgid "Press Enter to open the first result."
+msgstr "Натиснете Enter, за да отворите първия резултат."
+
+msgid "Press Win+G in a game for FPS and performance"
+msgstr "Натиснете Win+G в игра за FPS и производителност"
+
+msgid "Preview of your desktop"
+msgstr "Преглед на работния плот"
+
+msgid "Previous versions: %1 saved copies of your files, taken every hour. Newest: %2"
+msgstr "Предишни версии: %1 запазени копия на файловете ви, правени всеки час. Най-новото: %2"
+
+msgid "Print test page"
+msgstr "Печат на пробна страница"
+
+msgid "Printers"
+msgstr "Принтери"
+
+msgid "Printers & scanners"
+msgstr "Принтери и скенери"
+
+msgid "Printers on your network are added automatically"
+msgstr "Принтерите във вашата мрежа се добавят автоматично"
+
+msgid "Privacy & security"
+msgstr "Поверителност и сигурност"
+
+msgid "Private (other PCs can find this one)"
+msgstr "Частна (други компютри могат да откриват този)"
+
+msgid "Private network"
+msgstr "Частна мрежа"
+
+msgid "Processor"
+msgstr "Процесор"
+
+msgid "Programs can't change or delete them. To restore, copy a file back from File Explorer › Previous versions."
+msgstr "Програмите не могат да ги променят или изтриват. За възстановяване копирайте файл обратно от Файлов мениджър › Предишни версии."
+
+msgid "Protection history"
+msgstr "История на защитата"
+
+msgid "Public (hidden from other devices)"
+msgstr "Обществена (скрит от други устройства)"
+
+msgid "Public network"
+msgstr "Обществена мрежа"
+
+msgid "Put my PC to sleep after"
+msgstr "Заспиване на компютъра след"
+
+msgid "Quarantine"
+msgstr "Карантина"
+
+msgid "Quarantine %1"
+msgstr "Карантина за %1"
+
+msgid "Quick scan"
+msgstr "Бързо сканиране"
+
+msgid "Ransomware protection"
+msgstr "Защита от рансъмуер"
+
+msgid "Read-only Btrfs snapshots of /var/home in /var/home/.snapshots."
+msgstr "Btrfs снимки само за четене на /var/home в /var/home/.snapshots."
+
+msgid "Real-time protection is off"
+msgstr "Защитата в реално време е изключена"
+
+msgid "Real-time protection is on"
+msgstr "Защитата в реално време е включена"
+
+msgid "Recent and commonly used settings"
+msgstr "Скорошни и често използвани настройки"
+
+msgid "Recommended settings"
+msgstr "Препоръчани настройки"
+
+msgid "Recovery"
+msgstr "Възстановяване"
+
+msgid "Refresh rate"
+msgstr "Честота на опресняване"
+
+msgid "Remove"
+msgstr "Премахване"
+
+msgid "Removes system changes made on this PC and restarts into plain Mountain; files and apps stay"
+msgstr "Премахва системните промени, направени на този компютър, и рестартира в чист Mountain; файловете и приложенията остават"
+
+msgid "Rename"
+msgstr "Преименуване"
+
+msgid "Rename this PC"
+msgstr "Преименуване на този компютър"
+
+msgid "Reset this PC"
+msgstr "Нулиране на този компютър"
+
+msgid "Reset this PC (keep my files)"
+msgstr "Нулиране на този компютър (със запазване на файловете ми)"
+
+msgid "Resolution"
+msgstr "Резолюция"
+
+msgid "Restart into Windows"
+msgstr "Рестартиране в Windows"
+
+msgid "Restore"
+msgstr "Възстановяване"
+
+msgid "Restore %1"
+msgstr "Възстановяване на %1"
+
+msgid "Results for \"%1\""
+msgstr "Резултати за „%1“"
+
+msgid "Revert"
+msgstr "Връщане"
+
+msgid "SELinux: %1 · Kernel lockdown: %2 · USB protection: usbguard"
+msgstr "SELinux: %1 · Заключване на ядрото: %2 · USB защита: usbguard"
+
+msgid "Save a version now"
+msgstr "Запазване на версия сега"
+
+msgid "Scale"
+msgstr "Мащаб"
+
+msgid "Scan a document or photo"
+msgstr "Сканиране на документ или снимка"
+
+msgid "Scan finished: no threats found."
+msgstr "Сканирането приключи: не са намерени заплахи."
+
+msgid "Scan now"
+msgstr "Сканиране сега"
+
+msgid "Scan now, quarantine, Previous versions"
+msgstr "Сканиране сега, карантина, предишни версии"
+
+msgid "Scanner"
+msgstr "Скенер"
+
+msgid "Scanner: ClamAV, on demand only. Download checks: off."
+msgstr "Скенер: ClamAV, само при поискване. Проверка на изтеглянията: изключена."
+
+msgid "Scanner: ClamAV, on demand only. Download checks: on."
+msgstr "Скенер: ClamAV, само при поискване. Проверка на изтеглянията: включена."
+
+msgid "Scanning your files… Virus definitions download first, then the scan runs at low priority, so games stay smooth."
+msgstr "Сканиране на файловете ви… Първо се изтеглят вирусните дефиниции, после сканирането върви с нисък приоритет, за да не се забавят игрите."
+
+msgid "Scanning… definitions download first, then the scan runs at low priority."
+msgstr "Сканиране… първо се изтеглят дефинициите, после сканирането се изпълнява с нисък приоритет."
+
+msgid "Scans, threats moved to quarantine and files you allowed or restored. In quarantine now: %1."
+msgstr "Сканирания, заплахи, преместени в карантина, и файлове, които сте разрешили или възстановили. В момента в карантина: %1."
+
+msgid "Schedule"
+msgstr "График"
+
+msgid "Screen and sleep"
+msgstr "Екран и заспиване"
+
+msgid "Screen lock"
+msgstr "Заключване на екрана"
+
+msgid "Searching for devices..."
+msgstr "Търсене на устройства..."
+
+msgid "Secure Boot: %1"
+msgstr "Secure Boot: %1"
+
+msgid "Security"
+msgstr "Сигурност"
+
+msgid "See all"
+msgstr "Вижте всички"
+
+msgid "See if a game runs on Mountain (opens two game-support websites)"
+msgstr "Вижте дали дадена игра работи на Mountain (отваря два уебсайта за поддръжка на игри)"
+
+msgid "Set a password"
+msgstr "Задаване на парола"
+
+msgid "Set background %1"
+msgstr "Задаване на фон %1"
+
+msgid "Set time automatically"
+msgstr "Автоматично задаване на часа"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Share your internet connection"
+msgstr "Споделяне на интернет връзката ви"
+
+msgid "Show notifications on the lock screen"
+msgstr "Показване на известия на заключения екран"
+
+msgid "Shows 14:30 instead of 2:30 PM"
+msgstr "Показва 14:30 вместо 2:30 PM"
+
+msgid "Sign out and back in to see it"
+msgstr "Излезте и влезте отново, за да го видите"
+
+msgid "Sign out and back in to use %1."
+msgstr "Излезте и влезте отново, за да използвате %1."
+
+msgid "Sign out now"
+msgstr "Излизане сега"
+
+msgid "Sign-in options"
+msgstr "Опции за вход"
+
+msgid "Silence pop-ups until you turn this off"
+msgstr "Заглушава изскачащите известия, докато не го изключите"
+
+msgid "Sleep, screen off, battery saver"
+msgstr "Заспиване, изключване на екрана, икономия на батерията"
+
+msgid "Slideshow"
+msgstr "Слайдшоу"
+
+msgid "Solid color"
+msgstr "Плътен цвят"
+
+msgid "Some online games need Windows: use Restart into Windows (power menu) or cloud gaming"
+msgstr "Някои онлайн игри изискват Windows: използвайте „Рестартиране в Windows“ (меню за захранване) или облачни игри"
+
+msgid "Something below is turned off. Open the tile marked Action needed to fix it."
+msgstr "Нещо по-долу е изключено. Отворете плочката с надпис „Нужно е действие“, за да го поправите."
+
+msgid "Sound"
+msgstr "Звук"
+
+msgid "Start menu: default"
+msgstr "Меню „Старт“: по подразбиране"
+
+msgid "Start menu: more pins"
+msgstr "Меню „Старт“: повече закачени"
+
+msgid "Start menu: more recommendations"
+msgstr "Меню „Старт“: повече препоръки"
+
+msgid "Startup apps"
+msgstr "Приложения при стартиране"
+
+msgid "Steam"
+msgstr "Steam"
+
+msgid "Stop all wireless communication"
+msgstr "Спиране на цялата безжична комуникация"
+
+msgid "Storage"
+msgstr "Хранилище"
+
+msgid "Stretch"
+msgstr "Разтягане"
+
+msgid "Sunset to sunrise"
+msgstr "От залез до изгрев"
+
+msgid "Swap left and right buttons"
+msgstr "Размяна на левия и десния бутон"
+
+msgid "Switch layout now"
+msgstr "Превключване на подредбата сега"
+
+msgid "Switch with Alt+Shift or Win+Space. The tray shows ENG or БГ."
+msgstr "Превключване с Alt+Shift или Win+Space. Тавата показва ENG или БГ."
+
+msgid "System"
+msgstr "Система"
+
+msgid "Tap to click"
+msgstr "Докосване за щракване"
+
+msgid "Taskbar alignment"
+msgstr "Подравняване на лентата на задачите"
+
+msgid "Terminal"
+msgstr "Терминал"
+
+msgid "The previous version is kept: you can go back at any time, here or in the boot menu."
+msgstr "Предишната версия се пази: можете да се върнете по всяко време, тук или в менюто за зареждане."
+
+msgid "The scan could not finish. Check your internet connection (definitions download first) and try again."
+msgstr "Сканирането не можа да завърши. Проверете интернет връзката (първо се изтеглят дефинициите) и опитайте отново."
+
+msgid "The scan could not finish. Try again, or see Active Protection's log."
+msgstr "Сканирането не можа да завърши. Опитайте отново или вижте дневника на Активната защита."
+
+msgid "This version: %1"
+msgstr "Тази версия: %1"
+
+msgid "Threats found and moved to quarantine."
+msgstr "Намерени са заплахи и са преместени в карантина."
+
+msgid "Threats found. They were moved to quarantine, where they can't run."
+msgstr "Намерени са заплахи. Преместени са в карантина, където не могат да се изпълняват."
+
+msgid "Three rows of pins and recommendations"
+msgstr "Три реда закачени и препоръки"
+
+msgid "Tile"
+msgstr "Мозайка"
+
+msgid "Time & language"
+msgstr "Време и език"
+
+msgid "Time zone"
+msgstr "Часова зона"
+
+msgid "Time zone, clock"
+msgstr "Часова зона, часовник"
+
+msgid "To choose which app opens one kind of file, right-click the file and pick Open with."
+msgstr "За да изберете кое приложение да отваря даден вид файл, щракнете с десния бутон върху файла и изберете „Отвори с“."
+
+msgid "Top bar"
+msgstr "Горна лента"
+
+msgid "Touchpad"
+msgstr "Тъчпад"
+
+msgid "Transparency effects"
+msgstr "Ефекти на прозрачност"
+
+msgid "Turn off"
+msgstr "Изключване"
+
+msgid "Turn off USB protection"
+msgstr "Изключване на USB защитата"
+
+msgid "Turn off my screen after"
+msgstr "Изключване на екрана след"
+
+msgid "Turn off the ones you do not need"
+msgstr "Изключете тези, от които нямате нужда"
+
+msgid "Turn on"
+msgstr "Включване"
+
+msgid "Turn on USB protection"
+msgstr "Включване на USB защитата"
+
+msgid "Turn on Wi-Fi and disconnect from it (or add a second adapter) to share"
+msgstr "За споделяне включете Wi-Fi и се откачете от него (или добавете втори адаптер)"
+
+msgid "Turn on screen lock"
+msgstr "Включване на заключването на екрана"
+
+msgid "Turn on security policy"
+msgstr "Включване на политиката за сигурност"
+
+msgid "Two rows of pins, more recent files"
+msgstr "Два реда закачени, повече скорошни файлове"
+
+msgid "Typing"
+msgstr "Въвеждане"
+
+msgid "USB protection: %1"
+msgstr "USB защита: %1"
+
+msgid "Undo the last update: Mountain restarts into the version you had before"
+msgstr "Отмяна на последната актуализация: Mountain се рестартира във версията, която сте имали преди"
+
+msgid "Unknown"
+msgstr "Неизвестно"
+
+msgid "Unmute"
+msgstr "Включване на звука"
+
+msgid "Unverified files"
+msgstr "Непотвърдени файлове"
+
+msgid "Update"
+msgstr "Актуализиране"
+
+msgid "Update definitions"
+msgstr "Актуализиране на дефинициите"
+
+msgid "Update virus definitions"
+msgstr "Актуализиране на вирусните дефиниции"
+
+msgid "Updates"
+msgstr "Актуализации"
+
+msgid "Updates & recovery"
+msgstr "Актуализации и възстановяване"
+
+msgid "Updates are manual. Run them when you choose."
+msgstr "Актуализациите са ръчни. Изпълнявайте ги, когато пожелаете."
+
+msgid "Updates are manual: open the Updates app and run it when you choose"
+msgstr "Актуализациите са ръчни: отворете приложението за актуализации и го стартирайте, когато пожелаете"
+
+msgid "Use on lock screen too"
+msgstr "Използване и за заключения екран"
+
+msgid "Use the 24-hour clock"
+msgstr "Използване на 24-часов формат"
+
+msgid "Use warmer colors to help you sleep"
+msgstr "Използвайте по-топли цветове, за да спите по-лесно"
+
+msgid "Uses the internet to keep the clock right"
+msgstr "Използва интернет, за да поддържа часовника точен"
+
+msgid "VPN"
+msgstr "VPN"
+
+msgid "Variable refresh rate"
+msgstr "Променлива честота на опресняване"
+
+msgid "Variable refresh rate (adaptive sync)"
+msgstr "Променлива честота на опресняване (адаптивна синхронизация)"
+
+msgid "View all devices"
+msgstr "Преглед на всички устройства"
+
+msgid "Virus & threat protection"
+msgstr "Защита от вируси и заплахи"
+
+msgid "Volume, output and input devices"
+msgstr "Сила на звука, изходни и входни устройства"
+
+msgid "Warmer colors at night"
+msgstr "По-топли цветове през нощта"
+
+msgid "Warmth"
+msgstr "Топлина"
+
+msgid "Watcher: inotify + ClamAV in a sandboxed low-priority unit that exits when done."
+msgstr "Наблюдател: inotify + ClamAV в изолиран модул с нисък приоритет, който излиза, когато приключи."
+
+msgid "Watches new files in Downloads, Desktop, Documents, your home folder, temporary files and USB drives, on this PC only: nothing is uploaded. "
+msgstr "Следи новите файлове в Изтегляния, Работен плот, Документи, личната ви папка, временните файлове и USB устройствата само на този компютър: нищо не се качва. "
+
+msgid "Web browser"
+msgstr "Уеб браузър"
+
+msgid "When you extract an archive (Ark, Extract here), everything that came out is checked and you get one result. "
+msgstr "Когато разархивирате архив (Ark, „Извличане тук“), всичко извлечено се проверява и получавате един резултат. "
+
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+msgid "Working…"
+msgstr "Работя…"
+
+msgid "Your account"
+msgstr "Вашият акаунт"
+
+msgid "Your device is protected"
+msgstr "Устройството ви е защитено"
+
+msgid "Your device is working, but a few settings below could be stronger."
+msgstr "Устройството ви работи, но някои настройки по-долу могат да бъдат по-силни."
+
+msgid "Your info"
+msgstr "Вашите данни"
+
+msgid "Your phone's messages, files and notifications on this PC"
+msgstr "Съобщенията, файловете и известията от телефона ви на този компютър"
+
+msgid "Your printers and test page; network printers are added automatically"
+msgstr "Вашите принтери и пробна страница; мрежовите принтери се добавят автоматично"
+
+msgid "firewalld zone: %1. Open services: %2."
+msgstr "Зона на firewalld: %1. Отворени услуги: %2."
+
+msgid "no"
+msgstr "не"
+
+msgid "none"
+msgstr "няма"
+
+msgid "none yet"
+msgstr "още няма"
+
+msgid "none — anyone can use this PC"
+msgstr "няма — всеки може да ползва този компютър"
+
+msgid "not available"
+msgstr "не е налично"
+
+msgid "not supported"
+msgstr "не се поддържа"
+
+msgid "off"
+msgstr "изключено"
+
+msgid "off (so game drivers load)"
+msgstr "изключено (за да се зареждат драйверите на игрите)"
+
+msgid "off (turning it on keeps everything plugged in now working)"
+msgstr "изключена (при включване всичко, включено в момента, продължава да работи)"
+
+msgid "on"
+msgstr "включено"
+
+msgid "on, after %1 minutes"
+msgstr "включено, след %1 минути"
+
+msgid "on: new USB devices are blocked until you allow them"
+msgstr "включена: новите USB устройства са блокирани, докато не ги разрешите"
+
+msgid "set"
+msgstr "зададена"
+
+msgid "unknown"
+msgstr "неизвестно"
+
+msgid "yes"
+msgstr "да"
+
+msgid "No microphone found"
+msgstr "Не е намерен микрофон"
+
+msgid "No speakers found"
+msgstr "Не са намерени високоговорители"

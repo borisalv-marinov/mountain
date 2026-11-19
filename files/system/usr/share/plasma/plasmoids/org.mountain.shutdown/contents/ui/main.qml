@@ -20,12 +20,12 @@ PlasmoidItem {
     SessionManagement { id: session }
     // OK does it at once, like Windows (0 = SessionManagement.Skip: no second countdown screen)
     readonly property var choices: [
-        { t: "Switch user", d: "Keeps your apps open and lets someone else sign in.", act: () => session.switchUser(), hidden: !session.canSwitchUser },
-        { t: "Sign out", d: "Closes all apps and signs you out.", act: () => session.requestLogout(0) },
-        { t: "Sleep", d: "The PC stays on but uses low power. Apps stay open so you can get right back to where you left off.", act: () => session.suspend(), hidden: !session.canSuspend },
-        { t: "Restart", d: "Closes all apps, turns off the PC, and then turns it on again.", act: () => session.requestReboot(0) },
-        { t: "Shut down", d: "Closes all apps and turns off the PC.", act: () => session.requestShutdown(0) },
-        { t: "Restart into Windows", d: "Restarts the PC into Windows once. Next time it starts Mountain again.", cmd: "/usr/libexec/mountain-windows-boot go", hidden: !windowsBoot }
+        { id: "switch-user", t: i18n("Switch user"), d: i18n("Keeps your apps open and lets someone else sign in."), act: () => session.switchUser(), hidden: !session.canSwitchUser },
+        { id: "sign-out", t: i18n("Sign out"), d: i18n("Closes all apps and signs you out."), act: () => session.requestLogout(0) },
+        { id: "sleep", t: i18n("Sleep"), d: i18n("The PC stays on but uses low power. Apps stay open so you can get right back to where you left off."), act: () => session.suspend(), hidden: !session.canSuspend },
+        { id: "restart", t: i18n("Restart"), d: i18n("Closes all apps, turns off the PC, and then turns it on again."), act: () => session.requestReboot(0) },
+        { id: "shut-down", t: i18n("Shut down"), d: i18n("Closes all apps and turns off the PC."), act: () => session.requestShutdown(0) },
+        { id: "restart-into-windows", t: i18n("Restart into Windows"), d: i18n("Restarts the PC into Windows once. Next time it starts Mountain again."), cmd: "/usr/libexec/mountain-windows-boot go", hidden: !windowsBoot }
     ].filter(c => !c.hidden)
 
     readonly property var hostWindow: Window.window
@@ -37,7 +37,7 @@ PlasmoidItem {
     preferredRepresentation: fullRepresentation
 
     function close() { if (hostWindow) hostWindow.close(); }
-    function pickDefault() { if (box) box.currentIndex = choices.findIndex(c => c.t === "Shut down"); }
+    function pickDefault() { if (box) box.currentIndex = choices.findIndex(c => c.id === "shut-down"); }
     property var box: null
     function ok() {
         const c = choices[box.currentIndex];
@@ -98,7 +98,7 @@ PlasmoidItem {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.12)
         Accessible.role: Accessible.Dialog
-        Accessible.name: "Shut Down Mountain"
+        Accessible.name: i18n("Shut Down Mountain")
         Keys.onEscapePressed: app.close()
 
         Rectangle {
@@ -114,14 +114,14 @@ PlasmoidItem {
             RowLayout { // title bar
                 spacing: 8
                 Kirigami.Icon { source: "system-shutdown"; implicitWidth: 16; implicitHeight: 16 }
-                Text { text: "Shut Down Mountain"; color: "#FFFFFF"; font: Kirigami.Theme.defaultFont; Layout.fillWidth: true }
+                Text { text: i18n("Shut Down Mountain"); color: "#FFFFFF"; font: Kirigami.Theme.defaultFont; Layout.fillWidth: true }
                 QQC2.AbstractButton {
                     id: closeBtn
                     implicitWidth: 32; implicitHeight: 24
                     hoverEnabled: true
                     activeFocusOnTab: false
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Close"
+                    Accessible.name: i18n("Close")
                     onClicked: app.close()
                     background: Rectangle { radius: 4; color: closeBtn.hovered ? "#C42B1C" : "transparent" }
                     contentItem: Kirigami.Icon { source: "window-close-symbolic"; implicitWidth: 14; implicitHeight: 14; color: "#FFFFFF" }
@@ -135,12 +135,12 @@ PlasmoidItem {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Text { text: "What do you want the computer to do?"; color: "#FFFFFF"; font: Kirigami.Theme.defaultFont }
+                    Text { text: i18n("What do you want the computer to do?"); color: "#FFFFFF"; font: Kirigami.Theme.defaultFont }
                     QQC2.ComboBox {
                         id: combo
                         Layout.fillWidth: true
                         model: app.choices.map(c => c.t)
-                        Accessible.name: "What do you want the computer to do?"
+                        Accessible.name: i18n("What do you want the computer to do?")
                         Accessible.description: app.choices[currentIndex] ? app.choices[currentIndex].d : ""
                         Component.onCompleted: { app.box = combo; app.pickDefault(); forceActiveFocus(); }
                         onModelChanged: app.pickDefault()
@@ -165,8 +165,8 @@ PlasmoidItem {
             RowLayout {
                 Layout.alignment: Qt.AlignRight
                 spacing: 8
-                GlassButton { text: "OK"; highlighted: true; onClicked: app.ok() }
-                GlassButton { text: "Cancel"; onClicked: app.close() }
+                GlassButton { text: i18n("OK"); highlighted: true; onClicked: app.ok() }
+                GlassButton { text: i18n("Cancel"); onClicked: app.close() }
             }
         }
     }

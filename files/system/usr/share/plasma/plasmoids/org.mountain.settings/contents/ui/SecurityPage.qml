@@ -61,12 +61,12 @@ ColumnLayout {
             }
             if (sec.running === "scan") {
                 sec.note = out.indexOf("av_result=cancelled") >= 0 ? ""
-                         : out.indexOf("av_result=found") >= 0 ? "Threats found. They were moved to quarantine, where they can't run."
-                         : out.indexOf("av_result=clean") >= 0 ? "Scan finished: no threats found."
-                         : out.indexOf("av_result=no-definitions") >= 0 ? "No virus definitions yet. Connect to the internet and press Scan now to download them."
-                         : "The scan could not finish. Try again, or see Active Protection's log.";
+                         : out.indexOf("av_result=found") >= 0 ? i18n("Threats found. They were moved to quarantine, where they can't run.")
+                         : out.indexOf("av_result=clean") >= 0 ? i18n("Scan finished: no threats found.")
+                         : out.indexOf("av_result=no-definitions") >= 0 ? i18n("No virus definitions yet. Connect to the internet and press Scan now to download them.")
+                         : i18n("The scan could not finish. Try again, or see Active Protection's log.");
             } else if (sec.running === "rollback") {
-                sec.note = data["exit code"] === 0 ? "Done. Restart your PC to go back to the previous version." : "Going back was cancelled.";
+                sec.note = data["exit code"] === 0 ? i18n("Done. Restart your PC to go back to the previous version.") : i18n("Going back was cancelled.");
             }
             sec.running = "";
             sec.refresh();
@@ -77,7 +77,7 @@ ColumnLayout {
     GText {
         Layout.topMargin: 6
         Layout.bottomMargin: 6
-        text: "Privacy & security"
+        text: i18n("Privacy & security")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
         font.weight: Font.DemiBold
     }
@@ -102,7 +102,7 @@ ColumnLayout {
                 GText {
                     id: headline
                     Layout.fillWidth: true
-                    text: !sec.loaded ? "Checking your device…" : sec.overall === 0 ? "Your device is protected" : sec.overall === 1 ? "Action recommended" : "Action needed"
+                    text: !sec.loaded ? i18n("Checking your device…") : sec.overall === 0 ? i18n("Your device is protected") : sec.overall === 1 ? i18n("Action recommended") : i18n("Action needed")
                     font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.5
                     font.weight: Font.DemiBold
                 }
@@ -111,9 +111,9 @@ ColumnLayout {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     dim: true
-                    text: sec.overall === 0 ? "Nothing needs your attention. New files are checked as they arrive, on this PC only."
-                        : sec.overall === 1 ? "Your device is working, but a few settings below could be stronger."
-                        : "Something below is turned off. Open the tile marked Action needed to fix it."
+                    text: sec.overall === 0 ? i18n("Nothing needs your attention. New files are checked as they arrive, on this PC only.")
+                        : sec.overall === 1 ? i18n("Your device is working, but a few settings below could be stronger.")
+                        : i18n("Something below is turned off. Open the tile marked Action needed to fix it.")
                 }
             }
         }
@@ -121,8 +121,8 @@ ColumnLayout {
     GText {
         Layout.fillWidth: true
         visible: sec.note !== "" || sec.running !== ""
-        text: sec.running === "scan" ? "Scanning your files… Virus definitions download first, then the scan runs at low priority, so games stay smooth."
-            : sec.running !== "" ? "Working…" : sec.note
+        text: sec.running === "scan" ? i18n("Scanning your files… Virus definitions download first, then the scan runs at low priority, so games stay smooth.")
+            : sec.running !== "" ? i18n("Working…") : sec.note
         wrapMode: Text.WordWrap
         color: app.accent
     }
@@ -137,141 +137,140 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "security-high"
-            title: "Virus & threat protection"
+            title: i18n("Virus & threat protection")
             level: sec.lvAv
-            details: (sec.v("av_last", "never") === "never" ? "No scan yet." : "Last scan: " + sec.v("av_last") + (sec.v("av_result") === "found" ? " · " + sec.v("av_found") + " found" : sec.v("av_result") === "clean" ? " · no threats" : ""))
-                     + "\nDefinitions: " + (sec.v("av_defs") === "none" ? "No virus definitions — press Update (Scan now downloads them)" : sec.v("av_defs"))
-                     + " · In quarantine: " + sec.v("av_quarantine", "0")
-                     + "\nDefinitions download only when you click a scan button. New files in Downloads are checked with the definitions you have"
-                     + (sec.v("dl_watch") === "on" ? "." : " (off).") + " Games are never scanned. Right-click any file: Scan with Mountain Security."
-            tech: "Scanner: ClamAV, on demand only. Download checks: " + (sec.v("dl_watch") === "on" ? "on" : "off") + "."
+            details: (sec.v("av_last", "never") === "never" ? i18n("No scan yet.") : i18n("Last scan: %1", sec.v("av_last")) + (sec.v("av_result") === "found" ? i18n(" · %1 found", sec.v("av_found")) : sec.v("av_result") === "clean" ? i18n(" · no threats") : ""))
+                     + "\n" + i18n("Definitions: %1", sec.v("av_defs") === "none" ? i18n("No virus definitions — press Update (Scan now downloads them)") : sec.v("av_defs"))
+                     + i18n(" · In quarantine: %1", sec.v("av_quarantine", "0"))
+                     + "\n" + (sec.v("dl_watch") === "on" ? i18n("Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have. Games are never scanned. Right-click any file: Scan with Mountain Security.") : i18n("Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have (off). Games are never scanned. Right-click any file: Scan with Mountain Security."))
+            tech: sec.v("dl_watch") === "on" ? i18n("Scanner: ClamAV, on demand only. Download checks: on.") : i18n("Scanner: ClamAV, on demand only. Download checks: off.")
             buttons: [
-                GlassButton { text: "Update"; highlighted: true; visible: sec.v("av_defs") === "none"; enabled: sec.running === ""; onClicked: sec.start("update", sec.helper + " update") },
-                GlassButton { text: "Quick scan"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
-                GlassButton { text: "Full scan"; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
-                GlassButton { text: "Custom scan"; enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") || { echo av_result=cancelled; exit 0; }; " + sec.helper + " scan \"$d\"") },
-                GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
+                GlassButton { text: i18n("Update"); highlighted: true; visible: sec.v("av_defs") === "none"; enabled: sec.running === ""; onClicked: sec.start("update", sec.helper + " update") },
+                GlassButton { text: i18n("Quick scan"); highlighted: true; enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan quick") },
+                GlassButton { text: i18n("Full scan"); enabled: sec.running === ""; onClicked: sec.start("scan", sec.helper + " scan full") },
+                GlassButton { text: i18n("Custom scan"); enabled: sec.running === ""; onClicked: sec.start("scan", "d=$(kdialog --getexistingdirectory \"$HOME\") || { echo av_result=cancelled; exit 0; }; " + sec.helper + " scan \"$d\"") },
+                GlassButton { text: i18n("Open quarantine"); onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "view-visible"
-            title: "Active Protection"
+            title: i18n("Active Protection")
             level: sec.lvAp
             details: sec.a("ap") === "on"
-                     ? "On. Files checked today: " + sec.a("ap_checked_today", "0") + " · Threats blocked: " + sec.a("ap_threats", "0")
-                       + (sec.nUnv > 0 ? "\n" + sec.nUnv + " files to review" : "")
-                       + "\nNew files in Downloads, Desktop, Documents and USB drives are checked as they arrive. When you extract an archive, you get one result."
-                     : "Off. New files are not checked until you scan by hand."
-            tech: "Watcher: inotify + ClamAV in a sandboxed low-priority unit that exits when done."
+                     ? i18n("On. Files checked today: %1 · Threats blocked: %2", sec.a("ap_checked_today", "0"), sec.a("ap_threats", "0"))
+                       + (sec.nUnv > 0 ? "\n" + i18n("%1 files to review", sec.nUnv) : "")
+                       + "\n" + i18n("New files in Downloads, Desktop, Documents and USB drives are checked as they arrive. When you extract an archive, you get one result.")
+                     : i18n("Off. New files are not checked until you scan by hand.")
+            tech: i18n("Watcher: inotify + ClamAV in a sandboxed low-priority unit that exits when done.")
             buttons: [
-                GlassButton { visible: sec.a("ap") !== "on"; text: "Turn on"; highlighted: true; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-protect on") },
-                GlassButton { text: "Open Active Protection"; onClicked: app.page = "protection" }
+                GlassButton { visible: sec.a("ap") !== "on"; text: i18n("Turn on"); highlighted: true; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-protect on") },
+                GlassButton { text: i18n("Open Active Protection"); onClicked: app.page = "protection" }
             ]
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "document-revert"
-            title: "Ransomware protection"
+            title: i18n("Ransomware protection")
             level: sec.lvSnap
             details: sec.v("snapshots") === "off"
-                     ? "Off: Previous versions need the standard disk layout the installer creates."
-                     : "Previous versions: " + sec.v("snapshots", "0") + " saved copies of your files, taken every hour. Newest: " + (sec.v("snapshot_last") || "none yet")
-                       + "\nPrograms can't change or delete them. To restore, copy a file back from File Explorer › Previous versions."
-            tech: "Read-only Btrfs snapshots of /var/home in /var/home/.snapshots."
+                     ? i18n("Off: Previous versions need the standard disk layout the installer creates.")
+                     : i18n("Previous versions: %1 saved copies of your files, taken every hour. Newest: %2", sec.v("snapshots", "0"), sec.v("snapshot_last") || i18n("none yet"))
+                       + "\n" + i18n("Programs can't change or delete them. To restore, copy a file back from File Explorer › Previous versions.")
+            tech: i18n("Read-only Btrfs snapshots of /var/home in /var/home/.snapshots.")
             buttons: [
-                GlassButton { text: "Open Previous versions"; enabled: sec.v("snapshots") !== "off"; onClicked: app.run("dolphin /var/home/.snapshots") },
-                GlassButton { text: "Save a version now"; enabled: sec.v("snapshots") !== "off" && sec.running === ""; onClicked: sec.start("snapshot", "systemctl start mountain-snapshot.service") }
+                GlassButton { text: i18n("Open Previous versions"); enabled: sec.v("snapshots") !== "off"; onClicked: app.run("dolphin /var/home/.snapshots") },
+                GlassButton { text: i18n("Save a version now"); enabled: sec.v("snapshots") !== "off" && sec.running === ""; onClicked: sec.start("snapshot", "systemctl start mountain-snapshot.service") }
             ]
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "firewall-applet"
-            title: "Firewall & network protection"
+            title: i18n("Firewall & network protection")
             level: sec.lvFw
             details: sec.v("fw") === "on"
-                     ? "Firewall is on. Apps allowed through: " + (sec.list("fw_app").filter(x => x.split(":")[1] === "yes").map(x => x.split(":").slice(2).join(":")).join(", ") || "none") + "."
-                     : "Firewall is off. Other devices could reach apps on this PC."
-            details2: sec.v("fw") === "on" ? "Network profile: " + (sec.v("fw_profile") === "home" ? "Private (other PCs can find this one)" : "Public (hidden from other devices)") : ""
-            tech: sec.v("fw") === "on" ? "firewalld zone: " + sec.v("fw_zone") + ". Open services: " + (sec.v("fw_open") || "none") + "." : ""
+                     ? i18n("Firewall is on. Apps allowed through: %1.", sec.list("fw_app").filter(x => x.split(":")[1] === "yes").map(x => x.split(":").slice(2).join(":")).join(", ") || i18n("none"))
+                     : i18n("Firewall is off. Other devices could reach apps on this PC.")
+            details2: sec.v("fw") === "on" ? i18n("Network profile: %1", sec.v("fw_profile") === "home" ? i18n("Private (other PCs can find this one)") : i18n("Public (hidden from other devices)")) : ""
+            tech: sec.v("fw") === "on" ? i18n("firewalld zone: %1. Open services: %2.", sec.v("fw_zone"), sec.v("fw_open") || i18n("none")) : ""
             buttons: [
-                GlassButton { visible: sec.v("fw") !== "on"; text: "Turn on"; highlighted: true; onClicked: sec.start("fix", "systemctl start firewalld") },
-                GlassButton { visible: sec.v("fw") === "on"; text: "Private network"; highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
-                GlassButton { visible: sec.v("fw") === "on"; text: "Public network"; highlighted: sec.v("fw_profile") !== "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile public") }
+                GlassButton { visible: sec.v("fw") !== "on"; text: i18n("Turn on"); highlighted: true; onClicked: sec.start("fix", "systemctl start firewalld") },
+                GlassButton { visible: sec.v("fw") === "on"; text: i18n("Private network"); highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
+                GlassButton { visible: sec.v("fw") === "on"; text: i18n("Public network"); highlighted: sec.v("fw_profile") !== "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile public") }
             ]
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "preferences-security"
-            title: "App & browser protection"
+            title: i18n("App & browser protection")
             level: sec.lvApp
-            details: "Apps from the App Store run in their own protected space. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog. Game launchers keep their own access."
-            tech: "Flatpak sandbox tightened for " + sec.v("flatpak_tight", "?") + " apps."
+            details: i18n("Apps from the App Store run in their own protected space. Chat, browser and office apps can't see your home folder: you pick files in the Open dialog. Game launchers keep their own access.")
+            tech: i18n("Flatpak sandbox tightened for %1 apps.", sec.v("flatpak_tight", "?"))
             buttons: []
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "computer"
-            title: "Device security"
+            title: i18n("Device security")
             level: sec.lvDev
-            details: "Secure Boot: " + (sec.v("sb") === "on" ? "on" : sec.v("sb") === "off" ? "off" : "not supported")
-                     + " · TPM: " + (sec.v("tpm") === "yes" ? "yes" : "no")
-                     + " · Security policy: " + (sec.v("selinux") === "Enforcing" ? "on" : "off")
-                     + "\nDriver lockdown: " + (sec.v("lockdown") === "none" ? "off (so game drivers load)" : sec.v("lockdown") === "integrity" || sec.v("lockdown") === "confidentiality" ? "on" : "not available") + " · Disk encryption: " + (sec.v("encrypted") === "yes" ? "on" : "off")
-                     + "\nUSB protection: " + (sec.v("usb") === "on" ? "on: new USB devices are blocked until you allow them" : "off (turning it on keeps everything plugged in now working)")
-            tech: "SELinux: " + sec.v("selinux", "?") + " · Kernel lockdown: " + sec.v("lockdown", "?") + " · USB protection: usbguard"
+            details: i18n("Secure Boot: %1", sec.v("sb") === "on" ? i18n("on") : sec.v("sb") === "off" ? i18n("off") : i18n("not supported"))
+                     + i18n(" · TPM: %1", sec.v("tpm") === "yes" ? i18n("yes") : i18n("no"))
+                     + i18n(" · Security policy: %1", sec.v("selinux") === "Enforcing" ? i18n("on") : i18n("off"))
+                     + "\n" + i18n("Driver lockdown: %1", sec.v("lockdown") === "none" ? i18n("off (so game drivers load)") : sec.v("lockdown") === "integrity" || sec.v("lockdown") === "confidentiality" ? i18n("on") : i18n("not available")) + i18n(" · Disk encryption: %1", sec.v("encrypted") === "yes" ? i18n("on") : i18n("off"))
+                     + "\n" + i18n("USB protection: %1", sec.v("usb") === "on" ? i18n("on: new USB devices are blocked until you allow them") : i18n("off (turning it on keeps everything plugged in now working)"))
+            tech: i18n("SELinux: %1 · Kernel lockdown: %2 · USB protection: usbguard", sec.v("selinux", "?"), sec.v("lockdown", "?"))
             buttons: [
-                GlassButton { text: sec.v("usb") === "on" ? "Turn off USB protection" : "Turn on USB protection"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " usb " + (sec.v("usb") === "on" ? "off" : "on")) },
-                GlassButton { visible: sec.v("selinux") !== "Enforcing"; text: "Turn on security policy"; highlighted: true; onClicked: sec.start("fix", "pkexec setenforce 1") },
-                GlassButton { visible: sec.v("sb") === "off" || sec.v("encrypted") === "no"; text: "How to turn these on"; onClicked: Qt.openUrlExternally(sec.guide + "#secure-boot-and-disk-encryption") }
+                GlassButton { text: sec.v("usb") === "on" ? i18n("Turn off USB protection") : i18n("Turn on USB protection"); enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " usb " + (sec.v("usb") === "on" ? "off" : "on")) },
+                GlassButton { visible: sec.v("selinux") !== "Enforcing"; text: i18n("Turn on security policy"); highlighted: true; onClicked: sec.start("fix", "pkexec setenforce 1") },
+                GlassButton { visible: sec.v("sb") === "off" || sec.v("encrypted") === "no"; text: i18n("How to turn these on"); onClicked: Qt.openUrlExternally(sec.guide + "#secure-boot-and-disk-encryption") }
             ]
         }
         SecurityCard { // Windows Security > Protection history: newest first
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "view-history"
-            title: "Protection history"
+            title: i18n("Protection history")
             level: 0
-            details: sec.list("av_history").length === 0 ? "No recent protection actions."
+            details: sec.list("av_history").length === 0 ? i18n("No recent protection actions.")
                      : sec.list("av_history").slice().reverse().join("\n")
-            tech: "Scans, threats moved to quarantine and files you allowed or restored. In quarantine now: " + sec.v("av_quarantine", "0") + "."
+            tech: i18n("Scans, threats moved to quarantine and files you allowed or restored. In quarantine now: %1.", sec.v("av_quarantine", "0"))
             buttons: [
-                GlassButton { text: "See all"; onClicked: app.page = "protection" },
-                GlassButton { text: "Open quarantine"; onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
+                GlassButton { text: i18n("See all"); onClicked: app.page = "protection" },
+                GlassButton { text: i18n("Open quarantine"); onClicked: app.run("dolphin \"$HOME/.local/share/mountain/quarantine\"") }
             ]
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "system-software-update"
-            title: "Updates & recovery"
+            title: i18n("Updates & recovery")
             level: sec.lvUpd
-            details: "This version: " + sec.v("upd_time", "?") + (sec.v("upd_signed") === "yes" ? " · signed updates" : "")
-                     + "\n" + (sec.v("rollback") === "yes" ? "The previous version is kept: you can go back at any time, here or in the boot menu." : "No previous version yet (it appears after your first update).")
+            details: i18n("This version: %1", sec.v("upd_time", "?")) + (sec.v("upd_signed") === "yes" ? i18n(" · signed updates") : "")
+                     + "\n" + (sec.v("rollback") === "yes" ? i18n("The previous version is kept: you can go back at any time, here or in the boot menu.") : i18n("No previous version yet (it appears after your first update)."))
             buttons: [
-                GlassButton { text: "Check for updates"; onClicked: app.run("kstart --application io.github.rfrench3.bazzite-updater") },
-                GlassButton { text: "Go back to the previous version"; enabled: sec.v("rollback") === "yes" && sec.running === ""; onClicked: sec.start("rollback", "/usr/libexec/mountain-security rollback") },
-                GlassButton { text: "Reset this PC"; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-security reset") },
-                GlassButton { visible: sec.v("windows") === "yes"; text: "Restart into Windows"; onClicked: app.run("/usr/libexec/mountain-windows-boot go --no-restart && dbus-send --session --type=method_call --dest=org.kde.LogoutPrompt /LogoutPrompt org.kde.LogoutPrompt.promptReboot") }
+                GlassButton { text: i18n("Check for updates"); onClicked: app.run("kstart --application io.github.rfrench3.bazzite-updater") },
+                GlassButton { text: i18n("Go back to the previous version"); enabled: sec.v("rollback") === "yes" && sec.running === ""; onClicked: sec.start("rollback", "/usr/libexec/mountain-security rollback") },
+                GlassButton { text: i18n("Reset this PC"); enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-security reset") },
+                GlassButton { visible: sec.v("windows") === "yes"; text: i18n("Restart into Windows"); onClicked: app.run("/usr/libexec/mountain-windows-boot go --no-restart && dbus-send --session --type=method_call --dest=org.kde.LogoutPrompt /LogoutPrompt org.kde.LogoutPrompt.promptReboot") }
             ]
         }
         SecurityCard {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
             iconName: "system-users"
-            title: "Account protection"
+            title: i18n("Account protection")
             level: sec.lvAcc
-            details: "Password: " + (sec.v("password") === "set" ? "set" : sec.v("password") === "none" ? "none — anyone can use this PC" : "unknown")
-                     + " · Screen lock: " + (sec.v("screenlock") === "false" ? "off" : "on, after " + sec.v("autolock_min", "5") + " minutes")
-                     + "\nAdmin tasks always ask for your password."
+            details: i18n("Password: %1", sec.v("password") === "set" ? i18n("set") : sec.v("password") === "none" ? i18n("none — anyone can use this PC") : i18n("unknown"))
+                     + i18n(" · Screen lock: %1", sec.v("screenlock") === "false" ? i18n("off") : i18n("on, after %1 minutes", sec.v("autolock_min", "5")))
+                     + "\n" + i18n("Admin tasks always ask for your password.")
             buttons: [
-                GlassButton { visible: sec.v("password") === "none"; text: "Set a password"; highlighted: true; onClicked: app.page = "youraccount" },
-                GlassButton { visible: sec.v("screenlock") === "false"; text: "Turn on screen lock"; onClicked: sec.start("fix", "kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock true") }
+                GlassButton { visible: sec.v("password") === "none"; text: i18n("Set a password"); highlighted: true; onClicked: app.page = "youraccount" },
+                GlassButton { visible: sec.v("screenlock") === "false"; text: i18n("Turn on screen lock"); onClicked: sec.start("fix", "kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock true") }
             ]
         }
     }
@@ -279,7 +278,7 @@ ColumnLayout {
     GText {
         Layout.topMargin: 14
         visible: sec.list("fw_app").length > 0
-        text: "Allow an app through the firewall"
+        text: i18n("Allow an app through the firewall")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
         font.weight: Font.DemiBold
     }
@@ -293,9 +292,9 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 GText { Layout.fillWidth: true; text: f.slice(2).join(":") }
-                GText { text: f[1] === "yes" ? "Allowed" : "Blocked"; dim: true }
+                GText { text: f[1] === "yes" ? i18n("Allowed") : i18n("Blocked"); dim: true }
                 GlassButton {
-                    text: f[1] === "yes" ? "Block" : "Allow"
+                    text: f[1] === "yes" ? i18n("Block") : i18n("Allow")
                     enabled: sec.running === ""
                     Accessible.name: text + " " + f.slice(2).join(":")
                     onClicked: sec.start("fix", sec.helper + " allow " + f[0] + (f[1] === "yes" ? " off" : " on"))
@@ -306,7 +305,7 @@ ColumnLayout {
     GText {
         Layout.topMargin: 14
         visible: sec.list("av_q").length > 0
-        text: "Quarantine"
+        text: i18n("Quarantine")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
         font.weight: Font.DemiBold
     }
@@ -319,15 +318,15 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 GText { Layout.fillWidth: true; text: modelData }
-                GlassButton { text: "Restore"; Accessible.name: "Restore " + modelData; onClicked: sec.start("fix", sec.helper + " quarantine-restore " + sec.q(modelData)) }
-                GlassButton { text: "Delete"; Accessible.name: "Delete " + modelData; onClicked: sec.start("fix", sec.helper + " quarantine-delete " + sec.q(modelData)) }
+                GlassButton { text: i18n("Restore"); Accessible.name: i18n("Restore %1", modelData); onClicked: sec.start("fix", sec.helper + " quarantine-restore " + sec.q(modelData)) }
+                GlassButton { text: i18n("Delete"); Accessible.name: i18n("Delete %1", modelData); onClicked: sec.start("fix", sec.helper + " quarantine-delete " + sec.q(modelData)) }
             }
         }
     }
 
     GText {
         Layout.topMargin: 14
-        text: "Permissions"
+        text: i18n("Permissions")
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.25
         font.weight: Font.DemiBold
     }

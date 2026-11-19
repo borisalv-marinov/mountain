@@ -34,38 +34,38 @@ ColumnLayout {
         app.sh("timedatectl list-timezones", out => { zones = out.split("\n").filter(z => z !== ""); });
     }
 
-    PageTitle { title: "Date & time" }
+    PageTitle { title: i18n("Date & time") }
 
     GlassCard {
         Layout.fillWidth: true
         padding: 6
         SettingRow {
-            text: "Set time automatically"
-            description: "Uses the internet to keep the clock right"
+            text: i18n("Set time automatically")
+            description: i18n("Uses the internet to keep the clock right")
             iconName: "clock"
             chevron: false
             onClicked: dt.flipAuto()
-            trailing: PillSwitch { text: "Set time automatically"; checked: dt.auto; onClicked: dt.flipAuto() }
+            trailing: PillSwitch { text: i18n("Set time automatically"); checked: dt.auto; onClicked: dt.flipAuto() }
         }
         ChoiceRow {
-            label: "Time zone"
+            label: i18n("Time zone")
             model: dt.zones
             currentIndex: dt.zones.indexOf(dt.zone)
             onPicked: i => dt.setZone(dt.zones[i])
         }
         SettingRow {
-            text: "Use the 24-hour clock"
-            description: dt.changed ? "Sign out and back in to see it" : "Shows 14:30 instead of 2:30 PM"
+            text: i18n("Use the 24-hour clock")
+            description: dt.changed ? i18n("Sign out and back in to see it") : i18n("Shows 14:30 instead of 2:30 PM")
             iconName: "clock"
             chevron: false
             divider: true
             onClicked: dt.toggle24()
-            trailing: PillSwitch { text: "Use the 24-hour clock"; checked: dt.h24; onClicked: dt.toggle24() }
+            trailing: PillSwitch { text: i18n("Use the 24-hour clock"); checked: dt.h24; onClicked: dt.toggle24() }
         }
         GlassButton {
             visible: dt.changed
             Layout.margins: 12
-            text: "Sign out now"
+            text: i18n("Sign out now")
             onClicked: app.run("qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout")
         }
     }
