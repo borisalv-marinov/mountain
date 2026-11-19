@@ -71,11 +71,13 @@ if touch "$H/Downloads/t"$'\t'"x.zip" 2>/dev/null; then # tabs in names: not on 
   ok '[[ ! -e $H/Downloads/t$'"'\t'"'x.zip && -e $D/mountain/quarantine/t_x.zip ]] && ! grep -q "t	x" "$D/mountain/protect/unverified" 2>/dev/null' "a file with a tab in its name is scanned and quarantined under a plain name"
   ok 'grep -q "Threat quarantined: t_x.zip" "$D/mountain/scan-history"' "the quarantine shows in Protection history"
 fi
-truncate -s 401M "$H/Downloads/big.zip"; pc "$H/Downloads/big.zip"
-mkdir -p "$H/Documents"; truncate -s 401M "$H/Documents/film.mkv"; pc "$H/Documents/film.mkv"
+truncate -s 2001M "$H/Downloads/big.zip"; pc "$H/Downloads/big.zip"
+mkdir -p "$H/Documents"; truncate -s 2001M "$H/Documents/film.mkv"; pc "$H/Documents/film.mkv"
 ok '! grep -q film.mkv "$D/mountain/protect/unverified"' "a big movie outside Downloads is not listed (no pop-up for every large download)"
-ok 'grep -q "big.zip	too large to scan$" "$D/mountain/protect/unverified" && ! grep -q big.zip "$B/systemd-run.log"' "a file over 400 MB is listed as too large to scan, not hashed, scanned or passed as clean"
-truncate -s 450M "$H/Downloads/movie.mkv"; pc "$H/Downloads/movie.mkv"
+ok 'grep -q "big.zip	too large to scan$" "$D/mountain/protect/unverified" && ! grep -q big.zip "$B/systemd-run.log"' "a file over 2000 MB is listed as too large to scan, not hashed, scanned or passed as clean"
+truncate -s 1000M "$H/Downloads/mid.zip"; pc "$H/Downloads/mid.zip"
+ok 'grep -q mid.zip "$B/systemd-run.log" && ! grep -q "mid.zip	too large" "$D/mountain/protect/unverified"' "S17: a 1 GB file (over the old 400 MB limit) is scanned, not listed too large"
+truncate -s 2050M "$H/Downloads/movie.mkv"; pc "$H/Downloads/movie.mkv"
 ok 'grep -q "movie.mkv	too large to scan$" "$D/mountain/protect/unverified"' "S2: a big non-archive in Downloads is listed too large to scan"
 for p in .zshrc .zprofile .zshenv .bash_login .bash_logout .xprofile .xsessionrc .config/autostart-scripts/x.sh; do ok "signin \"\$T/$p\"" "S6: ~/$p starts at sign-in"; done
 ok '[[ $(stat -c "%Z" "$T/notes.txt") =~ ^[0-9]+$ ]] && grep -q "%s %.9Y %.9Z %a" "$S"' "S4: the scan cache key includes ctime"

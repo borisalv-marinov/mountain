@@ -91,8 +91,8 @@ check() { # FILE...: count, flag unverified, scan the risky ones in a separate s
       r="link that starts at sign-in"; inlist "$f" || printf '%s\t%s\n' "$f" "$r" >> "$unv"; new+=("$f"); one=$r; continue
     fi
     [[ -f $f ]] || continue
-    h=- # over 400 MB: not hashed or scanned (minutes of work), listed as "too large to scan" instead of passing as clean
-    if ((${sig%% *} <= 419430400)); then
+    h=- # over 2000 MB (ClamAV's 2000M): not hashed or scanned, listed as "too large to scan" instead of passing as clean
+    if ((${sig%% *} <= 2097152000)); then # a 2 GB file: about 1.5 min at nice 19, 1.4 GB memory peak in the VM (v7.3 runs 5+6)
       h=; [[ -s $allowed ]] && h=$(sha256sum -- "$f" | cut -d' ' -f1) && grep -qsxF -- "$h" "$allowed" && continue # you allowed or restored it
     fi
     echo x >> "$pdir/checked-$(date +%F)"

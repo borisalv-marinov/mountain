@@ -671,6 +671,7 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   assert_grep 'Restart into Windows' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml
   for n in quick full scan-notify quarantine-restore allow profile usb; do assert_grep "$n" $x/mountain-security; done
   ! grep -qE -- "--exclude=[^ ]*tmp" $x/mountain-security || fail "finished .tmp files are never scanned"
+  assert_grep '--max-filesize=2000M --max-scansize=2000M' $x/mountain-security; assert_grep '<= 2097152000' $x/mountain-protect # S17: one 2000 MB limit in both (was 400 MB)
   assert_grep 'Exec=/usr/libexec/mountain-security scan-notify %F' /usr/share/kio/servicemenus/mountain-scan.desktop
   # one Downloads scanner: Active Protection (the English-only %h/Downloads path unit is gone)
   [[ ! -e /usr/lib/systemd/user/mountain-scan-downloads.path ]] || fail "the English-only Downloads path unit is back"

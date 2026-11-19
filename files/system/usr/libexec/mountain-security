@@ -124,7 +124,7 @@ scan() { # [--no-update] quick|full|DIR...
   done
   ex+=("--exclude-dir=^$(re_esc "$quarantine")(/|\$)")
   # --allmatch: every match prints, so a virus next to an encrypted member of the same archive is still reported
-  local lim=(--max-filesize=400M --max-scansize=400M --alert-encrypted-archive --alert-exceeds-max=yes --allmatch)
+  local lim=(--max-filesize=2000M --max-scansize=2000M --alert-encrypted-archive --alert-exceeds-max=yes --allmatch)
   out=$("${sb[@]}" nice -n 19 ionice -c3 clamscan -r -i "${lim[@]}" --database="$db" \
         "${ex[@]}" \
         --exclude='\.(part|crdownload)$' "$@" 2>&1)
