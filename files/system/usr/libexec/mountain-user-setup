@@ -37,9 +37,10 @@ fi
 # (github.com/refi64/cobalt README "Flags"); flag per the Arch wiki "Chromium" page. Seeded once (marker), so the user's own edits or deletion stay.
 # Intel/AMD only: NVIDIA stays on software decoding (VaapiOnNvidiaGPUs is unreliable there) until a real NVIDIA PC proves it.
 bf=${MOUNTAIN_BRAVE_FLAGS:-$HOME/.var/app/com.brave.Browser/config/brave-flags.conf}; bm=$cfg/mountain/brave-flags-seeded
-if [[ ! -e $bf && ! -e $bm ]]; then
+if [[ ! -e $bm ]]; then # a flags file that is already there (the user's own) also counts as seeded
   mkdir -p "$(dirname "$bf")" "$(dirname "$bm")"
-  printf -- '--enable-features=AcceleratedVideoDecodeLinuxGL\n' > "$bf" && : > "$bm"
+  [[ -e $bf ]] || printf -- '--enable-features=AcceleratedVideoDecodeLinuxGL\n' > "$bf"
+  : > "$bm"
 fi
 # real paths: /home is a link on the read-only system disk, so places under it showed "0 B free" in File Explorer
 url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$(realpath -m -- "$1")"; }
