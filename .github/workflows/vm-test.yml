@@ -421,11 +421,14 @@ jobs:
           # helpers and files more than one part uses (here so a quick run can skip the part that made them)
           R "echo IyBQcmludHMgZXZlcnkgYWNjZXNzaWJsZSBuYW1lIGluIG9uZSBhcHAncyB3aW5kb3dzIChBVC1TUEkpLCBvbmUgcGVyIGxpbmU6IG5hbWVzLnB5IEFQUC1OQU1FIFtNSU4tTElORVNdCmltcG9ydCBzeXMsIHRpbWUKaW1wb3J0IGdpCmdpLnJlcXVpcmVfdmVyc2lvbignQXRzcGknLCAnMi4wJykKZnJvbSBnaS5yZXBvc2l0b3J5IGltcG9ydCBBdHNwaQoKd2FudCA9IHN5cy5hcmd2WzFdLmxvd2VyKCkKbmVlZCA9IGludChzeXMuYXJndlsyXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDIgZWxzZSAxCgpkZWYgd2FsayhhLCBkLCBvdXQpOgogICAgaWYgZCA+IDQwIG9yIGxlbihvdXQpID4gMjAwMDA6CiAgICAgICAgcmV0dXJuCiAgICB0cnk6CiAgICAgICAgbiA9IGEuZ2V0X25hbWUoKQogICAgICAgIGsgPSBhLmdldF9jaGlsZF9jb3VudCgpCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIHJldHVybgogICAgaWYgbjoKICAgICAgICBvdXQuYXBwZW5kKG4pCiAgICBmb3IgaSBpbiByYW5nZShtaW4oaywgMjAwMCkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgYyA9IGEuZ2V0X2NoaWxkX2F0X2luZGV4KGkpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgY29udGludWUKICAgICAgICBpZiBjOgogICAgICAgICAgICB3YWxrKGMsIGQgKyAxLCBvdXQpCgpiZXN0ID0gW10KZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgZHQgPSBBdHNwaS5nZXRfZGVza3RvcCgwKQogICAgZm9yIGkgaW4gcmFuZ2UoZHQuZ2V0X2NoaWxkX2NvdW50KCkpOgogICAgICAgIGFwcCA9IGR0LmdldF9jaGlsZF9hdF9pbmRleChpKQogICAgICAgIGlmIGFwcCBhbmQgd2FudCBpbiAoYXBwLmdldF9uYW1lKCkgb3IgJycpLmxvd2VyKCk6CiAgICAgICAgICAgIG5hbWVzID0gW10KICAgICAgICAgICAgd2FsayhhcHAsIDAsIG5hbWVzKQogICAgICAgICAgICBpZiBsZW4obmFtZXMpID4gbGVuKGJlc3QpOgogICAgICAgICAgICAgICAgYmVzdCA9IG5hbWVzCiAgICBpZiBsZW4oYmVzdCkgPj0gbmVlZDoKICAgICAgICBicmVhawogICAgdGltZS5zbGVlcCgxKQpwcmludCgnXG4nLmpvaW4oYmVzdCkpCg== | base64 -d > /tmp/names.py && chmod 644 /tmp/names.py"
           R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"CAP|\" + w.caption + \"|\" + w.desktopFileName);' > /tmp/caps.js; chmod 644 /tmp/caps.js"
+          mkdir -p perf # the app-open timing (apps part) writes perf/opent.txt
+          caps() { local s n0; n0=$(R "journalctl -b --no-pager | grep -c 'CAP|'"); s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; R "for _ in \$(seq 10); do [ \$(journalctl -b --no-pager | grep -c 'CAP|') -gt $n0 ] && break; sleep 1; done"; }
           apwait() { for _ in $(seq 60); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
           opent() { # label "command" process-pattern
             local m0 m t0 t i out=""
             for i in cold warm; do
               echo "screendump /tmp/o.ppm" | Q >/dev/null; m0=$(sudo md5sum < /tmp/o.ppm)
+              echo "$1 $i start $(R "cut -d' ' -f1 /proc/uptime")" >> perf/opent.txt
               t0=$(date +%s%N); L $2
               while :; do
                 t=$(( ( $(date +%s%N) - t0 ) / 1000000 ))
@@ -433,7 +436,11 @@ jobs:
                 [ "$m" != "$m0" ] && break; [ $t -ge 30000 ] && break; sleep 0.05
               done
               # X-button close of the main window (a TERM to VS Code, all processes or the main one, crashed it: "GPU process isn't usable"); pkill only for what is left
-              out="$out $i=${t}ms"; sleep 5; p=$(R "pgrep -o -u looktest -f '$3'"); [[ $p =~ ^[0-9]+$ ]] && XC $p; K -f "$3"; sleep 3
+              out="$out $i=${t}ms"; sleep 12; p=$(R "pgrep -o -u looktest -f '$3'" || true)
+              { echo "$1 $i close $(R "cut -d' ' -f1 /proc/uptime") main=$p"; R "pgrep -a -u looktest -f '$3' | cut -c1-160"; } >> perf/opent.txt 2>&1 || true
+              [[ $p =~ ^[0-9]+$ ]] && XC $p
+              { echo "$1 $i after-x $(R "cut -d' ' -f1 /proc/uptime")"; R "pgrep -a -u looktest -f '$3' | cut -c1-160"; } >> perf/opent.txt 2>&1 || true
+              K -f "$3"; sleep 3
             done
             echo "| open $1 (cold/warm) | INFO |$out |" >> report.md; echo "open $1:$out"
           }
@@ -623,7 +630,6 @@ jobs:
           L /usr/libexec/mountain-phonelink; wchk "Phone Link opens" 0 kdeconnect-app 25; sleep 5; shot app-phone-link; K -x kdeconnect-app; sleep 3
           chk "Phone Link's background service stops when it closes" 0 "pgrep -u looktest -x kdeconnectd || echo stopped" '^stopped$'; K -x kdeconnectd
           # title bars use the Windows names (en@mountain catalogs)
-          caps() { local s n0; n0=$(R "journalctl -b --no-pager | grep -c 'CAP|'"); s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; R "for _ in \$(seq 10); do [ \$(journalctl -b --no-pager | grep -c 'CAP|') -gt $n0 ] && break; sleep 1; done"; }
           for t in "Calculator:kcalc:org.kde.kcalc" "Paint:kolourpaint:org.kde.kolourpaint" "Notepad:kwrite:org.kde.kwrite" "Terminal:konsole:org.kde.konsole" "Task Manager:plasma-systemmonitor:org.kde.plasma-systemmonitor" "Camera:kamoso:org.kde.kamoso" "Scanner:skanlite:org.kde.skanlite" "Phone Link:kdeconnect-app:org.kde.kdeconnect.app"; do
             IFS=: read n app id <<<"$t"; L "$app"; PGF=-f wchk "title $n ($app) opens" 2 "$app" 25; sleep 5
             caps "$app"; shot "app-title-$app"
@@ -821,6 +827,7 @@ jobs:
           opent "Settings" "plasmawindowed org.mountain.settings" org.mountain.settings
           opent "Terminal" konsole konsole
           opent "VS Code" code '/usr/share/code/code'
+          R "journalctl -b --no-pager -o short-monotonic _COMM=code | tail -60 | cut -c1-300" > perf/vscode-journal.txt 2>&1 || true
           opent "Task Manager" plasma-systemmonitor plasma-systemmonitor
           # v5.1 speed: ms from the input (QEMU's clock, no harness start-up counted) to the first changed frame; taskbar rows ignored
           MS() { QM measure 60 "$@" | tail -1; } # -> first=MS settle=MS
