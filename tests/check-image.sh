@@ -345,7 +345,7 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   for f in geforcenow xboxcloud boosteroid; do assert_grep "^StartupWMClass=mountain-$f\$" /usr/share/applications/mountain-$f.desktop; done
   assert_grep 'NPM_CONFIG_PREFIX="$HOME/.local"' /etc/profile.d/mountain-dev.sh
   assert_grep '^TitleAlignment=AlignLeft$' /etc/xdg/breezerc
-  assert_grep '^AnimationDurationFactor=0.5$' /etc/xdg/kdeglobals
+  assert_grep '^AnimationDurationFactor=0.75$' /etc/xdg/kdeglobals
   assert_grep '^Name=App Store$' /usr/share/applications/io.github.kolunmi.Bazaar.desktop
   assert_grep '^Name=Welcome$' /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
   grep -qE '^(Name|Comment|GenericName)(\[|=).*Bazzite' /usr/share/applications/io.github.{kolunmi.Bazaar,ublue_os.yafti_gtk,rfrench3.bazzite-updater}.desktop && fail "Bazzite name left in a renamed app"
@@ -1294,6 +1294,13 @@ t = gettext.GNUTranslations(open(sys.argv[1] + '/org.mountain.settings/contents/
 bad = [w for w in ['App permissions', 'Files', 'Camera', 'Microphone'] if t.gettext(w) == w]
 print(bad); sys.exit(1 if bad else 0)
 PY
+  true
+}
+
+check_phase45() { # v7.4 polish: Brave hardware video decoding seeded once for every user (animation length: phase 24's AnimationDurationFactor)
+  local X=${MOUNTAIN_ROOT:-}
+  assert_grep 'brave-flags.conf' $X/usr/libexec/mountain-user-setup
+  assert_grep -- '--enable-features=AcceleratedVideoDecodeLinuxGL' $X/usr/libexec/mountain-user-setup
   true
 }
 
