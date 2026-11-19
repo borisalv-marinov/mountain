@@ -519,6 +519,9 @@ PY
   grep -q '#1B1D22\|#24272D\|#101216' /usr/share/aurorae/themes/BlackGlass/decoration.svg && fail "title bar is not the window color"
   assert_grep 'StandardBackground' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml
   assert_grep 'maximumLineCount: 2' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemGridDelegate.qml
+  assert_grep 'id: footerBand' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml # U31: Windows 11 footer band
+  assert_grep 'top: footer.top; bottom: footer.bottom' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml
+  assert_grep 'mountain-start geometry' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml # U21: VM logs the menu geometry per mode
   MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=BlackGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=BlackGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
   true
 }

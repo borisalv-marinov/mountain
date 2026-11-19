@@ -86,6 +86,8 @@ PlasmaCore.Dialog {
     property bool searching: (searchField.text != "")
 
     onSearchingChanged: {
+        // Mountain: U21 diagnostic, the VM compares the menu's geometry in normal and search mode
+        console.warn("mountain-start geometry searching=" + searching + " x=" + x + " y=" + y + " w=" + width + " h=" + height + " item=" + rootItem.height);
 
         if (searching) {
 
@@ -108,6 +110,7 @@ PlasmaCore.Dialog {
 
     onHeightChanged: {
         if (visible) {
+            console.warn("mountain-start geometry resize searching=" + searching + " h=" + height + " item=" + rootItem.height);
             var pos = popupPosition(width, height);
             x = pos.x;
             y = pos.y;
@@ -636,6 +639,19 @@ PlasmaCore.Dialog {
                     runnerGrid.focus = false;
                     searchField.focus = true;
                 }
+            }
+        }
+
+        // Mountain: Windows 11 footer band, darker than the menu with a thin top border (mountain-glass has no plasmoidheading svg);
+        // a sibling under the footer, so PlasmoidHeading's own background and insets stay untouched
+        Rectangle {
+            id: footerBand
+            anchors { left: parent.left; right: parent.right; top: footer.top; bottom: footer.bottom }
+            color: Qt.rgba(0, 0, 0, 0.25)
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: colorWithAlpha(Kirigami.Theme.textColor, 0.08)
             }
         }
 

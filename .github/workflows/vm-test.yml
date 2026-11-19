@@ -452,6 +452,8 @@ jobs:
           done
           QM key meta_l; sleep 3; QM type calc; sleep 3; shot start-search-best-match; QM key esc; QM key esc; sleep 1
           chk "start search has Best match" 0 "grep -c 'i18n(\"Best match\")' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemMultiGridView.qml" '^1$'
+          chk "Start footer has the Windows 11 darker band (U31, see start-menu shot)" 0 "grep -c 'id: footerBand' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml" '^1$'
+          chk "Start geometry normal vs search (U21: same y/h means the shift is KWin's)" 2 "journalctl -b --no-pager -t plasmashell | grep -o 'mountain-start geometry.*' | tail -6 | paste -sd' '" 'mountain-start geometry'
           QM key meta_l; sleep 3 # the start menu open again for the steps below
           chk "menu.11.enhanced no QML errors" 0 "journalctl -b --no-pager -t plasmashell | grep -E 'menu\.11\.enhanced|org\.mountain' | grep -ciE 'is not a type|is not installed|Cannot assign|ReferenceError|TypeError|Error loading' || true" '^0$'
           chk "start launcher applet in appletsrc" 0 "grep -c '^plugin=menu.11.enhanced$' ~looktest/.config/plasma-org.kde.plasma.desktop-appletsrc" '^1$'
