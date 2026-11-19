@@ -826,7 +826,8 @@ jobs:
           opent "File Explorer" dolphin dolphin
           opent "Settings" "plasmawindowed org.mountain.settings" org.mountain.settings
           opent "Terminal" konsole konsole
-          opent "VS Code" code '/usr/share/code/code'
+          # the menu's command: /usr/bin/code is a launcher that starts VS Code and exits, and then systemd stopped the rest of L's unit, VS Code too (int3 1.6 s after the start, quick run 44559308993)
+          opent "VS Code" /usr/share/code/code '/usr/share/code/code'
           R "journalctl -b --no-pager -o short-monotonic _COMM=code | tail -60 | cut -c1-300" > perf/vscode-journal.txt 2>&1 || true
           opent "Task Manager" plasma-systemmonitor plasma-systemmonitor
           # v5.1 speed: ms from the input (QEMU's clock, no harness start-up counted) to the first changed frame; taskbar rows ignored
