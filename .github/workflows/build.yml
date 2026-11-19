@@ -135,7 +135,7 @@ jobs:
             echo "tag=latest" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          SAFE="${BRANCH//\//-}"
+          SAFE="${BRANCH//\//_}" # BlueBuild tags a branch with a slash as br-<a>_<b>-<ver>
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/${{ matrix.image }}" | jq -r '.Tags[]')
           TAG=$(echo "$ALL" | grep -F -- "$SAFE" | sort -V | tail -n 1 || true)
           if [ -z "$TAG" ]; then
