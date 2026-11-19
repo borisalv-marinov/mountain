@@ -430,7 +430,9 @@ jobs:
                 echo "screendump /tmp/o.ppm" | Q >/dev/null; m=$(sudo md5sum < /tmp/o.ppm)
                 [ "$m" != "$m0" ] && break; [ $t -ge 30000 ] && break; sleep 0.05
               done
-              out="$out $i=${t}ms"; sleep 5; K -f "$3"; sleep 3
+              # TERM to the oldest match only (the main process, which closes its own helpers): TERM to all of VS Code at once crashed it ("GPU process isn't usable")
+              out="$out $i=${t}ms"; sleep 5; K -o -f "$3"
+              R "for _ in \$(seq 15); do pgrep -u looktest -f '$3' >/dev/null || break; sleep 1; done; pkill -u looktest -f '$3'" || true; sleep 3
             done
             echo "| open $1 (cold/warm) | INFO |$out |" >> report.md; echo "open $1:$out"
           }
