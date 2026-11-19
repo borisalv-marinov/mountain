@@ -47,6 +47,8 @@ jobs:
           echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
           echo "Acquire::Retries \"5\";" | sudo tee /etc/apt/apt.conf.d/80retries
           # Ubuntu's archive can stall (19 Nov: 25 min at 20 kB/s, every run died here): short timeouts, retries per file, 3 tries in all
+          # a second network path when archive.ubuntu.com is unreachable from GitHub (runs 44522177035/44522190741)
+          printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://mirrors.edge.kernel.org/ubuntu/\tpriority:2\nhttp://archive.ubuntu.com/ubuntu/\tpriority:3\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           echo 'Acquire::Retries "5"; Acquire::ForceIPv4 "true"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-mountain-retries >/dev/null
           ok=; for i in 1 2 3; do sudo apt-get update && sudo apt-get install -y qemu-utils imagemagick socat skopeo tesseract-ocr tesseract-ocr-bul python3-pil && { ok=1; break; }; sleep 30; done; [ "$ok" = 1 ]
       - name: Free disk space
