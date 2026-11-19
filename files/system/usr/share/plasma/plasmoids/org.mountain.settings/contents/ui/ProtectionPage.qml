@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasma5support as P5Support
 
@@ -127,20 +128,25 @@ ColumnLayout {
         font.weight: Font.DemiBold
     }
     Repeater {
-        model: unverifiedModel // v = path|reason
+        model: unverifiedModel // v = path|reason<TAB>plain name<TAB>what it does (mountain-protect plain)
         delegate: GlassCard {
             required property string v
-            readonly property string path: v.slice(0, v.lastIndexOf("|"))
-            readonly property string reason: v.slice(v.lastIndexOf("|") + 1)
+            readonly property var f: v.split("\t")
+            readonly property string path: f[0].slice(0, f[0].lastIndexOf("|"))
+            readonly property string reason: f[0].slice(f[0].lastIndexOf("|") + 1)
             Layout.fillWidth: true
             padding: 12
             RowLayout {
                 Layout.fillWidth: true
-                ColumnLayout {
+                ColumnLayout { // plain name and what it does; the full path on hover and for screen readers
                     Layout.fillWidth: true
                     spacing: 1
-                    GText { Layout.fillWidth: true; text: path.slice(path.lastIndexOf("/") + 1) }
-                    GText { Layout.fillWidth: true; text: reason + " · " + path; dim: true; font.pointSize: Kirigami.Theme.smallFont.pointSize }
+                    HoverHandler { id: hv }
+                    QQC2.ToolTip.visible: hv.hovered
+                    QQC2.ToolTip.text: path
+                    Accessible.description: path
+                    GText { Layout.fillWidth: true; text: f[1] || path.slice(path.lastIndexOf("/") + 1) }
+                    GText { Layout.fillWidth: true; text: f[2] || reason; dim: true; font.pointSize: Kirigami.Theme.smallFont.pointSize }
                 }
                 GlassButton { text: i18n("Allow"); Accessible.name: i18n("Allow %1", path); onClicked: ap.start("fix", ap.helper + " allow " + ap.q(path)) }
                 GlassButton { text: i18n("Quarantine"); Accessible.name: i18n("Quarantine %1", path); onClicked: ap.start("fix", ap.helper + " quarantine " + ap.q(path)) }

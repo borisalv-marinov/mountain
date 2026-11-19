@@ -46,7 +46,7 @@ jobs:
       - name: Test virus scan moves threats to quarantine
         run: bash tests/test-security-scan.sh
       - name: Test Active Protection watcher end to end
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools >/dev/null && bash tests/test-protect-daemon.sh
+        run: printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://mirrors.edge.kernel.org/ubuntu/\tpriority:2\nhttp://archive.ubuntu.com/ubuntu/\tpriority:3\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null && echo 'Acquire::ForceIPv4 "true"; Acquire::Retries "5"; Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-mountain-retries >/dev/null && sudo apt-get update -qq && sudo apt-get install -y -qq inotify-tools >/dev/null && bash tests/test-protect-daemon.sh
       - name: Workflow actions are pinned and build scripts executable
         run: bash tests/test-workflow-pins.sh
       - name: Test snapshot keep rule
@@ -61,7 +61,7 @@ jobs:
         run: bash tests/test-security-conn.sh
       - name: KWin flyout scripts load and open on their shortcuts (Win+V, Win+Z)
         run: | # Qt needs the EGL/GL and xkb client libraries even offscreen (Ubuntu's runner image lacks libEGL)
-          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 >/dev/null
+          printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://mirrors.edge.kernel.org/ubuntu/\tpriority:2\nhttp://archive.ubuntu.com/ubuntu/\tpriority:3\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null && echo 'Acquire::ForceIPv4 "true"; Acquire::Retries "5"; Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-mountain-retries >/dev/null && sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 >/dev/null
           pip install -q pyside6==6.11.1 && QT_QPA_PLATFORM=offscreen python tests/test-kwin-qml.py
       - name: Run dialog (Win+R) test
         run: bash tests/test-run-dialog.sh
@@ -125,7 +125,7 @@ jobs:
       - name: Log in to ghcr.io
         run: echo ${{ github.token }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Install skopeo
-        run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
+        run: command -v skopeo >/dev/null || { printf 'http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://mirrors.edge.kernel.org/ubuntu/\tpriority:2\nhttp://archive.ubuntu.com/ubuntu/\tpriority:3\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null && echo 'Acquire::ForceIPv4 "true"; Acquire::Retries "5"; Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-mountain-retries >/dev/null && sudo apt-get update && sudo apt-get install -y skopeo; }
       - name: Find image tag
         id: tag
         env:

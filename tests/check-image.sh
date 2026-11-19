@@ -519,6 +519,9 @@ PY
   grep -q '#1B1D22\|#24272D\|#101216' /usr/share/aurorae/themes/BlackGlass/decoration.svg && fail "title bar is not the window color"
   assert_grep 'StandardBackground' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml
   assert_grep 'maximumLineCount: 2' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/ItemGridDelegate.qml
+  assert_grep 'id: footerBand' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml # U31: Windows 11 footer band
+  assert_grep 'top: footer.top; bottom: footer.bottom' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml
+  assert_grep 'mountain-start geometry' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/MenuRepresentation.qml # U21: VM logs the menu geometry per mode
   MOUNTAIN_RENDERER=llvmpipe HOME=$(mktemp -d) bash -c 'mkdir -p ~/.config/Kvantum; printf "[General]\ntheme=BlackGlass\n" > ~/.config/Kvantum/kvantum.kvconfig; /usr/libexec/mountain-lite-mode >/dev/null; grep -q "^theme=BlackGlassSolid$" ~/.config/Kvantum/kvantum.kvconfig' || fail "lite mode keeps see-through app windows"
   true
 }
@@ -671,6 +674,7 @@ check_phase31() { # v6 brief: Restart into Windows, full Security (scans, Allow 
   assert_grep 'Restart into Windows' /usr/share/plasma/plasmoids/menu.11.enhanced/contents/ui/Footer.qml
   for n in quick full scan-notify quarantine-restore allow profile usb; do assert_grep "$n" $x/mountain-security; done
   ! grep -qE -- "--exclude=[^ ]*tmp" $x/mountain-security || fail "finished .tmp files are never scanned"
+  assert_grep '--max-filesize=2000M --max-scansize=2000M' $x/mountain-security; assert_grep '<= 2097152000' $x/mountain-protect # S17: one 2000 MB limit in both (was 400 MB)
   assert_grep 'Exec=/usr/libexec/mountain-security scan-notify %F' /usr/share/kio/servicemenus/mountain-scan.desktop
   # one Downloads scanner: Active Protection (the English-only %h/Downloads path unit is gone)
   [[ ! -e /usr/lib/systemd/user/mountain-scan-downloads.path ]] || fail "the English-only Downloads path unit is back"
