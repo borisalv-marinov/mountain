@@ -1112,7 +1112,19 @@ jobs:
           [ "${HB:-0}" -ge 1 ] 2>/dev/null && r=PASS || r=FAIL; echo "| USB protection on: a newly plugged-in device is blocked | $r | blocked: ${HB:-none} |" >> report.md; echo "$r usb hot-plug blocked"
           chk "core dumps off" 0 "systemd-analyze cat-config systemd/coredump.conf | grep -E '^Storage='" 'Storage=none'
           chk "signed updates: policy.json requires a signature for Mountain" 0 "python3 -c \"import json;p=json.load(open('/etc/containers/policy.json'));d=p['transports']['docker'];k=[x for x in d if 'borisalv-marinov' in x];print(k and all(e['type']=='sigstoreSigned' for x in k for e in d[x]) and 'signed-required')\"" 'signed-required'
-          chk "signed updates: bootc upgrade --check (the test image is local, so INFO)" 2 "bootc upgrade --check >/dev/null 2>&1; echo rc=\$?" 'rc=0'
+          # B4 + S10: the real updater against Mountain's registry. bootc's hidden --mutate-in-place only rewrites the booted origin
+          # (what the installer does to point a new system at ghcr), nothing is downloaded; the test origin is put back right after.
+          # The unsigned stand-in is a mirror for Mountain's name (what a hijacked registry would serve); policy is judged on Mountain's name.
+          # :latest because the mirror (an unsigned Fedora image) must have the same tag; it has no br-* tags
+          MR="ghcr.io/borisalv-marinov/$IMG"
+          ORIG=$(R "bootc status --format=json | python3 -c 'import json,sys; i=json.load(sys.stdin)[\"spec\"][\"image\"]; print(i[\"transport\"], i[\"image\"])'")
+          R "printf '[[registry]]\nlocation = \"%s\"\n[[registry.mirror]]\nlocation = \"quay.io/fedora/fedora-minimal\"\n' $MR > /run/mt-unsigned.conf"
+          if [ -n "$ORIG" ]; then
+            chk "updates: bootc upgrade --check reaches Mountain's registry, signed image accepted" 0 "s=\$(unshare -m sh -c 'mount -o remount,rw /sysroot && bootc switch --mutate-in-place --enforce-container-sigpolicy $MR:latest' 2>&1) && o=\$(timeout 90 bootc upgrade --check 2>&1); r=\$?; echo \"rc=\$r \$(echo \${o:-\$s} | cut -c1-200)\"" '^rc=0 .*(Update available|No changes).*ghcr\.io/borisalv-marinov'
+            chk "signed updates: bootc refuses an unsigned image under Mountain's name" 0 "o=\$(CONTAINERS_REGISTRIES_CONF=/run/mt-unsigned.conf timeout 90 bootc upgrade --check 2>&1); r=\$?; echo \"rc=\$r \$(echo \$o | tail -c 200)\"" '^rc=[1-9].*[Ss]ignature'
+            R "unshare -m sh -c 'mount -o remount,rw /sysroot && bootc switch --mutate-in-place --transport ${ORIG%% *} ${ORIG#* }' >/dev/null"
+          else echo "| updates: bootc upgrade --check against the registry | FAIL | booted origin unreadable |" >> report.md; fi
+          chk "signed updates: skopeo refuses an unsigned image under Mountain's name" 0 "o=\$(CONTAINERS_REGISTRIES_CONF=/run/mt-unsigned.conf timeout 60 skopeo copy docker://$MR:latest dir:/var/tmp/mt-unsigned 2>&1); r=\$?; rm -rf /var/tmp/mt-unsigned /run/mt-unsigned.conf; echo \"rc=\$r \$(echo \$o | tail -c 200)\"" '^rc=[1-9].*Source image rejected.*[Ss]ignature'
           # Restart into Windows: hidden without a Windows boot entry; with a fake one it sets a one-time boot
           chk "Restart into Windows hidden without Windows" 0 "/usr/libexec/mountain-windows-boot check || echo hidden" '^hidden$'
           R "efibootmgr --create --disk /dev/vda --part 1 --label 'Windows Boot Manager' --loader '\\EFI\\Microsoft\\Boot\\bootmgfw.efi' >/dev/null"
