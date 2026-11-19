@@ -920,6 +920,8 @@ jobs:
           WD=$(R "ls /run/user/\$(id -u looktest)" | grep -m1 -xE 'wayland-[0-9]+')
           KS="$LT WAYLAND_DISPLAY=${WD:-wayland-0} kscreen-doctor"
           OUT=$(R "$KS -o" 2>&1 | tee kscreen-log.txt | sed 's/\x1b\[[0-9;]*m//g' | awk '/^Output:/{print $3; exit}')
+          # the screen's own mode by its id (it is 1280x800@74.99, so "1280x800@60" was not found and the rest of the run stayed full HD)
+          M0=$(sed 's/\x1b\[[0-9;]*m//g' kscreen-log.txt | grep -o '[0-9]*:[0-9]*x[0-9]*@[0-9.]*\*' | head -1 | cut -d: -f1)
           R "$KS output.$OUT.mode.1920x1080@60" >>kscreen-log.txt 2>&1; sleep 6; shot fhd-desktop
           chk "screen switches to 1920x1080 (the sharpness shots are really full HD)" 1 "$KS -o 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -o '[0-9]*x[0-9]*@[0-9.]*\*' | head -1" '^1920x1080@'
           # 0 B free hunt: the mount table File Explorer reads, its versions, then the same window once the home folder is its own mount entry
@@ -933,7 +935,8 @@ jobs:
           R "$(TL 'python3 /tmp/mountprobe.py')" >> explorer-space-log.txt 2>&1 || true
           QM key meta_l; sleep 3; shot fhd-start-menu; QM key esc; sleep 1
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot fhd-menu-context; QM key esc
-          R "$KS output.$OUT.mode.1280x800@60" >>kscreen-log.txt 2>&1; sleep 6; shot back-to-1280
+          R "$KS output.$OUT.mode.${M0:-1}" >>kscreen-log.txt 2>&1; sleep 6; shot back-to-1280
+          chk "screen back to 1280x800 after the full HD shots" 1 "$KS -o 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -o '[0-9]*x[0-9]*@[0-9.]*\*' | head -1" '^1280x800@'
           R "rpm -q libkscreen kscreen qt6-qtbase qt6-qtwayland code; coredumpctl list --no-pager kscreen-doctor; journalctl -b --no-pager -o cat _COMM=kscreen-doctor | tail -20" >>kscreen-log.txt 2>&1 || true
 
           QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu; QM key esc; QM key esc
@@ -1324,11 +1327,12 @@ jobs:
             # close like a person: KWin closes the window (the X button), so apps end their helpers in order; a plain SIGTERM still crashed ONLYOFFICE
             # (stopping the whole scope at once made Heroic and ONLYOFFICE crash: runs 44451198420/44451211782); only a process this
             # launch started (its every-unit or a Flatpak app scope), never a long-lived one like the polkit agent
-            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup && { printf \"for (const w of workspace.windowList()) if (w.pid === %s) w.closeWindow();\n\" $pid > /tmp/wclose.js && chmod 644 /tmp/wclose.js && i=\$($LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wclose.js string:mountain-wclose | awk '/int32/{print \$2}') && $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script\$i org.kde.kwin.Script.run >/dev/null; for _ in \$(seq 15); do kill -0 $pid 2>/dev/null || break; sleep 1; done; kill -0 $pid 2>/dev/null && kill -TERM $pid; for _ in \$(seq 10); do kill -0 $pid 2>/dev/null || break; sleep 1; done; $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:mountain-wclose >/dev/null; }" >/dev/null 2>&1 || true
+            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "echo $id \$(cat /proc/$pid/cgroup) >> /tmp/every-cgroup.txt; { grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup || grep -E '/app-[^/]*[.]scope' /proc/$pid/cgroup | grep -qvE 'plasma|kde|baloo'; } && { printf \"for (const w of workspace.windowList()) if (w.pid === %s) w.closeWindow();\n\" $pid > /tmp/wclose.js && chmod 644 /tmp/wclose.js && i=\$($LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wclose.js string:mountain-wclose | awk '/int32/{print \$2}') && $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script\$i org.kde.kwin.Script.run >/dev/null; for _ in \$(seq 15); do kill -0 $pid 2>/dev/null || break; sleep 1; done; kill -0 $pid 2>/dev/null && kill -TERM $pid; for _ in \$(seq 10); do kill -0 $pid 2>/dev/null || break; sleep 1; done; $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:mountain-wclose >/dev/null; }" >/dev/null 2>&1 || true
             R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
           done
+          R "cat /tmp/every-cgroup.txt" > perf/every-cgroup.txt 2>&1 || true
           EVERY_ALIAS='btrfs-assistant=org.kde.polkit-kde-authentication-agent-1|mountain-node=org.kde.konsole|mountain-python=org.kde.konsole|org.gnome.DiskUtility=gnome-disks|org.kde.krfb=org.freedesktop.impl.portal.desktop.kde|org.mountain.(protection|run|security|settings)=org.kde.plasmawindowed|webapp-manager=webapp-manager.py|org.onlyoffice.desktopeditors=ONLYOFFICE'
           touch perf/every-alias.txt
           echo "| Start apps: each judged by its own window | $(grep -qvE "^($EVERY_ALIAS)$" perf/every-alias.txt && echo FAIL || echo PASS) | other window judged: $(grep -vE "^($EVERY_ALIAS)$" perf/every-alias.txt | paste -sd' ') |" >> report.md
