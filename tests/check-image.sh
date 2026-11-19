@@ -1226,7 +1226,7 @@ check_phase41() { # v7.4: background system updates (applied at restart), automa
 check_phase42() { # v7.4: Active Protection only stops with the admin password (flag + guard), firewall switch (admin password)
   local X=${MOUNTAIN_ROOT:-} u=${MOUNTAIN_ROOT:-}/usr/lib/systemd/user/mountain-protect.service ui=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
   assert_grep '^RefuseManualStop=yes$' $u
-  assert_grep '^ConditionPathExists=!/var/lib/mountain/protect-off-%U$' $u
+  assert_grep '^ExecCondition=/usr/bin/test ! -e /var/lib/mountain/protect-off-%U$' $u
   assert_grep '^Restart=always$' $u
   for f in mountain-protect-admin mountain-protect-guard mountain-firewall; do
     assert_file $X/usr/libexec/$f

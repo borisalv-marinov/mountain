@@ -421,6 +421,8 @@ jobs:
           chk "password unlocks" 1 "$SS" 'boolean false'
           # the long steps below must not lock the screen when idle
           R "$LT kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false; $LT dbus-send --session --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.kde.screensaver.configure" || true
+          # nor turn the screen off (a quick run has long steps with no input: its screenshots read "Display output is not active")
+          R "$LT kwriteconfig6 --file powerdevilrc --group AC --group Display --key TurnOffDisplayWhenIdle --type bool false; $LT kwriteconfig6 --file powerdevilrc --group AC --group Display --key DimDisplayWhenIdle --type bool false; $LT dbus-send --session --type=method_call --dest=org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement org.kde.Solid.PowerManagement.reparseConfiguration" || true
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           # helpers and files more than one part uses (here so a quick run can skip the part that made them)
@@ -1004,15 +1006,15 @@ jobs:
           # v7.4 lock after 5 idle minutes (the image default; the long steps above turned only this user's Autolock off)
           chk "lock after 5 idle minutes" 0 "$LT kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout" '^5$'
           # v7.4 App permissions (Flatpak Files / Camera / Microphone): the helper behind Settings > App permissions, then the page
-          APP=com.heroicgameslauncher.hgl
+          APP=com.heroicgameslauncher.hgl; LTH=$(R "realpath ~looktest") # real path: the sandbox has the home there, not under /home
           H="$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-app-permissions"
           F="$LT systemd-run --user --wait --pipe --quiet --collect flatpak"
           R "$(TL 'mkdir -p ~/Documents; echo x > ~/Documents/ap-test.txt')"
           chk "App permissions: helper lists the Flatpak apps with three on/off states" 0 "$H list | grep -cP '^\S+\t[^\t]+\t(on|off)\t(on|off)\t(on|off)\$'" '^[1-9]'
           chk "App permissions: Files off (helper)" 0 "$H set $APP files off; $H list | grep ^$APP | cut -f3" '^off$'
-          chk "App permissions: with Files off the app cannot list ~/Documents" 0 "$F run --command=ls $APP /home/looktest/Documents 2>&1; echo rc=\$?" 'rc=[1-9]'
+          chk "App permissions: with Files off the app cannot list ~/Documents" 0 "$F run --command=ls $APP $LTH/Documents 2>&1; echo rc=\$?" 'rc=[1-9]'
           chk "App permissions: Files on (helper)" 0 "$H set $APP files on; $H list | grep ^$APP | cut -f3" '^on$'
-          chk "App permissions: with Files on the app lists ~/Documents" 0 "$F run --command=ls $APP /home/looktest/Documents 2>&1" 'ap-test.txt'
+          chk "App permissions: with Files on the app lists ~/Documents" 0 "$F run --command=ls $APP $LTH/Documents 2>&1" 'ap-test.txt'
           chk "App permissions: Microphone off removes the PulseAudio socket" 0 "$H set $APP mic off; $F override --user --show $APP" 'sockets=.*!pulseaudio'
           chk "App permissions: Microphone on gives it back" 0 "$H set $APP mic on; $F override --user --show $APP" 'sockets=[^!]*pulseaudio'
           chk "App permissions: Camera off (helper)" 0 "$H set $APP camera off; $H list | grep ^$APP | cut -f4" '^off$'
@@ -1289,7 +1291,7 @@ jobs:
           REF() { chk "attack: $1 is refused" 0 "o=\$($LT timeout 90 $2 </dev/null 2>&1); r=\$?; echo \"\$o\" > /tmp/ref-last; [ \$r = 124 ] && echo rc=timeout || echo \"rc=\$r \$(echo \$o | tail -c 100)\"" '^rc=[1-9]'; }
           REF "rpm-ostree install htop" "rpm-ostree install htop"
           REF "flatpak install --system" "flatpak install --system -y --noninteractive flathub org.gnome.Calculator"
-          chk "attack: the refused flatpak install downloaded and installed nothing" 0 "{ grep -ciE 'Downloading|Installing|Transaction' /tmp/ref-last || true; flatpak list --system --app --columns=application | grep -c '^org.gnome.Calculator\$' || true; } | paste -sd' '" '^0 0$'
+          chk "attack: the refused flatpak install installed nothing" 0 "flatpak list --system --app --columns=application | grep -c '^org.gnome.Calculator\$' || true" '^0$' # it downloads to the user's cache first; only the system Deploy needs the password
           REF "firewall-cmd --permanent --add-port=4444/tcp" "firewall-cmd --permanent --add-port=4444/tcp"
           REF "systemctl stop firewalld" "systemctl stop firewalld"
           REF "pkexec mountain-firewall off" "pkexec /usr/libexec/mountain-firewall off"

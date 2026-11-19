@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Active Protection on/off for the user who ran pkexec (root, admin password asked by polkit: org.mountain.protect-toggle).
-# off = a root-owned flag that the user unit's ConditionPathExists checks, then the watcher is killed (RefuseManualStop only refuses "stop").
+# off = a root-owned flag that the user unit's ExecCondition checks on every start, then the watcher is killed (RefuseManualStop only refuses "stop").
 # on = flag removed, watcher started. The guard (mountain-protect-guard) restores it when a program turns it off without the flag.
 set -euo pipefail
 uid=${PKEXEC_UID:-}; [[ $uid =~ ^[0-9]+$ ]] || { echo "run it through pkexec" >&2; exit 2; }

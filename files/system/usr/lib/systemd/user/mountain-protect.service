@@ -3,11 +3,12 @@ Description=Mountain Active Protection (real-time, local-only; scans start only 
 After=graphical-session.target
 # only the admin password turns it off: no 'stop' from a program, and the root-owned flag (mountain-protect-admin) is the one off switch
 RefuseManualStop=yes
-ConditionPathExists=!/var/lib/mountain/protect-off-%U
 # never give up restarting: a stopped watcher would leave the PC unprotected without a word
 StartLimitIntervalSec=0
 
 [Service]
+# the off flag is checked on every start: a Condition*= line is skipped on Restart=always restarts (VM run 44626464734)
+ExecCondition=/usr/bin/test ! -e /var/lib/mountain/protect-off-%U
 ExecStart=/usr/libexec/mountain-protect daemon
 # a program can still mask or kill it: mountain-protect-guard (system timer) puts it back within a minute
 Restart=always
