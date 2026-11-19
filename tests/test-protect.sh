@@ -3,7 +3,7 @@
 S=$(dirname "$0")/../files/system/usr/libexec/mountain-protect
 T=$(mktemp -d); rc=0
 ok() { if eval "$1"; then echo "ok: $2"; else echo "FAIL: $2"; rc=1; fi; }
-eval "$(sed -n '/^signin()/,/esac; return 1; }/p; /^is_unverified()/,/^}/p; /^skip()/,/^}/p' "$S")"
+eval "$(sed -n '/^signin()/,/esac; return 1; }/p; /^is_unverified()/,/^}/p; /^skip()/,/^}/p; /^plain()/,/^}/p' "$S")"
 allowed=$T/allowed
 mkdir -p "$T/.config/autostart"
 printf '#!/bin/sh\necho hi\n' > "$T/run-me"; echo text > "$T/notes.txt"; echo x > "$T/setup.exe"; printf '[Desktop Entry]\n' > "$T/.config/autostart/evil.desktop"
@@ -80,6 +80,10 @@ ok 'grep -q mid.zip "$B/systemd-run.log" && ! grep -q "mid.zip	too large" "$D/mo
 truncate -s 2050M "$H/Downloads/movie.mkv"; pc "$H/Downloads/movie.mkv"
 ok 'grep -q "movie.mkv	too large to scan$" "$D/mountain/protect/unverified"' "S2: a big non-archive in Downloads is listed too large to scan"
 for p in .zshrc .zprofile .zshenv .bash_login .bash_logout .xprofile .xsessionrc .config/autostart-scripts/x.sh; do ok "signin \"\$T/$p\"" "S6: ~/$p starts at sign-in"; done
+ok '[[ $(plain "$T/.bashrc" "starts at sign-in") == "Shell start-up file (.bashrc)"$'"'"'\t'"'"'"Changed: runs each time you open a terminal" ]]' "U15: .bashrc is listed by a plain name and what it does"
+ok '[[ $(plain "$T/.config/autostart/updater.desktop" "starts at sign-in") == "Program set to start at sign-in: updater"$'"'"'\t'"'"'* ]]' "U15: an autostart entry reads as a program set to start at sign-in"
+ok '[[ $(plain "$T/.config/systemd/user/apa-x.service" "starts at sign-in") == "Background service: apa-x"$'"'"'\t'"'"'* && $(plain "$T/Downloads/install.sh" "program or script") == "install.sh"$'"'"'\t'"'"'"New program or script you have not checked yet" ]]' "U15: a user service and a download read in plain words"
+ok 'grep -qF "echo \"ap_unverified=\$p|\$r\"\$'"'"'\t'"'"'\"\$(plain" "$S" && grep -qF "QQC2.ToolTip.text: path" "$(dirname "$S")/../share/plasma/plasmoids/org.mountain.settings/contents/ui/ProtectionPage.qml"' "U15: status keeps the raw path first (Allow/Quarantine/Delete use it); the page shows it on hover"
 ok '[[ $(stat -c "%Z" "$T/notes.txt") =~ ^[0-9]+$ ]] && grep -q "%s %.9Y %.9Z %a" "$S"' "S4: the scan cache key includes ctime"
 qn=$(sed -n '/^qname()/p' "$(dirname "$S")/mountain-security"); quarantine=$T; touch "$T/real"
 ok '(eval "$qn"; qname real) 2>/dev/null && ! (eval "$qn"; qname .) 2>/dev/null && ! (eval "$qn"; qname ..) 2>/dev/null' "S8: quarantine names . and .. are refused"

@@ -1091,7 +1091,10 @@ jobs:
           R "$LT systemctl --user stop mountain-protect.service"; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
           R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
           L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans
-          K -f org.mountain.settings; L "/usr/libexec/mountain-settings-open home"; sleep 8; shot security-home; K -f org.mountain.settings
+          # U14: the pointer last clicked the power menu (937,700), right where toasts stack: Plasma pauses a toast under the pointer,
+          # so the "Threat blocked" toast stayed on screen for minutes. Park it in the middle, like a user reading the page
+          QM move $((W/2)) $((H/3)); sleep 1
+          K -f org.mountain.settings; L "/usr/libexec/mountain-settings-open home"; sleep 8; shot security-home # ux-rules: no "Threat blocked" toast left; K -f org.mountain.settings
           L "/usr/libexec/mountain-settings-open protection"; sleep 9
           QM move 1270 790; sleep 1; shot security-protection-history # the Active Protection page with its history (pointer parked off popups); K -f org.mountain.settings
           R "rm -f /var/lib/clamav/mountain-test.hdb"

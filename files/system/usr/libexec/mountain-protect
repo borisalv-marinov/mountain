@@ -249,12 +249,32 @@ event() { # a new drive or app (not a file): handle it and succeed
   return 0
 }
 
+plain() { # PATH REASON -> "name<TAB>what it does": the review list in plain words (the path stays the key; it has no tab or newline)
+  local b=${1##*/} n w
+  case $1 in
+    */.bashrc|*/.zshrc) n="Shell start-up file ($b)"; w="Changed: runs each time you open a terminal" ;;
+    */.bash_logout|*/plasma-workspace/shutdown/*) n="Sign-out script: $b"; w="Runs each time you sign out" ;;
+    */.profile|*/.bash_profile|*/.bash_login|*/.zprofile|*/.zshenv|*/.xprofile|*/.xsessionrc|*/environment.d/*|*/plasma-workspace/env/*)
+      n="Sign-in settings file ($b)"; w="Changed: runs each time you sign in" ;;
+    */.config/autostart/*|*/.config/autostart-scripts/*) n="Program set to start at sign-in: ${b%.desktop}"; w="Starts by itself when you sign in" ;;
+    */systemd/user/*) n="Background service: ${b%.service}"; w="Set to start by itself when you sign in" ;;
+    */dbus-1/services/*) n="Background service: ${b%.service}"; w="Starts by itself when an app asks for it" ;;
+    */kwin/scripts/*) n=${1#*/kwin/scripts/}; n="Desktop add-on: ${n%%/*}"; w="Runs inside the desktop at every sign-in" ;;
+    *) n=$b; case $2 in
+         program) w="New program you have not checked yet" ;; script) w="New script you have not checked yet" ;;
+         "program or script") w="New program or script you have not checked yet" ;; executable) w="New file that can run as a program" ;;
+         "too large to scan") w="Too large to scan for threats" ;; *) w=${2^} ;; esac ;;
+  esac
+  [[ $2 == link* ]] && w="Shortcut that starts a program at sign-in"
+  printf '%s\t%s' "$n" "$w"
+}
+
 status() {
   [[ $(systemctl --user is-active mountain-protect.service 2>/dev/null) == active ]] && echo ap=on || echo ap=off
   echo "ap_checked_today=$(cat "$pdir/checked-$(date +%F)" 2>/dev/null | wc -l)"
   echo "ap_threats=$(cat "$pdir/threats" 2>/dev/null | wc -l)"
   local p r
-  while IFS=$'\t' read -r p r; do [[ -e $p || -L $p ]] && echo "ap_unverified=$p|$r"; done < <(cat "$unv" 2>/dev/null)
+  while IFS=$'\t' read -r p r; do [[ -e $p || -L $p ]] && echo "ap_unverified=$p|$r"$'\t'"$(plain "$p" "$r")"; done < <(cat "$unv" 2>/dev/null)
   /usr/libexec/mountain-security status --av | grep -E '^(av_|dl_watch)'
 }
 
