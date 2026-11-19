@@ -1356,7 +1356,6 @@ jobs:
           R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
           chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
-          fi # part session
           LO=fail
           for _ in $(seq 30); do
             R "loginctl list-sessions --no-legend | grep -q looktest" || { LO=ok; break; }
@@ -1367,7 +1366,7 @@ jobs:
           # Startup apps: the switched-off test app must not start at the next sign-in
           sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
           for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20; shot relogin-desktop
-          part taskmgr && chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
+          part taskmgr && part session && chk "Startup apps: a switched-off app does not start at sign-in" 0 "pgrep -u looktest -x plasmashell >/dev/null && { pgrep -u looktest -f 'mtm-autostart-test 99999' || echo off; }" '^off$'
           # Bulgarian: what Language & region writes (plasma-localerc [Translations] LANGUAGE), sign out and in, look at KDE-owned and
           # Mountain windows, then back to English. Only KDE's own text (Dolphin, Plasma menus) is Bulgarian: Mountain's plasmoids ship no bg catalog.
           chk "Bulgarian: KDE catalogs are installed" 0 "ls /usr/share/locale/bg/LC_MESSAGES/dolphin.mo /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo" 'dolphin.mo'
@@ -1387,6 +1386,7 @@ jobs:
           L dolphin; sleep 8; shot bg-file-explorer; K -x dolphin
           R "ls /usr/lib64/qt6/plugins/kf6/kfileitemaction/ /usr/share/kio/servicemenus/ 2>&1" > fileitemactions-log.txt 2>&1 || true # real names of the right-click plugins (folder-colour row)
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true; sleep 15
+          fi # part session: logout, sign in again, Startup apps, Bulgarian (a quick run without it stays signed in)
           BT=$(R "systemd-analyze | head -1 | sed 's/.*= //'")
           printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
           if part rollback; then
