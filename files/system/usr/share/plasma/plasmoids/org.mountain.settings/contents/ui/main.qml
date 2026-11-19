@@ -33,7 +33,7 @@ PlasmoidItem {
 
     property string page: "home"
     // pages without their own nav entry light up their category
-    readonly property var nativePages: ({ display: "DisplayPage.qml", sound: "SoundPage.qml", bluetooth: "BluetoothPage.qml", nightlight: "NightLightPage.qml", language: "LanguagePage.qml", typing: "TypingPage.qml", notifications: "NotificationsPage.qml", mouse: "MousePage.qml", defaultapps: "DefaultAppsPage.qml", power: "PowerPage.qml", about: "AboutPage.qml", storage: "StoragePage.qml", startup: "StartupPage.qml", datetime: "DateTimePage.qml", lockscreen: "LockScreenPage.qml", colors: "ColorsPage.qml", controllers: "ControllersPage.qml", printers: "PrintersPage.qml", youraccount: "AccountPage.qml" })
+    readonly property var nativePages: ({ display: "DisplayPage.qml", sound: "SoundPage.qml", bluetooth: "BluetoothPage.qml", nightlight: "NightLightPage.qml", language: "LanguagePage.qml", typing: "TypingPage.qml", notifications: "NotificationsPage.qml", mouse: "MousePage.qml", defaultapps: "DefaultAppsPage.qml", power: "PowerPage.qml", about: "AboutPage.qml", storage: "StoragePage.qml", startup: "StartupPage.qml", datetime: "DateTimePage.qml", lockscreen: "LockScreenPage.qml", colors: "ColorsPage.qml", controllers: "ControllersPage.qml", printers: "PrintersPage.qml", youraccount: "AccountPage.qml", apppermissions: "AppPermissionsPage.qml" })
     readonly property string navPage: categories.some(c => c.id === page) ? page : page === "protection" ? "privacy"
         : (categories.find(c => c.items.some(it => it.page === page)) || categories[0]).id
     readonly property var navCategory: categories.find(c => c.id === navPage)
@@ -116,7 +116,8 @@ PlasmoidItem {
         ] },
         { id: "privacy", name: i18n("Privacy & security"), icon: "security-high", items: [
             { t: i18n("Screen lock"), d: i18n("Lock automatically, require password"), i: "system-lock-screen", page: "lockscreen", k: "lock password security" },
-            { t: i18n("Virus & threat protection"), d: i18n("Scan now, quarantine, Previous versions"), i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
+            { t: i18n("Virus & threat protection"), d: i18n("Scan now, quarantine, Previous versions"), i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" },
+            { t: i18n("App permissions"), d: i18n("Choose which apps may use your files, camera and microphone"), i: "preferences-system-privacy", page: "apppermissions", k: "app permissions files camera microphone flatpak sandbox access privacy" }
         ] },
         { id: "updates", name: i18n("Updates"), icon: "system-software-update", items: [
             { t: i18n("Check for updates"), d: i18n("Updates are manual: open the Updates app and run it when you choose"), i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },

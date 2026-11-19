@@ -1326,3 +1326,46 @@ msgstr "Не е намерен микрофон"
 
 msgid "No speakers found"
 msgstr "Не са намерени високоговорители"
+
+msgid "App permissions"
+msgstr "Разрешения за приложения"
+
+msgid "Choose which apps may use your files, camera and microphone"
+msgstr "Изберете кои приложения могат да ползват файловете, камерата и микрофона ви"
+
+msgid "Choose what each app may use. A change reaches an app the next time it starts."
+msgstr "Изберете какво може да ползва всяко приложение. Промяната влиза в сила при следващото стартиране на приложението."
+
+msgid "Files"
+msgstr "Файлове"
+
+msgid "Camera"
+msgstr "Камера"
+
+msgid "Microphone"
+msgstr "Микрофон"
+
+msgid "Let this app see your home folder, Documents and Downloads"
+msgstr "Позволете на приложението да вижда личната ви папка, Документи и Изтегляния"
+
+msgid "Let this app use your camera"
+msgstr "Позволете на приложението да ползва камерата ви"
+
+msgid "Let this app use your microphone"
+msgstr "Позволете на приложението да ползва микрофона ви"
+
+msgid "No apps from the app store are installed."
+msgstr "Няма инсталирани приложения от магазина."
+
+
+msgid "If you turn the firewall off, other devices on your network could reach apps on this PC. Turn it off only if you know why."
+msgstr "Ако изключите защитната стена, други устройства във вашата мрежа могат да достигнат приложения на този компютър. Изключвайте я само ако знаете защо."
+
+msgid "Turn off the firewall"
+msgstr "Изключване на защитната стена"
+
+msgid "Keep it on"
+msgstr "Оставяне включена"
+
+msgid "Firewall"
+msgstr "Защитна стена"

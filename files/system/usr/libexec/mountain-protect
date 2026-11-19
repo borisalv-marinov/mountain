@@ -287,8 +287,7 @@ listed() { inlist "$1" || { echo "not in the review list: $1" >&2; exit 2; }; }
 case ${1:-} in
   daemon) daemon ;;
   status) status ;;
-  on) systemctl --user enable --now mountain-protect.service ;;
-  off) systemctl --user disable --now mountain-protect.service ;;
+  on|off) exec /usr/libexec/mountain-security protect "$1" ;; # admin password (polkit)
   allow) listed "${2:-}"; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed"; drop "$2"
     b=${2##*/}; echo "$(date '+%F %H:%M') Allowed: ${b//[$'\n\t']/_}" >> "$state/scan-history" ;;
   allow-hash) [[ -f ${2:-} ]] || { echo "no such file: ${2:-}" >&2; exit 2; }; sha256sum -- "$2" | cut -d' ' -f1 >> "$allowed" ;; # quarantine restore

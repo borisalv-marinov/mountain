@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Runs as root every minute (mountain-protect-guard.timer). For every signed-in user who did not turn Active Protection off
+# with the admin password (no /var/lib/mountain/protect-off-UID): if the watcher is not running, or the user put an override
+# for it in their own folders (a replacement file, a drop-in folder, a mask link), the override is removed, the watcher started,
+# and the user told once. Everything that touches the user's folders runs AS the user (the user owns those paths, so root
+# never follows a link there); rm never follows links.
+# shortcut: a program of the same user can still fight the watcher between two ticks, shorter ticks if that matters.
+set -uo pipefail
+while read -r uid name _; do
+  [[ $uid =~ ^[0-9]+$ ]] && (( uid >= 1000 )) || continue
+  [[ -e /var/lib/mountain/protect-off-$uid ]] && continue
+  [[ -d /run/user/$uid/systemd ]] || continue
+  as() { runuser -u "$name" -- env XDG_RUNTIME_DIR=/run/user/"$uid" DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/"$uid"/bus "$@"; }
+  home=$(getent passwd "$uid" | cut -d: -f6); fixed=0; bad=()
+  for d in "$home"/.config/systemd/user{,.control} "$home/.local/share/systemd/user" /run/user/"$uid"/systemd/{user,user.control,transient}; do # .control: set-property
+    for p in "$d/mountain-protect.service" "$d/mountain-protect.service.d"; do
+      [[ -e $p || -L $p ]] && bad+=("$p")
+    done
+  done
+  (( ${#bad[@]} )) && { as rm -rf -- "${bad[@]}"; as systemctl --user daemon-reload; fixed=1; }
+  st=$(as systemctl --user is-active mountain-protect.service 2>/dev/null)
+  [[ $st == active || $st == activating ]] && (( ! fixed )) && continue
+  as systemctl --user reset-failed mountain-protect.service 2>/dev/null
+  as systemctl --user start mountain-protect.service
+  as notify-send -a "Mountain Security" -i security-medium "Active Protection" "Active Protection was turned off by a program and has been turned back on." 2>/dev/null
+done < <(loginctl list-users --no-legend 2>/dev/null)

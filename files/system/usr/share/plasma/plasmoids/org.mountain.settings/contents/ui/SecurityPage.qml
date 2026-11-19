@@ -13,6 +13,7 @@ ColumnLayout {
     property var ap: ({}) // mountain-protect status: Active Protection on/off, files checked today, threats
     property string running: "" // scan | rollback | snapshot | fix
     property string note: ""
+    property bool confirmFwOff: false // the plain warning before the firewall goes off
     readonly property string statusCmd: "/usr/libexec/mountain-security status"
     readonly property string guide: "https://github.com/borisalv-marinov/mountain/blob/main/docs/OWNER-GUIDE.md"
 
@@ -165,7 +166,8 @@ ColumnLayout {
                      : i18n("Off. New files are not checked until you scan by hand.")
             tech: i18n("Watcher: inotify + ClamAV in a sandboxed low-priority unit that exits when done.")
             buttons: [
-                GlassButton { visible: sec.a("ap") !== "on"; text: i18n("Turn on"); highlighted: true; enabled: sec.running === ""; onClicked: sec.start("fix", "/usr/libexec/mountain-protect on") },
+                GText { text: sec.a("ap") === "on" ? i18n("On") : i18n("Off") },
+                PillSwitch { text: i18n("Active Protection"); checked: sec.a("ap") === "on"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " protect " + (sec.a("ap") === "on" ? "off" : "on")) }, // admin password; the state is read again afterwards, so a cancel snaps it back
                 GlassButton { text: i18n("Open Active Protection"); onClicked: app.page = "protection" }
             ]
         }
@@ -191,15 +193,19 @@ ColumnLayout {
             iconName: "firewall-applet"
             title: i18n("Firewall & network protection")
             level: sec.lvFw
-            details: sec.v("fw") === "on"
+            details: sec.confirmFwOff ? i18n("If you turn the firewall off, other devices on your network could reach apps on this PC. Turn it off only if you know why.")
+                     : sec.v("fw") === "on"
                      ? i18n("Firewall is on. Apps allowed through: %1.", sec.list("fw_app").filter(x => x.split(":")[1] === "yes").map(x => x.split(":").slice(2).join(":")).join(", ") || i18n("none"))
                      : i18n("Firewall is off. Other devices could reach apps on this PC.")
             details2: sec.v("fw") === "on" ? i18n("Network profile: %1", sec.v("fw_profile") === "home" ? i18n("Private (other PCs can find this one)") : i18n("Public (hidden from other devices)")) : ""
             tech: sec.v("fw") === "on" ? i18n("firewalld zone: %1. Open services: %2.", sec.v("fw_zone"), sec.v("fw_open") || i18n("none")) : ""
             buttons: [
-                GlassButton { visible: sec.v("fw") !== "on"; text: i18n("Turn on"); highlighted: true; onClicked: sec.start("fix", "systemctl start firewalld") },
-                GlassButton { visible: sec.v("fw") === "on"; text: i18n("Private network"); highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
-                GlassButton { visible: sec.v("fw") === "on"; text: i18n("Public network"); highlighted: sec.v("fw_profile") !== "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile public") }
+                GText { visible: !sec.confirmFwOff; text: sec.v("fw") === "on" ? i18n("On") : i18n("Off") },
+                PillSwitch { visible: !sec.confirmFwOff; text: i18n("Firewall"); checked: sec.v("fw") === "on"; enabled: sec.running === ""; onClicked: sec.v("fw") === "on" ? sec.confirmFwOff = true : sec.start("fix", sec.helper + " firewall on") }, // admin password; the state is read again afterwards, so a cancel snaps it back
+                GlassButton { visible: sec.confirmFwOff; text: i18n("Turn off the firewall"); highlighted: true; enabled: sec.running === ""; onClicked: { sec.confirmFwOff = false; sec.start("fix", sec.helper + " firewall off"); } },
+                GlassButton { visible: sec.confirmFwOff; text: i18n("Keep it on"); onClicked: sec.confirmFwOff = false },
+                GlassButton { visible: sec.v("fw") === "on" && !sec.confirmFwOff; text: i18n("Private network"); highlighted: sec.v("fw_profile") === "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile home") },
+                GlassButton { visible: sec.v("fw") === "on" && !sec.confirmFwOff; text: i18n("Public network"); highlighted: sec.v("fw_profile") !== "home"; enabled: sec.running === ""; onClicked: sec.start("fix", sec.helper + " profile public") }
             ]
         }
         SecurityCard {
