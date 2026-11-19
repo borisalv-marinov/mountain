@@ -1299,6 +1299,10 @@ jobs:
             else # no window: keep what the app printed, so the cause is in the report
               { echo "== $id"; R "journalctl -b --no-pager -o cat _SYSTEMD_USER_UNIT=every-$n.service | tail -5"; } >> perf/every-nowindow.txt 2>&1
             fi
+            # close like a person: a stop signal to the window's own process first, so Chromium/Electron apps end their helpers in order
+            # (stopping the whole scope at once made Heroic and ONLYOFFICE crash: runs 44451198420/44451211782); only a process this
+            # launch started (its every-unit or a Flatpak app scope), never a long-lived one like the polkit agent
+            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup && kill -TERM $pid && for _ in 1 2 3 4 5 6 7 8; do kill -0 $pid 2>/dev/null || break; sleep 1; done" >/dev/null 2>&1 || true
             R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
