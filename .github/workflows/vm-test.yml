@@ -1316,10 +1316,10 @@ jobs:
             else # no window: keep what the app printed, so the cause is in the report
               { echo "== $id"; R "journalctl -b --no-pager -o cat _SYSTEMD_USER_UNIT=every-$n.service | tail -5"; } >> perf/every-nowindow.txt 2>&1
             fi
-            # close like a person: a stop signal to the window's own process first, so Chromium/Electron apps end their helpers in order
+            # close like a person: KWin closes the window (the X button), so apps end their helpers in order; a plain SIGTERM still crashed ONLYOFFICE
             # (stopping the whole scope at once made Heroic and ONLYOFFICE crash: runs 44451198420/44451211782); only a process this
             # launch started (its every-unit or a Flatpak app scope), never a long-lived one like the polkit agent
-            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup && kill -TERM $pid && for _ in 1 2 3 4 5 6 7 8; do kill -0 $pid 2>/dev/null || break; sleep 1; done" >/dev/null 2>&1 || true
+            [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup && { printf \"for (const w of workspace.windowList()) if (w.pid === %s) w.closeWindow();\n\" $pid > /tmp/wclose.js && chmod 644 /tmp/wclose.js && i=\$($LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wclose.js string:mountain-wclose | awk '/int32/{print \$2}') && $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script\$i org.kde.kwin.Script.run >/dev/null; for _ in 1 2 3 4 5 6 7 8; do kill -0 $pid 2>/dev/null || break; sleep 1; done; $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:mountain-wclose >/dev/null; }" >/dev/null 2>&1 || true
             R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
             sleep 2
@@ -1338,24 +1338,13 @@ jobs:
           cat > crash-probe.sh <<'SH'
           exec 2>&1
           echo "== kernel trap lines"; dmesg | grep -E 'segfault|general protection|trap int3' | head -80
-          hs=$(dmesg | grep -E 'segfault|general protection|trap int3' | grep -oE '[0-9a-f]{62,64}\.file' | sed 's/\.file$//' | sort -u) # composefs objects are XX/<62 hex>.file: the kernel prints the name only
-          echo "== distinct hashes: $(echo $hs | wc -w)"
-          command -v fsverity >/dev/null && timeout 300 sh -c 'find /usr/lib64 /usr/lib /usr/libexec -xdev -type f -print0 | xargs -0 -n 500 fsverity measure 2>/dev/null' > /tmp/fsv.txt
-          timeout 300 getfattr -R -h -d -m 'overlay.redirect' --absolute-names /usr/lib64 /usr/lib /usr/libexec > /tmp/xattr.txt 2>/dev/null
-          for h in $hs; do
-            echo "== hash $h"
-            echo "-- composefs redirect xattr:"; awk -v h="$h" '/^# file:/{f=substr($0,9)} /redirect/{v=$0; gsub("/","",v); if (index(v,h)) print "  " f}' /tmp/xattr.txt
-            echo "-- fsverity measure:"; grep -F "$h" /tmp/fsv.txt | sed 's/^/  /'
-            echo "-- object in the ostree repo:"; ls -l /sysroot/ostree/repo/objects/*/$h.file /sysroot/composefs/objects/*/$h 2>&1 | sed 's/^/  /'
-            # the redirect and fsverity reads came back empty: name the library by size, confirmed byte for byte
-            o=$(ls /sysroot/ostree/repo/objects/*/$h.file 2>/dev/null | head -1); sz=$(stat -c %s "$o" 2>/dev/null)
-            [ -n "$sz" ] && { echo "-- /usr files with its size ($sz bytes), = when identical:"; find /usr -xdev -type f -size "${sz}c" 2>/dev/null | head -8 | while read -r u; do cmp -s "$o" "$u" && echo "  = $u" || echo "    $u"; done; }
-          done
-          echo "== ldd kioworker"; ldd /usr/libexec/kf6/kioworker; echo "== kio plugins"; ls /usr/lib64/qt6/plugins/kf6/kio/
-          echo "== journal: kioworker / kf.kio"; journalctl -b --no-pager | grep -iE 'kioworker|kf.kio' | tail -50
+          # B1 is traced (KDE's thumbnail worker): the library hunt by hash (up to 10 min) is gone; one stack trace per crashed program instead
           echo "== package"; rpm -qf /usr/lib64/libKF6KIOCore.so.6 /usr/libexec/kf6/kioworker
-          echo "== stack traces (first 3 crashes; the worker's command line names its protocol)"
-          for p in $(coredumpctl list --no-legend --no-pager /usr/libexec/kf6/kioworker 2>/dev/null | awk '{print $5}' | head -3); do coredumpctl info --no-pager "$p" 2>&1 | grep -E 'PID:|Command Line:|Signal:|Stack trace|^ +#[0-9]+ ' | head -40; done
+          echo "== stack traces: the first crash of every program (kioworker shorter, B1 is KDE's own)"
+          for e in $(coredumpctl list --no-legend --no-pager 2>/dev/null | awk '{for (i = 6; i <= NF; i++) if (substr($i, 1, 1) == "/") print $i}' | sort -u); do
+            p=$(coredumpctl list --no-legend --no-pager "$e" 2>/dev/null | awk '{print $5}' | head -1); [ "$e" = /usr/libexec/kf6/kioworker ] && n=20 || n=60
+            echo "-- $e"; coredumpctl info --no-pager "$p" 2>&1 | grep -E 'PID:|Command Line:|Signal:|Stack trace|^ +#[0-9]+ ' | head -$n
+          done
           SH
           R "bash -s" < crash-probe.sh > crash-probe-log.txt 2>&1 || true
           chk "tearing: KWin never lets a window tear" 1 "$LT kreadconfig6 --file kwinrc --group Compositing --key AllowTearing" '^false$'
