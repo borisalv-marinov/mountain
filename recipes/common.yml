@@ -47,7 +47,7 @@ modules:
         - efibootmgr # Restart into Windows
         - kio-gdrive # Google Drive in File Explorer after signing in under Online accounts
         - clamav # virus scan on demand (Settings > Privacy & security)
-        - clamav-update # freshclam, run only when you click Scan now
+        - clamav-update # freshclam, run by the daily timer and by Update definitions / Scan now
         - greenboot # a new system that fails its health checks at boot is rolled back automatically
 
   - type: script
@@ -93,6 +93,7 @@ modules:
         - rpm-ostreed-automatic.timer # system updates download in the background (policy stage), applied at the next restart
         - greenboot-healthcheck.service # boot health checks; failing boot_counter times rolls back to the previous system
         - mountain-signed-origin.service # a rebase-installed PC gets a signature-enforced origin
+        - mountain-virus-definitions-auto.timer # virus definitions download by themselves: a minute after start, then daily (owner, 21 Nov)
         - mountain-protect-guard.service # root service: Active Protection stopped, frozen or paused by a program (not the admin password) is put back within 5 s
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it

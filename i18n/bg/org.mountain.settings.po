@@ -331,11 +331,11 @@ msgstr "Дата и час"
 msgid "Default apps"
 msgstr "Приложения по подразбиране"
 
-msgid "Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have (off). Games are never scanned. Right-click any file: Scan with Mountain Security."
-msgstr "Дефинициите се изтеглят само когато натиснете бутон за сканиране. Новите файлове в Изтегляния се проверяват с дефинициите, които имате (изключено). Игрите никога не се сканират. Щракнете с десния бутон върху файл: „Сканиране с Mountain Security“."
+msgid "Definitions download by themselves: once the PC is online, then every day. Update gets them now. New files in Downloads are checked with the definitions you have (off). Games are never scanned. Right-click any file: Scan with Mountain Security."
+msgstr "Дефинициите се изтеглят сами: щом компютърът е в мрежата, после всеки ден. „Актуализиране“ ги взема веднага. Новите файлове в Изтегляния се проверяват с дефинициите, които имате (изключено). Игрите никога не се сканират. Щракнете с десния бутон върху файл: „Сканиране с Mountain Security“."
 
-msgid "Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have. Games are never scanned. Right-click any file: Scan with Mountain Security."
-msgstr "Дефинициите се изтеглят само когато натиснете бутон за сканиране. Новите файлове в Изтегляния се проверяват с дефинициите, които имате. Игрите никога не се сканират. Щракнете с десния бутон върху файл: „Сканиране с Mountain Security“."
+msgid "Definitions download by themselves: once the PC is online, then every day. Update gets them now. New files in Downloads are checked with the definitions you have. Games are never scanned. Right-click any file: Scan with Mountain Security."
+msgstr "Дефинициите се изтеглят сами: щом компютърът е в мрежата, после всеки ден. „Актуализиране“ ги взема веднага. Новите файлове в Изтегляния се проверяват с дефинициите, които имате. Игрите никога не се сканират. Щракнете с десния бутон върху файл: „Сканиране с Mountain Security“."
 
 msgid "Definitions: %1"
 msgstr "Дефиниции: %1"
@@ -679,14 +679,14 @@ msgstr "Не са намерени настройки. Опитайте с др�
 msgid "No startup apps."
 msgstr "Няма приложения при стартиране."
 
-msgid "No virus definitions yet. Connect to the internet and press Scan now to download them."
-msgstr "Все още няма вирусни дефиниции. Свържете се с интернет и натиснете „Сканиране сега“, за да ги изтеглите."
+msgid "No virus definitions yet. They download by themselves once the PC is online; or press Update."
+msgstr "Все още няма вирусни дефиниции. Изтеглят се сами, щом компютърът е в мрежата; или натиснете „Актуализиране“."
 
-msgid "No virus definitions — press Update"
-msgstr "Няма вирусни дефиниции — натиснете „Актуализиране“"
+msgid "No virus definitions yet — they download by themselves once online (or press Update)"
+msgstr "Още няма вирусни дефиниции — изтеглят се сами, щом сте онлайн (или натиснете „Актуализиране“)"
 
-msgid "No virus definitions — press Update (Scan now downloads them)"
-msgstr "Няма вирусни дефиниции — натиснете „Актуализиране“ („Сканиране сега“ ги изтегля)"
+msgid "No virus definitions yet — they download by themselves once the PC is online (or press Update)"
+msgstr "Още няма вирусни дефиниции — изтеглят се сами, щом компютърът е в мрежата (или натиснете „Актуализиране“)"
 
 msgid "None found. Plug one in or pair it in Bluetooth & devices."
 msgstr "Не са намерени. Включете контролер или го сдвоете в Bluetooth и устройства."

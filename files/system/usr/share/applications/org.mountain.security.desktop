@@ -4,6 +4,7 @@ Name=Security
 GenericName=Virus, firewall and device protection
 Comment=Virus scan, firewall, app protection, Previous versions, updates and rollback
 Exec=/usr/libexec/mountain-settings-open privacy
+StartupNotify=true
 Icon=security-high
 Categories=Settings;System;Security;
 Keywords=virus;antivirus;malware;firewall;ransomware;security;defender;

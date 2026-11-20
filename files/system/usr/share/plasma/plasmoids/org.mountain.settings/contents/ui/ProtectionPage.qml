@@ -110,7 +110,7 @@ ColumnLayout {
         title: ap.v("ap") === "on" ? i18n("Real-time protection is on") : i18n("Real-time protection is off")
         level: ap.v("ap") === "on" ? (ap.v("av_defs") === "none" ? 2 : (ap.list("ap_unverified").length > 0 ? 1 : 0)) : 2
         details: i18n("Files checked today: %1 · Threats blocked: %2 · Unverified to review: %3", ap.v("ap_checked_today", "0"), ap.v("ap_threats", "0"), ap.list("ap_unverified").length)
-                 + "\n" + i18n("Definitions: %1", ap.v("av_defs") === "none" ? i18n("No virus definitions — press Update") : ap.v("av_defs"))
+                 + "\n" + i18n("Definitions: %1", ap.v("av_defs") === "none" ? i18n("No virus definitions yet — they download by themselves once online (or press Update)") : ap.v("av_defs"))
                  + i18n(". They update only when you press Update or a scan button.")
         buttons: [
             GlassButton { text: ap.v("ap") === "on" ? i18n("Turn off") : i18n("Turn on"); highlighted: ap.v("ap") !== "on"; enabled: ap.running === ""; onClicked: ap.start("fix", ap.helper + (ap.v("ap") === "on" ? " off" : " on")) },

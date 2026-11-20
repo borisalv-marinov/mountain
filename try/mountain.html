@@ -18,7 +18,7 @@ button{cursor:pointer}
 <button id="send">Send to Mountain</button> <button id="copy">Copy</button></div></div>
 <script type="module">
 import RFB from "./core/rfb.js";
-import { charToKeysym } from "./keysym.mjs";
+import { charToKeysym, needsShift } from "./keysym.mjs";
 const $ = (id) => document.getElementById(id);
 const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/websockify";
 const rfb = new RFB($("screen"), url);
@@ -33,7 +33,7 @@ $("toggle").onclick = () => { const b = $("box"); b.style.display = b.style.disp
 $("send").onclick = () => {
   const t = $("txt").value;
   rfb.clipboardPasteFrom(t); // real clipboard via vdagent, if it works
-  for (const ch of t) rfb.sendKey(charToKeysym(ch), null); // typed: guaranteed
+  for (const ch of t) { const sh = needsShift(ch); if (sh) rfb.sendKey(0xffe1, "ShiftLeft", true); rfb.sendKey(charToKeysym(ch), null); if (sh) rfb.sendKey(0xffe1, "ShiftLeft", false); } // typed: guaranteed; Shift held for > & | _ ~ $ and capitals
   $("box").style.display = "none"; rfb.focus();
 };
 $("copy").onclick = () => navigator.clipboard?.writeText($("txt").value).catch(() => $("txt").select());

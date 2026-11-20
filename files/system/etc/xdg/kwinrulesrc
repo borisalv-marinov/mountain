@@ -1,8 +1,8 @@
 # File Explorer opens 1100x700 (Dolphin's own first size is 640 px wide: one icon column, breadcrumb and search pushed off the toolbar).
 # Apply initially (sizerule=3): the user can still resize; only normal windows (types=1), not dialogs.
 [General]
-count=4
-rules=mountain-explorer-size,mountain-emoji,mountain-settings-identity,mountain-settings-identity-bg
+count=5
+rules=mountain-explorer-size,mountain-emoji,mountain-settings-identity,mountain-settings-identity-bg,mountain-settings-focus
 
 [mountain-explorer-size]
 Description=File Explorer default size
@@ -50,3 +50,14 @@ title=Настройки
 titlematch=1
 desktopfile=org.mountain.settings
 desktopfilerule=2
+
+# v7.4 (owner test): Settings and Security opened from Start or the taskbar stayed hidden behind other windows until the taskbar icon was clicked again.
+# A window the user just asked for always gets focus (focus stealing prevention None, force). Only the window titled "Settings".
+[mountain-settings-focus]
+Description=Settings opens in front with focus
+wmclass=plasmawindowed
+wmclassmatch=2
+title=Settings
+titlematch=1
+fsplevel=0
+fsplevelrule=2

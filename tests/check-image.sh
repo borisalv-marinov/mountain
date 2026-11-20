@@ -1238,6 +1238,15 @@ check_phase42() { # v7.4: Active Protection only stops with the admin password (
   assert_grep 'FreezerState' $X/usr/libexec/mountain-protect-guard # frozen but "active" is undone too
   assert_grep '^UnsetEnvironment=LD_PRELOAD' $u
   assert_grep '^minimumSpace=2048$' $X/etc/xdg/freespacenotifierrc # KDE's low-disk warning: 2 GB or 10%
+  # v7.4 (owner test, 21 Nov): definitions download by themselves; notices open Security when clicked; Security/Protection open in front
+  assert_file $X/usr/lib/systemd/system/mountain-virus-definitions-auto.service
+  assert_grep '^OnBootSec=1min$' $X/usr/lib/systemd/system/mountain-virus-definitions-auto.timer
+  assert_grep '^OnUnitActiveSec=1d$' $X/usr/lib/systemd/system/mountain-virus-definitions-auto.timer
+  assert_grep 'mountain-virus-definitions-auto.timer' recipes/common.yml
+  assert_grep 'default=Open' $X/usr/libexec/mountain-protect
+  assert_grep 'default=Open' $X/usr/libexec/mountain-security
+  for n in security protection settings; do assert_grep '^StartupNotify=true$' $X/usr/share/applications/org.mountain.$n.desktop; done
+  assert_grep '^fsplevelrule=2$' $X/etc/xdg/kwinrulesrc
   assert_grep 'ExecStart=/usr/libexec/mountain-protect-guard' $X/usr/lib/systemd/system/mountain-protect-guard.service
   assert_grep '^Restart=always$' $X/usr/lib/systemd/system/mountain-protect-guard.service
   assert_grep 'pkexec /usr/libexec/mountain-protect-admin' $X/usr/libexec/mountain-security

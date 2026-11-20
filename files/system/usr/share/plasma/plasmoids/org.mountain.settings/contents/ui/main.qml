@@ -220,9 +220,11 @@ PlasmoidItem {
     }
     onHostWindowChanged: {
         if (hostWindow) { hostWindow.color = "transparent"; if (parent && parent.color !== undefined) parent.color = "transparent"; } // glass: plasmawindowed paints a solid background by default
-        if (hostWindow && hostWindow.width < 1000) {
-            hostWindow.width = 1100;
-            hostWindow.height = 720;
+        // v7.4: never wider or taller than the free screen (1280x800, 1366x768); a saved bigger geometry is cut down too
+        if (hostWindow) {
+            const sw = Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : 1280, sh = Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 800;
+            if (hostWindow.width < 1000) { hostWindow.width = Math.min(1100, sw - 20); hostWindow.height = Math.min(720, sh - 20); }
+            else { hostWindow.width = Math.min(hostWindow.width, sw); hostWindow.height = Math.min(hostWindow.height, sh); }
         }
     }
 

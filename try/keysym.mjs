@@ -6,3 +6,5 @@ export function charToKeysym(ch) {
   if ((cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff)) return cp;
   return 0x01000000 + cp;
 }
+// Characters that need Shift held on a US keyboard: the VNC server maps a keysym to a key and does not add Shift by itself (> & | _ ~ $ arrived as . 7 \ - ` 4).
+export function needsShift(ch) { return /^[A-Z~!@#$%^&*()_+{}|:"<>?]$/.test(ch); }
