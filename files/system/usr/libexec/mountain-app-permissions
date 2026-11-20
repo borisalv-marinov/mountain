@@ -9,7 +9,10 @@ set -uo pipefail
 ctx() { flatpak info --show-permissions "$1" 2>/dev/null; }
 has() { ctx "$1" | sed -n "s/^$2=//p" | tr ';' '\n' | grep -qE "$3"; }   # has ID key regex-on-one-value
 portal_no() { flatpak permissions devices camera 2>/dev/null | awk -v a="$1" '$3 == a && $4 ~ /no/ { f = 1 } END { exit !f }'; }
-files_on() { has "$1" filesystems '^(home|host)(:(rw|create))?$'; }
+# Files = the home folder and every personal folder in it (the page says "home folder, Documents and Downloads"); an app
+# can have only some of them (Heroic: Documents + Desktop), so off must remove each one, not only home (VM run 44640889714)
+PERS='^(home|host|host-os|xdg-(desktop|documents|download|music|pictures|videos|public-share|templates))(/[^:]*)?(:(rw|ro|create))?$'
+files_on() { has "$1" filesystems "$PERS"; }
 cam_on() { # off when the camera portal says no, or when the app's own direct /dev access was taken away
   portal_no "$1" && return 1
   flatpak info -M "$1" 2>/dev/null | grep -E '^devices=' | grep -qE '(^|[=;])all(;|$)' && ! has "$1" devices '^all$' && return 1
@@ -28,7 +31,10 @@ set)
   [[ $id =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad app id" >&2; exit 1; }
   case $kind/$v in
   files/on)  flatpak override --user --filesystem=home "$id" ;;
-  files/off) flatpak override --user --nofilesystem=home --nofilesystem=host "$id" ;;
+  files/off) a=(--nofilesystem=home --nofilesystem=host)
+             while read -r f; do a+=(--nofilesystem="${f%%:*}"); done < <(ctx "$id" | sed -n 's/^filesystems=//p' | tr ';' '
+' | grep -E "$PERS")
+             flatpak override --user "${a[@]}" "$id" ;;
   mic/on)    flatpak override --user --socket=pulseaudio "$id" ;;
   mic/off)   flatpak override --user --nosocket=pulseaudio "$id" ;;
   camera/on) flatpak permission-set devices camera "$id" yes

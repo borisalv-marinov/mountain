@@ -241,6 +241,10 @@ jobs:
           shot() { # NAME: screendump -> shots/NN-NAME.png
             STEP=$1; echo "step: $1"
             SN=$((SN+1)); echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
+            # a turned-off screen ("Display output is not active", near-black) after long steps with no input: one Shift wakes it
+            if [ "$(sudo cat /tmp/$1.ppm | convert - -format '%[fx:mean<0.03]' info: 2>/dev/null)" = 1 ]; then
+              QM key shift_r; sleep 4; echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
+            fi
             sudo cat /tmp/$1.ppm | convert - "$(printf 'shots/%02d-%s.png' $SN "$1")" || true
           }
           cat > qmp.py <<'PY'
@@ -421,8 +425,6 @@ jobs:
           chk "password unlocks" 1 "$SS" 'boolean false'
           # the long steps below must not lock the screen when idle
           R "$LT kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false; $LT dbus-send --session --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.kde.screensaver.configure" || true
-          # nor turn the screen off (a quick run has long steps with no input: its screenshots read "Display output is not active")
-          R "$LT kwriteconfig6 --file powerdevilrc --group AC --group Display --key TurnOffDisplayWhenIdle --type bool false; $LT kwriteconfig6 --file powerdevilrc --group AC --group Display --key DimDisplayWhenIdle --type bool false; $LT dbus-send --session --type=method_call --dest=org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement org.kde.Solid.PowerManagement.reparseConfiguration" || true
           chk "failed units (desktop)" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
 
           # helpers and files more than one part uses (here so a quick run can skip the part that made them)
