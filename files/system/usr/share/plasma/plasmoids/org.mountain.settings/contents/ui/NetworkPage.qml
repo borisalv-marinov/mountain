@@ -89,7 +89,7 @@ ColumnLayout {
         padding: 12
         GridLayout {
             Layout.fillWidth: true
-            columns: width > 640 ? 3 : 1
+            columns: width > 640 ? 2 : 1 // two items (connection, Data usage): a third empty column pushed Data usage past the card edge
             columnSpacing: 8
             rowSpacing: 4
             RowLayout {
