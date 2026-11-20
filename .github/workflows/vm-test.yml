@@ -36,7 +36,7 @@ jobs:
       BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
       PARTS: ${{ inputs.parts || (github.event_name == 'schedule' && 'security attack rollback greenboot') || '' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 # tests/vm: user-view checks (OCR, window census, every Start app)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4 # tests/vm: user-view checks (OCR, window census, every Start app)
         with:
           sparse-checkout: tests/vm
       - name: Enable KVM and install tools
