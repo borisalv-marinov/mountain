@@ -1,0 +1,10 @@
+[Unit]
+Description=Mountain: make the image origin signature-enforced
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/mountain-signed-origin
+
+[Install]
+WantedBy=multi-user.target

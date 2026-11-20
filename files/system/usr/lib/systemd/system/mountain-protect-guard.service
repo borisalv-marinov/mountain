@@ -1,0 +1,7 @@
+[Unit]
+Description=Mountain: turn Active Protection back on if a program turned it off (not the admin password)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/mountain-protect-guard
+Nice=19

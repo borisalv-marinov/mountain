@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# A PC installed by rebase may boot with an unsigned (ostree-unverified-registry) origin: make it signature-enforced, in place.
+set -uo pipefail
+img=$(bootc status --format=json 2>/dev/null | python3 -c '
+import json, sys
+i = json.load(sys.stdin)["spec"]["image"]
+if i["image"].startswith("ghcr.io/borisalv-marinov/") and i.get("signature", "insecure") == "insecure": print(i["image"])') || exit 0
+[[ -n $img ]] || exit 0 # not Mountain's, or already signature-enforced
+# --mutate-in-place only rewrites the origin file, nothing is downloaded; /sysroot is read-only, so remount in a private namespace
+if unshare -m sh -c 'mount -o remount,rw /sysroot && bootc switch --mutate-in-place --enforce-container-sigpolicy "$1"' sh "$img" >/dev/null 2>&1; then
+  echo "mountain-signed-origin: origin of $img is now signature-enforced"
+else echo "mountain-signed-origin: could not rewrite the origin of $img (left as is)"; fi
+exit 0

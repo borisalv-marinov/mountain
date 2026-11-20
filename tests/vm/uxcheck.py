@@ -48,6 +48,14 @@ def run(shots, rules):
         if not f.endswith(".png"):
             continue
         name = re.sub(r"^\d+-", "", f[:-4])
+        bad_all = rules.get("_must_not_read_everywhere", [])  # raw Linux error text no person should ever see, on any shot
+        if bad_all:
+            img = Image.open(os.path.join(shots, f)).convert("RGB")
+            if img.convert("L").getextrema()[1] >= 40:  # a blank screen is judged by the rules below
+                text = ocr(img)
+                hit = [p for p in bad_all if p.lower() in norm(text)]  # exact words: these phrases are long and distinctive, no fuzzy match
+                rows.append(("no error text on %s" % name, "FAIL" if hit else "PASS", ("shows: " + ", ".join(hit)) if hit else norm(text)[:70]))
+                fails += bool(hit)
         for pat, checks in rules.items():
             if pat.startswith("_") or not re.fullmatch(pat, name):
                 continue

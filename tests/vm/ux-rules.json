@@ -1,5 +1,6 @@
 {
-  "_doc": "uxcheck.py rules: shot name (without the NN- prefix) as a regex -> checks. must_read / must_not_read: text a user must (not) see (OCR). dark_window: the app window (geometry from NAME.json) is dark like the rest of the system. ocr_quality: INFO baseline of unreadable words (overdrawn rows read as garbage).",
+  "_doc": "uxcheck.py rules: shot name (without the NN- prefix) as a regex -> checks. must_read / must_not_read: text a user must (not) see (OCR). dark_window: the app window (geometry from NAME.json) is dark like the rest of the system. _must_not_read_everywhere: phrases that fail any shot (raw error text). ocr_quality: INFO baseline of unreadable words (overdrawn rows read as garbage).",
+  "_must_not_read_everywhere": ["Traceback", "Segmentation fault", "core dumped", "org.freedesktop.", "qt.qpa", "QML", "Permission denied", "No such file or directory", "Display output is not active"],
   "dialog-shutdown": {"must_read": ["Shut down"]},
   "file-explorer|explorer-home|fhd-file-explorer": {"must_not_read": ["0 B free"]},
   "menu-context|fhd-menu-context|explorer-context-menu": {"must_not_read": ["Enter Edit Mode", "Show Logout Screen", "View Disk Usage Statistics"]},

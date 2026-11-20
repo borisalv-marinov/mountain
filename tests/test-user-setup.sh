@@ -57,4 +57,10 @@ HomeUrl=file:///mine
 ' > "$C/dolphinrc"
 HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok 'grep -qx "theme=KvArc" "$C/Kvantum/kvantum.kvconfig" && [[ $(grep -c HomeUrl "$C/dolphinrc") == 1 ]] && grep -qx "HomeUrl=file:///mine" "$C/dolphinrc"' "v7.1: a user's own theme and Home are kept"
+B=$H/.var/app/com.brave.Browser/config/brave-flags.conf
+ok 'grep -qx -- "--enable-features=AcceleratedVideoDecodeLinuxGL" "$B"' "Brave gets hardware video decoding flags once"
+echo '--mine' > "$B"; HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok '[[ $(cat "$B") == --mine ]]' "Brave flags edited by the user are kept"
+rm -f "$B"; HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok '[[ ! -e $B ]]' "Brave flags deleted by the user stay deleted"
 rm -rf "$H"; exit $rc

@@ -1,0 +1,8 @@
+[AC][SuspendAndShutdown]
+LidAction=1
+
+[Battery][SuspendAndShutdown]
+LidAction=1
+
+[LowBattery][SuspendAndShutdown]
+LidAction=1

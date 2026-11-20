@@ -175,6 +175,9 @@ msgstr "Удостоверяване, настройки на IP и DNS"
 msgid "Back to %1"
 msgstr "Назад към %1"
 
+msgid "Back up my files"
+msgstr "Архивиране на файловете ми"
+
 msgid "Background"
 msgstr "Фон"
 
@@ -303,6 +306,9 @@ msgstr "Свързани контролери"
 
 msgid "Content moves with your fingers"
 msgstr "Съдържанието се движи заедно с пръстите ви"
+
+msgid "Copies your files to a USB drive or another PC. Previous versions stay on this disk; a backup survives a broken disk."
+msgstr "Копира файловете ви на USB устройство или друг компютър. „Предишни версии“ остават на този диск; архивът оцелява, ако дискът се повреди."
 
 msgid "Custom scan"
 msgstr "Сканиране по избор"
@@ -994,6 +1000,9 @@ msgstr "Задаване на фон %1"
 msgid "Set time automatically"
 msgstr "Автоматично задаване на часа"
 
+msgid "Set up backup"
+msgstr "Настройване на архивиране"
+
 msgid "Settings"
 msgstr "Настройки"
 
@@ -1326,3 +1335,46 @@ msgstr "Не е намерен микрофон"
 
 msgid "No speakers found"
 msgstr "Не са намерени високоговорители"
+
+msgid "App permissions"
+msgstr "Разрешения за приложения"
+
+msgid "Choose which apps may use your files, camera and microphone"
+msgstr "Изберете кои приложения могат да ползват файловете, камерата и микрофона ви"
+
+msgid "Choose what each app may use. A change reaches an app the next time it starts."
+msgstr "Изберете какво може да ползва всяко приложение. Промяната влиза в сила при следващото стартиране на приложението."
+
+msgid "Files"
+msgstr "Файлове"
+
+msgid "Camera"
+msgstr "Камера"
+
+msgid "Microphone"
+msgstr "Микрофон"
+
+msgid "Let this app see your home folder, Documents and Downloads"
+msgstr "Позволете на приложението да вижда личната ви папка, Документи и Изтегляния"
+
+msgid "Let this app use your camera"
+msgstr "Позволете на приложението да ползва камерата ви"
+
+msgid "Let this app use your microphone"
+msgstr "Позволете на приложението да ползва микрофона ви"
+
+msgid "No apps from the app store are installed."
+msgstr "Няма инсталирани приложения от магазина."
+
+
+msgid "If you turn the firewall off, other devices on your network could reach apps on this PC. Turn it off only if you know why."
+msgstr "Ако изключите защитната стена, други устройства във вашата мрежа могат да достигнат приложения на този компютър. Изключвайте я само ако знаете защо."
+
+msgid "Turn off the firewall"
+msgstr "Изключване на защитната стена"
+
+msgid "Keep it on"
+msgstr "Оставяне включена"
+
+msgid "Firewall"
+msgstr "Защитна стена"

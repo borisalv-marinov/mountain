@@ -33,6 +33,15 @@ if [[ -d $skel && -d $dd ]]; then
     if [[ -f $g && ! -L $g ]] && cmp -s "$f" "$g"; then chmod u+x "$g"; gio set "$g" metadata::trusted true 2>/dev/null || true; fi
   done < <(find "$skel" -type f -name '*.desktop' -print0)
 fi
+# Brave: hardware video decoding (cloud gaming). The Flatpak's cobalt wrapper reads ~/.var/app/com.brave.Browser/config/brave-flags.conf, one flag per line
+# (github.com/refi64/cobalt README "Flags"); flag per the Arch wiki "Chromium" page. Seeded once (marker), so the user's own edits or deletion stay.
+# Intel/AMD only: NVIDIA stays on software decoding (VaapiOnNvidiaGPUs is unreliable there) until a real NVIDIA PC proves it.
+bf=${MOUNTAIN_BRAVE_FLAGS:-$HOME/.var/app/com.brave.Browser/config/brave-flags.conf}; bm=$cfg/mountain/brave-flags-seeded
+if [[ ! -e $bm ]]; then # a flags file that is already there (the user's own) also counts as seeded
+  mkdir -p "$(dirname "$bf")" "$(dirname "$bm")"
+  [[ -e $bf ]] || printf -- '--enable-features=AcceleratedVideoDecodeLinuxGL\n' > "$bf"
+  : > "$bm"
+fi
 # real paths: /home is a link on the read-only system disk, so places under it showed "0 B free" in File Explorer
 url() { python3 -c 'import sys,urllib.parse;print("file://"+urllib.parse.quote(sys.argv[1]))' "$(realpath -m -- "$1")"; }
 # v7.1, every login (only the exact old defaults change, so a user's own choice stays):

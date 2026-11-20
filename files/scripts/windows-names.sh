@@ -40,6 +40,8 @@ done
 # Start search: no KDE System Settings ("All Settings" stays runnable from Settings > System > About), no Bazzite GPU and
 # firewalld tools; the Welcome app says what it is
 for f in $(grep -lE '^(Name=Cardwire|Exec=firewall-config)' "$a"/*.desktop 2>/dev/null); do f=${f##*/}; hide+=("${f%.desktop}"); done
+# One app store: App Store (Bazaar) only; KDE Discover, its update notifier and URL handler never show as a second one
+for f in "$a"/org.kde.discover*.desktop; do [[ -f $f ]] || continue; f=${f##*/}; hide+=("${f%.desktop}"); done
 sed -i -E '/^(GenericName|Comment)(\[|=)/d; 0,/^Name=/{/^Name=/a GenericName=Get started with your PC
 }' "$a/io.github.ublue_os.yafti_gtk.desktop"
 for f in systemsettings "${hide[@]}" kvantummanager org.kde.kwalletmanager kwalletmanager5-kwalletd org.kde.khelpcenter input-remapper-gtk \

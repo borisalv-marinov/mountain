@@ -7,6 +7,8 @@
 #   mountain-security allow SERVICE on|off [public]   firewall "Allow an app" in the Home zone (also Public with "public"; off removes from both)
 #   mountain-security profile home|public    network profile of the active connection (zone mountain-home / mountain)
 #   mountain-security usb on|off             USB protection (USBGuard, opt-in; keeps the devices plugged in now)
+#   mountain-security protect on|off         Active Protection on/off (admin password)
+#   mountain-security firewall on|off        firewall on/off (admin password)
 #   mountain-security rollback        go back to the previous Mountain version at the next restart
 #   mountain-security reset           Reset this PC, keep my files (removes system changes made on this PC)
 # Definitions download only here (Scan now / Update definitions): no background downloads (owner's rule).
@@ -248,6 +250,8 @@ case ${1:-} in
   allow) allow "${2:-}" "${3:-}" "${4:-}" ;;
   profile) profile "${2:-}" ;;
   usb) [[ ${2:-} =~ ^(on|off)$ ]] || exit 2; pkexec /usr/libexec/mountain-usbguard "$2" ;;
+  protect) [[ ${2:-} =~ ^(on|off)$ ]] || exit 2; pkexec /usr/libexec/mountain-protect-admin "$2" ;;
+  firewall) [[ ${2:-} =~ ^(on|off)$ ]] || exit 2; pkexec /usr/libexec/mountain-firewall "$2" ;;
   rollback) rollback ;;
   reset) reset_pc ;;
   repair-etc) repair_etc "${2:-}" ;;

@@ -56,7 +56,7 @@ jobs:
       - name: Find image tag
         id: tag
         run: |
-          SAFE="${BRANCH//\//-}"
+          SAFE="${BRANCH//\//_}" # BlueBuild tags a branch with a slash as br-<a>_<b>-<ver>
           # main builds are tagged "latest", branch builds "br-<branch>-<ver>"
           if [ "$BRANCH" = main ]; then echo "tag=latest" >> "$GITHUB_OUTPUT"; echo "Using tag: latest"; exit 0; fi
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')

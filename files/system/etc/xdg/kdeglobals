@@ -3,8 +3,8 @@
 DndBehavior=MoveIfSameDevice
 SingleClick=false
 DoubleClickInterval=500
-# snappier: animations at half length (lite mode turns them off)
-AnimationDurationFactor=0.5
+# v7.4: 0.75 x KDE's lengths = window scale, slide, Start and pop-ups 150 ms, maximize 190 ms (Windows 11 feel; final tuning on real hardware; lite mode turns them off)
+AnimationDurationFactor=0.75
 LookAndFeelPackage=org.mountain.desktop
 widgetStyle=kvantum
 

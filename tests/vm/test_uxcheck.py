@@ -35,6 +35,8 @@ else:
   expect({"dialog-shutdown": {"must_read": ["Shut down"]}}, lambda: shot("01-dialog-shutdown", ["What do you want the computer to do?", ""]), True)
   expect({"file-explorer": {"must_not_read": ["0 B free"]}}, lambda: shot("02-file-explorer", ["11 folders", "0 B free"]), True)
   expect({"file-explorer": {"must_not_read": ["0 B free"]}}, lambda: shot("02-file-explorer", ["11 folders", "41.2 GB free"]), False)
+  expect({"_must_not_read_everywhere": ["Traceback", "Permission denied"]}, lambda: shot("04-anything", ["Settings", "Permission denied"]), True)
+  expect({"_must_not_read_everywhere": ["Traceback", "Permission denied"]}, lambda: shot("04-anything", ["Settings", "All is well"]), False)
 
 
 def app(bg):

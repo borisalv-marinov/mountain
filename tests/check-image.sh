@@ -345,7 +345,7 @@ check_phase24() { # owner addendum: identity, File Explorer bar, top bar switch,
   for f in geforcenow xboxcloud boosteroid; do assert_grep "^StartupWMClass=mountain-$f\$" /usr/share/applications/mountain-$f.desktop; done
   assert_grep 'NPM_CONFIG_PREFIX="$HOME/.local"' /etc/profile.d/mountain-dev.sh
   assert_grep '^TitleAlignment=AlignLeft$' /etc/xdg/breezerc
-  assert_grep '^AnimationDurationFactor=0.5$' /etc/xdg/kdeglobals
+  assert_grep '^AnimationDurationFactor=0.75$' /etc/xdg/kdeglobals
   assert_grep '^Name=App Store$' /usr/share/applications/io.github.kolunmi.Bazaar.desktop
   assert_grep '^Name=Welcome$' /usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
   grep -qE '^(Name|Comment|GenericName)(\[|=).*Bazzite' /usr/share/applications/io.github.{kolunmi.Bazaar,ublue_os.yafti_gtk,rfrench3.bazzite-updater}.desktop && fail "Bazzite name left in a renamed app"
@@ -1201,6 +1201,121 @@ PY
   assert_grep '^Title\[bg\]=Приложения$' $X/usr/share/plasma-systemmonitor/mountain-1-processes.page
   assert_grep 'bg@mountain' $X/etc/xdg/plasma-workspace/env/mountain-names.sh
   [[ -z $X ]] || { assert_grep "'Dolphin': 'Файлов мениджър'" files/scripts/windows-names.sh; assert_grep '^title=Настройки$' files/system/etc/xdg/kwinrulesrc; } # repo-only
+  true
+}
+
+check_phase41() { # v7.4: background system updates (applied at restart), automatic go-back, signature-enforced origin
+  local X=${MOUNTAIN_ROOT:-} u
+  assert_grep '^AutomaticUpdatePolicy=stage$' $X/etc/rpm-ostreed.conf
+  assert_grep 'ExecStart=/usr/libexec/mountain-signed-origin' $X/usr/lib/systemd/system/mountain-signed-origin.service
+  assert_grep 'enforce-container-sigpolicy' $X/usr/libexec/mountain-signed-origin
+  assert_grep 'display-manager.service' $X/usr/lib/greenboot/check/required.d/10-mountain-signin.sh
+  if [[ -z $X ]]; then # built image only
+    rpm -q greenboot >/dev/null || fail "greenboot missing"
+    # Fedora's default checks come with greenboot; their DNS check would roll back good updates on offline PCs, so it must stay disabled
+    grep -q '^DISABLED_HEALTHCHECKS=.*01_repository_dns_check.sh' /etc/greenboot/greenboot.conf || fail "greenboot's DNS check is enabled (offline PCs would roll back)"
+    for u in rpm-ostreed-automatic.timer greenboot-healthcheck.service mountain-signed-origin.service; do
+      [[ $(systemctl is-enabled $u 2>/dev/null) == enabled ]] || fail "$u not enabled"; done
+    [[ -x /usr/libexec/mountain-signed-origin && -x /usr/lib/greenboot/check/required.d/10-mountain-signin.sh ]] || fail "update scripts not executable"
+  else
+    for u in rpm-ostreed-automatic.timer greenboot-healthcheck.service mountain-signed-origin.service; do assert_grep "$u" recipes/common.yml; done
+  fi
+  true
+}
+
+check_phase42() { # v7.4: Active Protection only stops with the admin password (flag + guard), firewall switch (admin password)
+  local X=${MOUNTAIN_ROOT:-} u=${MOUNTAIN_ROOT:-}/usr/lib/systemd/user/mountain-protect.service ui=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  assert_grep '^RefuseManualStop=yes$' $u
+  assert_grep '^ExecCondition=/usr/bin/test ! -e /var/lib/mountain/protect-off-%U$' $u
+  assert_grep '^Restart=always$' $u
+  for f in mountain-protect-admin mountain-protect-guard mountain-firewall; do
+    assert_file $X/usr/libexec/$f
+    [[ -n $X || -x /usr/libexec/$f ]] || fail "$f is not executable"
+    bash -n $X/usr/libexec/$f || fail "$f has a syntax error"
+  done
+  assert_grep 'protect-off-' $X/usr/libexec/mountain-protect-admin
+  assert_grep 'protect-off-' $X/usr/libexec/mountain-protect-guard
+  assert_grep 'FreezerState' $X/usr/libexec/mountain-protect-guard # frozen but "active" is undone too
+  assert_grep '^UnsetEnvironment=LD_PRELOAD' $u
+  assert_grep 'ExecStart=/usr/libexec/mountain-protect-guard' $X/usr/lib/systemd/system/mountain-protect-guard.service
+  assert_grep '^OnUnitActiveSec=60s$' $X/usr/lib/systemd/system/mountain-protect-guard.timer
+  assert_grep 'pkexec /usr/libexec/mountain-protect-admin' $X/usr/libexec/mountain-security
+  assert_grep 'pkexec /usr/libexec/mountain-firewall' $X/usr/libexec/mountain-security
+  assert_grep 'exec /usr/libexec/mountain-security protect' $X/usr/libexec/mountain-protect
+  for a in protect-toggle firewall-toggle; do
+    assert_grep "org.mountain.$a" $X/usr/share/polkit-1/actions/org.mountain.protect.policy
+  done
+  [[ $(grep -c '<allow_active>auth_admin</allow_active>' $X/usr/share/polkit-1/actions/org.mountain.protect.policy) == 2 ]] || fail "protect/firewall polkit actions must be auth_admin (not _keep, not yes)"
+  grep -q 'auth_admin_keep\|<allow_[a-z]*>yes<' $X/usr/share/polkit-1/actions/org.mountain.protect.policy && fail "protect/firewall polkit actions must not cache or allow"
+  assert_grep 'PillSwitch { visible: !sec.confirmFwOff; text: i18n("Firewall")' $ui/SecurityPage.qml
+  assert_grep 'protect " + (sec.a("ap")' $ui/SecurityPage.qml
+  if [[ -z $X ]]; then # built image only
+    [[ $(systemctl is-enabled mountain-protect-guard.timer 2>/dev/null) == enabled ]] || fail "mountain-protect-guard.timer not enabled"
+  else
+    assert_grep 'mountain-protect-guard.timer' recipes/common.yml
+  fi
+  python3 -I - "$X/usr/share/plasma/plasmoids" <<'PY' || fail "Bulgarian catalog: firewall switch text missing"
+import gettext, sys
+t = gettext.GNUTranslations(open(sys.argv[1] + '/org.mountain.settings/contents/locale/bg/LC_MESSAGES/plasma_applet_org.mountain.settings.mo', 'rb'))
+bad = [w for w in ['Firewall', 'Turn off the firewall', 'Keep it on'] if t.gettext(w) == w]
+print(bad); sys.exit(1 if bad else 0)
+PY
+  true
+}
+
+check_phase43() { # v7.4 hardening: screen lock defaults, no SSH server, no passwordless sudo
+  local X=${MOUNTAIN_ROOT:-}
+  assert_grep '^Autolock=true$' $X/etc/xdg/kscreenlockerrc
+  assert_grep '^Timeout=5$' $X/etc/xdg/kscreenlockerrc
+  assert_grep '^LockOnResume=true$' $X/etc/xdg/kscreenlockerrc
+  assert_grep '^LidAction=1$' $X/etc/xdg/powerdevilrc
+  [[ -n $X ]] || { # inside the image only (the vm-test image adds its own sshd afterwards, so only this check sees the shipped one)
+    [[ $(systemctl is-enabled sshd.service 2>/dev/null || true) != enabled ]] || fail "sshd is enabled in the shipped image"
+    ! grep -rqsE '^[^#]*NOPASSWD' /etc/sudoers /etc/sudoers.d || fail "passwordless sudo in the shipped image"
+    # setuid/setgid programs: exactly Bazzite's own (build 44623086874, both images); a new one fails the build until someone looks (vm-test has the same list)
+    local al=" chage chfn chrome-sandbox dbus-daemon-launch-helper fusermount fusermount3 gpasswd grub2-set-bootflag lockdev lxc-user-nic mount mount.nfs newgrp nvidia-modprobe pam_timestamp_check passwd pkexec polkit-agent-helper-1 su sudo umount unix_chkpwd utempter vmware-user-suid-wrapper " f bad=
+    while IFS= read -r f; do [[ $al == *" ${f##*/} "* ]] || bad+=" $f"; done < <(find / -xdev -type f -perm /6000 2>/dev/null)
+    [[ -z $bad ]] || fail "unexpected setuid/setgid programs:$bad"
+  }
+  true
+}
+
+check_phase44() { # v7.4 App permissions: Settings page + helper (Flatpak Files / Camera / Microphone switches), Bulgarian text
+  local X=${MOUNTAIN_ROOT:-} ui=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui
+  assert_file $X/usr/libexec/mountain-app-permissions
+  [[ -n $X || -x /usr/libexec/mountain-app-permissions ]] || fail "mountain-app-permissions is not executable"
+  bash -n $X/usr/libexec/mountain-app-permissions || fail "mountain-app-permissions has a syntax error"
+  assert_file $ui/AppPermissionsPage.qml
+  assert_grep 'apppermissions: "AppPermissionsPage.qml"' $ui/main.qml
+  assert_grep 'page: "apppermissions"' $ui/main.qml
+  assert_grep 'nofilesystem=home' $X/usr/libexec/mountain-app-permissions
+  assert_grep 'nosocket=pulseaudio' $X/usr/libexec/mountain-app-permissions
+  assert_grep 'permission-set devices camera' $X/usr/libexec/mountain-app-permissions
+  [[ -n $X ]] || assert_cmd flatpak
+  python3 -I - "$X/usr/share/plasma/plasmoids" <<'PY' || fail "Bulgarian catalog: App permissions text missing"
+import gettext, sys
+t = gettext.GNUTranslations(open(sys.argv[1] + '/org.mountain.settings/contents/locale/bg/LC_MESSAGES/plasma_applet_org.mountain.settings.mo', 'rb'))
+bad = [w for w in ['App permissions', 'Files', 'Camera', 'Microphone'] if t.gettext(w) == w]
+print(bad); sys.exit(1 if bad else 0)
+PY
+  true
+}
+
+check_phase45() { # v7.4 polish: Brave hardware video decoding seeded once for every user (animation length: phase 24's AnimationDurationFactor)
+  local X=${MOUNTAIN_ROOT:-}
+  assert_grep 'brave-flags.conf' $X/usr/libexec/mountain-user-setup
+  assert_grep 'enable-features=AcceleratedVideoDecodeLinuxGL' $X/usr/libexec/mountain-user-setup
+  true
+}
+
+check_phase46() { # v7.4 one app store (Bazaar) and "Back up my files" (Pika Backup)
+  local X=${MOUNTAIN_ROOT:-} f
+  assert_grep 'org.gnome.World.PikaBackup' $X/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui/SecurityPage.qml
+  [[ -z $X ]] || { assert_grep 'org.kde.discover' files/scripts/windows-names.sh; assert_grep 'org.gnome.World.PikaBackup' recipes/common.yml; } # repo-only
+  [[ -n $X ]] || for f in /usr/share/applications/org.kde.discover*.desktop; do # image only: Discover may not be installed at all
+    [[ -f $f ]] || continue
+    grep -qx 'NoDisplay=true' "$f" || fail "$f is visible: a second app store next to Bazaar"
+  done
   true
 }
 

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Firewall on/off (root through pkexec, admin password asked every time: org.mountain.firewall-toggle).
+set -euo pipefail
+case ${1:-} in
+  on) systemctl enable --now firewalld.service; echo fw=on ;;
+  off) systemctl disable --now firewalld.service; echo fw=off ;;
+  *) echo "usage: mountain-firewall on|off" >&2; exit 2 ;;
+esac

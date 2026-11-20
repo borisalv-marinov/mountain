@@ -1,5 +1,5 @@
 name: vm-test
-run-name: "vm-test${{ inputs.parts && format(' (quick: {0})', inputs.parts) || '' }}"
+run-name: "vm-test${{ inputs.parts && format(' (quick: {0})', inputs.parts) || (github.event_name == 'schedule' && ' (security suite)') || '' }}"
 on:
   workflow_dispatch:
     inputs:
@@ -8,20 +8,22 @@ on:
         default: ""
         type: string
       parts:
-        description: "Quick re-check: only these parts (gui apps taskmgr security attack hardware startapps session rollback, space-separated). Empty: everything. A quick run never counts for a merge"
+        description: "Quick re-check: only these parts (gui apps taskmgr security attack hardware startapps session rollback greenboot, space-separated). Empty: everything. A quick run never counts for a merge"
         default: ""
         type: string
   workflow_run: # every successful image build of main (nightlies too) and of the release branch
     workflows: [bluebuild]
     types: [completed]
     branches: [main, mountain-v6]
+  schedule: # nightly security suite (runs from the default branch only)
+    - cron: "30 1 * * *"
 
 jobs:
   vm:
     name: Boot image in VM
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04 # 26.04 denies bib mounts
-    timeout-minutes: 180 # ~85 min of checks + up to ~25 min of test-only hardware installs (hwsim.sh) + ~25 min opening every Start app
+    timeout-minutes: 220 # v7.4 security rows add ~30 min (greenboot reboots); ~85 min of checks + up to ~25 min of test-only hardware installs (hwsim.sh) + ~25 min opening every Start app
     permissions:
       contents: read
       packages: read
@@ -32,7 +34,7 @@ jobs:
     env:
       IMG: ${{ matrix.image }}
       BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
-      PARTS: ${{ inputs.parts }}
+      PARTS: ${{ inputs.parts || (github.event_name == 'schedule' && 'security attack rollback greenboot') || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 # tests/vm: user-view checks (OCR, window census, every Start app)
         with:
@@ -70,7 +72,7 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           [ -n "$TAG" ] && { echo "tag=$TAG" >> "$GITHUB_OUTPUT"; echo "Using tag: $TAG"; exit 0; }
-          SAFE="${BRANCH//\//-}"
+          SAFE="${BRANCH//\//_}" # BlueBuild tags a branch with a slash as br-<a>_<b>-<ver>
           # main builds are tagged "latest", branch builds "br-<branch>-<ver>"
           if [ "$BRANCH" = main ]; then echo "tag=latest" >> "$GITHUB_OUTPUT"; echo "Using tag: latest"; exit 0; fi
           ALL=$(skopeo list-tags "docker://ghcr.io/borisalv-marinov/$IMG" | jq -r '.Tags[]')
@@ -168,8 +170,8 @@ jobs:
           }
           # quick re-check (input parts): run only the named parts; setup, perf data, the stability rows and the shutdown always run
           part() { [ -z "${PARTS// }" ] || [[ " $PARTS " == *" $1 "* ]]; }
-          for p in $PARTS; do case $p in gui|apps|taskmgr|security|attack|hardware|startapps|session|rollback) ;; *) echo "::error::unknown part $p"; exit 1 ;; esac; done
-          [ -z "${PARTS// }" ] || echo "| quick run: only $PARTS (never counts for a merge) | INFO | other parts skipped |" >> report.md
+          for p in $PARTS; do case $p in gui|apps|taskmgr|security|attack|hardware|startapps|session|rollback|greenboot) ;; *) echo "::error::unknown part $p"; exit 1 ;; esac; done
+          [ -z "${PARTS// }" ] || { [ "$GITHUB_EVENT_NAME" = schedule ] && QL="security suite" || QL="quick run"; echo "| $QL: only $PARTS (never counts for a merge) | INFO | other parts skipped |" >> report.md; }
 
           if ! wait_ssh 600; then
             echo "| SSH up within 10 min | FAIL | never came up |" >> report.md
@@ -239,6 +241,10 @@ jobs:
           shot() { # NAME: screendump -> shots/NN-NAME.png
             STEP=$1; echo "step: $1"
             SN=$((SN+1)); echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
+            # a turned-off screen ("Display output is not active", near-black) after long steps with no input: one Shift wakes it
+            if [ "$(sudo cat /tmp/$1.ppm | convert - -format '%[fx:mean<0.03]' info: 2>/dev/null)" = 1 ]; then
+              QM key shift_r; sleep 4; echo "screendump /tmp/$1.ppm" | Q >/dev/null; sleep 2
+            fi
             sudo cat /tmp/$1.ppm | convert - "$(printf 'shots/%02d-%s.png' $SN "$1")" || true
           }
           cat > qmp.py <<'PY'
@@ -324,6 +330,9 @@ jobs:
           }
           L() { R "$LT systemd-run --user --quiet --collect $*"; } # start like the app menu does: with the full session environment
           K() { R "pkill -u looktest $*" || true; sleep 1; }
+          # Active Protection is RefuseManualStop + a root flag: on/off go through the root helper (what pkexec runs after the admin password)
+          PA() { R "PKEXEC_UID=\$(id -u looktest) /usr/libexec/mountain-protect-admin $1"; }
+          PAOFF() { PA off; local st; for _ in $(seq 25); do st=$(R "$LT systemctl --user is-active mountain-protect.service"); case $st in active|activating) sleep 2 ;; *) return 0 ;; esac; done; return 1; } # the killed watcher shows activating until its restart hits the flag (~30 s)
           # close like a person: KWin closes the windows of pid $1 (the X button), so the app ends its helpers in order; TERM only if it is still there after 15 s
           XC() { R "printf \"for (const w of workspace.windowList()) if (w.pid === %s) w.closeWindow();\n\" $1 > /tmp/wclose.js && chmod 644 /tmp/wclose.js && i=\$($LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/wclose.js string:mountain-wclose | awk '/int32/{print \$2}') && $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script\$i org.kde.kwin.Script.run >/dev/null; for _ in \$(seq 15); do kill -0 $1 2>/dev/null || break; sleep 1; done; kill -0 $1 2>/dev/null && kill -TERM $1; for _ in \$(seq 10); do kill -0 $1 2>/dev/null || break; sleep 1; done; $LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:mountain-wclose >/dev/null" >/dev/null 2>&1 || true; }
           # yellow folder icons on the screen, found by colour (desktop icon size and spacing may change): "column row x y width"
@@ -981,7 +990,41 @@ jobs:
           chk "security status" 2 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | paste -sd' '" '.'
           chk "Security: firewall on, SELinux enforcing" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep -E '^(fw|selinux)=' | paste -sd' '" 'fw=on selinux=Enforcing'
           K -f org.mountain.settings
-          R "$LT systemctl --user stop mountain-protect.service" # on-demand scans must not race the watcher
+          SEC="$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security"
+          # v7.4 Firewall switch: the page's state is firewalld's real state (the password prompt itself cannot be driven in CI; root runs the helper pkexec would)
+          chk "Firewall switch: status matches firewalld (on)" 0 "{ $SEC status | grep -E '^fw='; systemctl is-active firewalld; } | paste -sd' '" '^fw=on active$'
+          R "/usr/libexec/mountain-firewall off >/dev/null 2>&1"
+          chk "Firewall switch: off in the helper shows fw=off, firewalld inactive" 0 "{ $SEC status | grep -E '^fw='; systemctl is-active firewalld; } | paste -sd' '" '^fw=off inactive$'
+          L "/usr/libexec/mountain-settings-open privacy"; sleep 8; shot security-page-firewall-off; K -f org.mountain.settings # the switch itself is not clicked (its warning dialog is not driven in CI)
+          R "/usr/libexec/mountain-firewall on >/dev/null 2>&1"; sleep 3
+          chk "Firewall switch: on again, status matches firewalld" 0 "{ $SEC status | grep -E '^fw='; systemctl is-active firewalld; } | paste -sd' '" '^fw=on active$'
+          # v7.4 updates: staged in the background, never a reboot; greenboot rolls a failed boot back; the origin is made signature-enforced
+          chk "updates: rpm-ostreed policy is stage" 0 "rpm-ostree status | grep -i AutomaticUpdates" 'AutomaticUpdates: stage'
+          chk "updates: automatic timer enabled and active" 0 "echo \$(systemctl is-enabled rpm-ostreed-automatic.timer) \$(systemctl is-active rpm-ostreed-automatic.timer)" '^enabled active$'
+          chk "updates: automatic service only stages (policy trigger)" 0 "systemctl cat rpm-ostreed-automatic.service | grep -c 'trigger-automatic-update-policy'" '^1$'
+          chk "updates: uupd.timer still off" 0 "systemctl is-enabled uupd.timer 2>&1 | head -1" 'disabled|masked|not-found|No such file'
+          chk "signed origin: the service ran and succeeded this boot" 0 "systemctl show mountain-signed-origin.service -p Result -p ExecMainStatus -p ExecMainStartTimestamp | sort | paste -sd' '" 'ExecMainStartTimestamp=[A-Z].*ExecMainStatus=0 Result=success'
+          chk "greenboot: healthcheck unit enabled" 0 "systemctl is-enabled greenboot-healthcheck.service" '^enabled$'
+          # v7.4 lock after 5 idle minutes (the image default; the long steps above turned only this user's Autolock off)
+          chk "lock after 5 idle minutes" 0 "$LT kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout" '^5$'
+          # v7.4 App permissions (Flatpak Files / Camera / Microphone): the helper behind Settings > App permissions, then the page
+          APP=com.heroicgameslauncher.hgl; LTH=$(R "realpath ~looktest") # real path: the sandbox has the home there, not under /home
+          APH="$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-app-permissions"
+          APF="$LT systemd-run --user --wait --pipe --quiet --collect flatpak"
+          R "$(TL 'mkdir -p ~/Documents; echo x > ~/Documents/ap-test.txt')"
+          chk "App permissions: helper lists the Flatpak apps with three on/off states" 0 "$APH list | grep -cP '^\S+\t[^\t]+\t(on|off)\t(on|off)\t(on|off)\$'" '^[1-9]'
+          chk "App permissions: Files off (helper)" 0 "$APH set $APP files off; $APH list | grep ^$APP | cut -f3" '^off$'
+          chk "App permissions: with Files off the app cannot list ~/Documents" 0 "$APF run --command=sh $APP -c 'ls $LTH/Documents; echo ran' 2>&1 | grep -v '^ls: ' | paste -sd' '" '^ran$'
+          chk "App permissions: Files on (helper)" 0 "$APH set $APP files on; $APH list | grep ^$APP | cut -f3" '^on$'
+          chk "App permissions: with Files on the app lists ~/Documents" 0 "$APF run --command=ls $APP $LTH/Documents 2>&1" 'ap-test.txt'
+          chk "App permissions: Microphone off removes the PulseAudio socket" 0 "$APH set $APP mic off; $APF override --user --show $APP" 'sockets=.*!pulseaudio'
+          chk "App permissions: Microphone on gives it back" 0 "$APH set $APP mic on; $APF override --user --show $APP" 'sockets=[^!]*pulseaudio'
+          chk "App permissions: Camera off (helper)" 0 "$APH set $APP camera off; $APH list | grep ^$APP | cut -f4" '^off$'
+          chk "App permissions: Camera on again" 0 "$APH set $APP camera on; $APH list | grep ^$APP | cut -f4" '^on$'
+          R "$APF override --user --reset $APP; $APF permission-remove devices camera $APP; rm -f ~looktest/Documents/ap-test.txt" # leave no trace
+          L "/usr/libexec/mountain-settings-open apppermissions"; PGF=-f wchk "App permissions page opens Settings" 0 org.mountain.settings 20; sleep 6; shot app-permissions
+          K -f org.mountain.settings
+          PAOFF # on-demand scans must not race the watcher
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
           # without --quiet systemd-run prints the scan unit's runtime, CPU time and memory peak (the "virus scan cost" row)
           SCAN=$(R "timeout 600 $LT systemd-run --user --wait --pipe --collect /usr/libexec/mountain-security scan /home/looktest/Downloads" 2>&1); echo "$SCAN" > scan-log.txt
@@ -996,12 +1039,12 @@ jobs:
           chk "virus scan cost (RAM peak, CPU)" 2 "echo '$(grep -E 'Memory peak|CPU time|runtime' <<<"$SCAN" | tr "\n'" '  ')'" '.'
           chk "Update definitions downloads them (as the user, no password)" 0 "timeout 300 $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security update >/dev/null 2>&1; $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security status | grep '^av_defs='" '^av_defs=[^n]'
           chk "nothing scans or downloads in the background" 0 "pgrep -l -x 'clamd|freshclam|clamscan|clamonacc' || echo none" '^none$'
-          R "$LT systemctl --user start mountain-protect.service"; sleep 3 # the next checks need the watcher
+          PA on; sleep 3 # the next checks need the watcher
           chk "Active Protection is on" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/new-download.com')"
           for _ in $(seq 40); do R "test -e ~looktest/Downloads/new-download.com" || break; sleep 3; done
           chk "a new download with a threat is quarantined automatically" 0 "test ! -e ~looktest/Downloads/new-download.com && ls ~looktest/.local/share/mountain/quarantine | grep -q new-download && echo quarantined" '^quarantined$'
-          R "$LT systemctl --user stop mountain-protect.service"
+          PAOFF
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Documents/right-click.com')"
           chk "right-click Scan with Mountain Security" 0 "timeout 600 $LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security scan-notify /home/looktest/Documents/right-click.com" 'av_result=found'
           chk "quarantine restore" 0 "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-security quarantine-restore eicar.com && test -e ~looktest/Downloads/eicar.com && echo restored" '^restored$'
@@ -1009,7 +1052,7 @@ jobs:
           chk "Protection history lists the quarantine and the restore" 0 "f=~looktest/.local/share/mountain/scan-history; grep -q 'Threat quarantined: eicar' \$f && grep -qF 'Allowed (restored from quarantine): eicar.com' \$f && echo both" '^both$'
           R "rm -f ~looktest/.local/share/mountain/protect/allowed" # the restore allowed the test file's content; the next checks reuse it
           chk "scan history" 2 "tail -3 ~looktest/.local/share/mountain/scan-history | paste -sd';'" 'scan'
-          R "$LT systemctl --user start mountain-protect.service"; sleep 3
+          PA on; sleep 3
           # Active Protection: /tmp, a USB drive, an attachment-like path; unverified scripts and autostart entries; its cost
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > /tmp/apa-tmp.com')"; apwait /tmp/apa-tmp.com
           chk "Active Protection: a threat in /tmp is caught" 0 "test ! -e /tmp/apa-tmp.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-tmp && echo caught" '^caught$'
@@ -1058,6 +1101,25 @@ jobs:
           R "$LT pkill -TERM -f 'mountain-protect daemon'"; for _ in $(seq 25); do sleep 2; R "$LT systemctl --user is-active -q mountain-protect.service" && break; done
           chk "Active Protection: a clean exit of the watcher (SIGTERM) restarts it (Restart=always)" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
           R "rm -f ~looktest/Downloads/apa-big.mkv ~looktest/Downloads/apa-150.bin ~looktest/Downloads/apa-swap.com ~looktest/Downloads/apa-enc.zip ~looktest/Downloads/apa-mixed.zip ~looktest/Documents/a.jpg ~looktest/.config/autostart-scripts/apa-as.sh"
+          # v7.4 Active Protection is locked: only the admin helper (pkexec + password) turns it off; the guard (timer, 60 s) undoes anything else
+          LTU=$(R "id -u looktest")
+          chk "Active Protection: guard timer enabled and active" 0 "echo \$(systemctl is-enabled mountain-protect-guard.timer) \$(systemctl is-active mountain-protect-guard.timer)" '^enabled active$'
+          chk "Active Protection: a program cannot stop it (systemctl --user stop is refused)" 0 "{ $LT systemctl --user stop mountain-protect.service 2>&1 | head -1; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" 'refus.* active$'
+          chk "Active Protection: pkexec protect off without the admin password is refused" 0 "{ $LT timeout 20 pkexec /usr/libexec/mountain-protect-admin off </dev/null 2>&1 | head -1; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" '([Nn]ot authorized|uthenticat|ismissed|rror).* active$'
+          R "$LT systemctl --user mask mountain-protect.service; $LT systemctl --user kill mountain-protect.service"
+          for _ in $(seq 45); do R "$LT systemctl --user is-active -q mountain-protect.service && [ ! -L ~looktest/.config/systemd/user/mountain-protect.service ]" && break; sleep 2; done
+          chk "Active Protection: a program that masks it is undone by the guard within 90 s" 0 "{ $LT systemctl --user is-active mountain-protect.service; [ ! -L ~looktest/.config/systemd/user/mountain-protect.service ] && echo unmasked; } | paste -sd' '" '^active unmasked$'
+          # frozen while it still says "active": the guard must notice (security review, 20 Nov)
+          R "$LT systemctl --user freeze mountain-protect.service" || true
+          for _ in $(seq 60); do [ "$(R "$LT systemctl --user show -p FreezerState --value mountain-protect.service")" = running ] && break; sleep 2; done
+          chk "Active Protection: a program that freezes it is thawed by the guard within 2 min" 0 "$LT systemctl --user show -p FreezerState --value mountain-protect.service" '^running$'
+          P0=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); R "kill -STOP $P0" || true; P1=$P0
+          for _ in $(seq 60); do P1=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); [ "$P1" != "$P0" ] && [ "$P1" != 0 ] && break; sleep 2; done
+          chk "Active Protection: a watcher paused with SIGSTOP is replaced by the guard within 2 min" 0 "test '$P1' != '$P0' && test '$P1' != 0 && $LT systemctl --user is-active mountain-protect.service" '^active$'
+          PAOFF; sleep 90
+          chk "Active Protection: off with the admin helper stays off for 90 s (flag set)" 0 "{ $LT systemctl --user is-active mountain-protect.service; test -e /var/lib/mountain/protect-off-$LTU && echo flag; } | paste -sd' '" '^(inactive|failed) flag$'
+          PA on; sleep 3
+          chk "Active Protection: on with the admin helper is active again, flag removed" 0 "{ $LT systemctl --user is-active mountain-protect.service; test ! -e /var/lib/mountain/protect-off-$LTU && echo noflag; } | paste -sd' '" '^active noflag$'
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot active-protection; K -f org.mountain.settings
           # the Active Protection page polls only while it is on screen: none at all with the window hidden (Win+D)
           L "/usr/libexec/mountain-settings-open protection"; sleep 9; shot settings-protection
@@ -1109,8 +1171,8 @@ jobs:
           [ "${APM:-999999999}" -le 157286400 ] && r=PASS || r=FAIL; echo "| Active Protection idle RAM <= 150 MB | $r | $((${APM:-0}/1048576)) MB |" >> report.md
           [[ $APC =~ ^[0-9.]+$ ]] && awk -v c="$APC" 'BEGIN{exit !(c < 1)}' && r=PASS || r=FAIL; echo "| Active Protection idle CPU ~0 % | $r | ${APC} % over 30 s |" >> report.md
           part apps || R "$(TL 'mkdir -p ~/Speed/Folder; cp /usr/share/mountain/wallpaper.png ~/Speed/photo.png; rsvg-convert -f pdf -o ~/Speed/letter.pdf /usr/share/mountain/wallpaper.svg; echo speed > ~/Speed/notes.txt; seq 6 | xargs -I{} cp ~/Speed/photo.png ~/Speed/Folder/picture-{}.png')" # the apps part makes it; a quick run without it needs it here
-          R "$LT systemctl --user stop mountain-protect.service"; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
-          R "$LT systemctl --user start mountain-protect.service"; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
+          PAOFF; opent "Photos, Active Protection off" "gwenview /home/looktest/Speed/photo.png" gwenview
+          PA on; sleep 3; opent "Photos, Active Protection on" "gwenview /home/looktest/Speed/photo.png" gwenview
           L "/usr/libexec/mountain-settings-open privacy"; sleep 9; shot security-page-after-scans
           # U14: the pointer last clicked the power menu (937,700), right where toasts stack: Plasma pauses a toast under the pointer,
           # so the "Threat blocked" toast stayed on screen for minutes. Park it in the middle, like a user reading the page
@@ -1233,6 +1295,19 @@ jobs:
           chk "attack: SUID programs in the system (audit)" 2 "find /usr -xdev -perm -4000 -type f 2>/dev/null | sort | xargs -n1 basename | paste -sd' '" '.'
           chk "attack: SELinux stays enforcing" 0 "getenforce" '^Enforcing$'
           chk "attack: SELinux denials this boot" 2 "journalctl -b --no-pager | grep -c 'avc:  denied'" '.'
+          chk "attack: setuid/setgid programs match the allowlist (an unexpected one is printed as BAD)" 0 "A=' chage chfn chrome-sandbox dbus-daemon-launch-helper fusermount fusermount3 gpasswd grub2-set-bootflag lockdev lxc-user-nic mount mount.nfs newgrp nvidia-modprobe pam_timestamp_check passwd pkexec polkit-agent-helper-1 su sudo umount unix_chkpwd utempter vmware-user-suid-wrapper '; { for f in \$(find / -xdev -type f -perm /6000 2>/dev/null); do case \"\$A\" in *\" \${f##*/} \"*) ;; *) echo \"BAD \$f\";; esac; done; echo done; } | paste -sd' '" '^done$'
+          # v7.4 A4: a program running as the user (no password agent, no terminal) cannot install software or weaken the firewall or Protection
+          REF() { chk "attack: $1 is refused" 0 "o=\$($LT timeout 90 $2 </dev/null 2>&1); r=\$?; echo \"\$o\" > /tmp/ref-last; [ \$r = 124 ] && echo rc=timeout || echo \"rc=\$r \$(echo \$o | tail -c 100)\"" '^rc=[1-9]'; }
+          REF "rpm-ostree install htop" "rpm-ostree install htop"
+          REF "flatpak install --system" "flatpak install --system -y --noninteractive flathub org.gnome.Calculator"
+          chk "attack: the refused flatpak install installed nothing" 0 "flatpak list --system --app --columns=application | grep -c '^org.gnome.Calculator\$' || true" '^0$' # it downloads to the user's cache first; only the system Deploy needs the password
+          REF "firewall-cmd --permanent --add-port=4444/tcp" "firewall-cmd --permanent --add-port=4444/tcp"
+          REF "systemctl stop firewalld" "systemctl stop firewalld"
+          REF "pkexec mountain-firewall off" "pkexec /usr/libexec/mountain-firewall off"
+          REF "pkexec mountain-protect-admin off" "pkexec /usr/libexec/mountain-protect-admin off"
+          chk "attack: after the refusals port 4444 is not open (runtime or permanent)" 0 "echo \$(firewall-cmd --list-all-zones | grep -c '4444/tcp') \$(firewall-cmd --permanent --list-all-zones | grep -c '4444/tcp') \$(ss -ltn | grep -c ':4444 ')" '^0 0 0$'
+          chk "attack: after the refusals firewalld is still active" 0 "systemctl is-active firewalld" '^active$'
+          chk "attack: after the refusals Active Protection is still active" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
           R "userdel -r rtadmin" 2>/dev/null || true
           # a web download of the EICAR test file (best effort: needs the internet)
           R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"
@@ -1375,6 +1450,10 @@ jobs:
           chk "tearing: KWin support info" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /KWin org.kde.KWin.supportInformation | grep -iE 'tearing|atomic|Compositing Type|OpenGL renderer|Refresh' | head -8 | tr -s ' ' | paste -sd';'" '.'
           R "journalctl -b --no-pager -o cat | grep -o 'MWC|.*'" > perf/windows.txt 2>/dev/null || true
           echo "| window census | INFO | $(cut -d'|' -f3 perf/windows.txt | sort | uniq -c | tr -s ' ' | paste -sd',') |" >> report.md
+          # stray windows: every normal/dialog window class of the run is Mountain's own, an app the test opened, or a Start app (list from run 44591138155)
+          OWN='org[.]kde[.](dolphin|konsole|kate|kwrite|kcalc|gwenview|haruna|kamoso|kclock|okular|kolourpaint|krecorder|skanlite|spectacle|ark|filelight|kfind|kinfocenter|kmenuedit|krdc|krfb|kdeconnect[.]app|plasma-systemmonitor|plasma[.]emojier|plasmawindowed|polkit-kde-authentication-agent-1)|org[.]freedesktop[.]impl[.]portal[.]desktop[.]kde|org[.]gnome[.]World[.]PikaBackup|io[.]github[.](kolunmi[.]Bazaar|rfrench3[.]bazzite-updater|ublue_os[.]yafti_gtk)|com[.](brave[.]Browser|discordapp[.]Discord|heroicgameslauncher[.]hgl|microsoft[.](Edge|VSCode))|dev[.]vencord[.]Vesktop|org[.]mozilla[.]firefox|net[.]lutris[.]Lutris|gnome-disks|ONLYOFFICE|Waydroid|kwin_wayland|mountain-(boosteroid|geforcenow|xboxcloud)|webapp-manager[.]py|zenity'
+          UNEXP=$(awk -F'|' '$2=="add" && ($3=="normal"||$3=="dialog") && $4!=""{print $4}' perf/windows.txt | sort -u | grep -ivxE "$OWN" | paste -sd' ')
+          echo "| stray windows: every window class is Mountain's own or an app the test opened | $([ -z "$UNEXP" ] && echo PASS || echo INFO) | unexpected: ${UNEXP:-none} |" >> report.md
           echo "| windows drawing their own title bar | INFO | $(awk -F'|' '$3=="normal" && $7=="noborder"{print $4}' perf/windows.txt | sort -u | paste -sd' ') |" >> report.md
           echo "| on-screen pop-ups seen (volume, brightness, keyboard) | INFO | $(awk -F'|' '$3=="osd"{print $6}' perf/windows.txt | sort -u | paste -sd'/') |" >> report.md
 
@@ -1424,6 +1503,10 @@ jobs:
           printf '\nMETRICS\n- RAM used at desktop: %s MB\n- login-to-desktop: %s s\n- start-menu latency: %s ms\n- boot (systemd-analyze): %s\n\n' "$RAM" "$LTD" "$LAT" "$BT" >> report.md
           if part rollback; then
           # rollback: a second deployment (same image, one test kernel argument), boot it, then "Go back to the previous version"
+          # v7.4 signed origin: boot with an unverified origin, as a PC installed by rebase does (set BEFORE the new deployment, which copies the origin)
+          MR="ghcr.io/borisalv-marinov/$IMG"
+          SIGPY="python3 -c 'import json,sys; print(json.load(sys.stdin)[\"spec\"][\"image\"].get(\"signature\",\"insecure\"))'"
+          chk "signed origin: the test origin is unverified before the reboot" 0 "unshare -m sh -c 'mount -o remount,rw /sysroot && bootc switch --mutate-in-place --transport registry $MR:latest' >/dev/null 2>&1; bootc status --format=json | $SIGPY" '^insecure$'
           chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
           chk "attack: fill the disk" 2 "fallocate -l \$(( \$(df --output=avail -B1 /var | tail -1) - 64*1024*1024 )) /var/rt-fill; df -h /var | tail -1" '.'
 
@@ -1436,6 +1519,9 @@ jobs:
             if wait_ssh 600 && newboot "$BID"; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
               if [ $n = 1 ]; then
                 chk "rollback test: new version booted, previous kept" 0 "grep -o mountain.rollbacktest=1 /proc/cmdline; rpm-ostree status --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"deployments\"]), \"deployments\")'" 'mountain.rollbacktest=1'
+                chk "signed origin: an unsigned origin is rewritten at boot" 0 "timeout 120 systemctl is-system-running --wait >/dev/null 2>&1; bootc status --format=json | $SIGPY" 'containerPolicy'
+                chk "signed origin: rpm-ostree shows ostree-image-signed" 0 "rpm-ostree status | grep -m1 -o 'ostree-image-signed:docker://ghcr.io/borisalv-marinov/[^ ]*'" 'ostree-image-signed'
+                chk "signed origin: a second run changes nothing" 0 "n0=\$(journalctl -u mountain-signed-origin -b -o cat | grep -c 'now signature-enforced'); systemctl restart mountain-signed-origin; n1=\$(journalctl -u mountain-signed-origin -b -o cat | grep -c 'now signature-enforced'); echo same-\$((n1-n0))" '^same-0$'
                 chk "attack: a full disk still boots" 0 "test -e /var/rt-fill && rm -f /var/rt-fill && echo booted-full" '^booted-full$'
                 chk "Go back to the previous version" 0 "/usr/libexec/mountain-security rollback 2>&1 | tail -1" 'rollback=staged'
               else
@@ -1444,6 +1530,29 @@ jobs:
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
           fi # part rollback
+
+          if part greenboot; then
+          # v7.4 greenboot: a new deployment whose health check fails (the marker fails only on the test kernel argument, which only the new deployment has)
+          # must roll back by itself after GREENBOOT_MAX_BOOT_ATTEMPTS failed boots. Needs the currently booted deployment to be the good one (a rollback part before it leaves it so).
+          R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
+          R "cp -a /etc/greenboot/greenboot.conf /root/gb.conf.orig 2>/dev/null; install -d /etc/greenboot/check/required.d && printf '#!/bin/sh\n! grep -q mountain.gbfail=1 /proc/cmdline\n' > /etc/greenboot/check/required.d/90-mt-marker.sh && chmod +x /etc/greenboot/check/required.d/90-mt-marker.sh; sed -i 's/^GREENBOOT_MAX_BOOT_ATTEMPTS=.*/GREENBOOT_MAX_BOOT_ATTEMPTS=2/' /etc/greenboot/greenboot.conf # keep its DISABLED_HEALTHCHECKS (the DNS check)" # in /etc before the new deployment is made: it gets a copy
+          chk "greenboot test: new deployment with the failing marker staged" 0 "rpm-ostree kargs --append=mountain.gbfail=1 2>&1 | tail -3; rpm-ostree status --json | python3 -c 'import json,sys; print(\"staged\", any(d.get(\"staged\") for d in json.load(sys.stdin)[\"deployments\"]))'" 'staged True'
+          GBID=$(R "cat /proc/sys/kernel/random/boot_id")
+          R "systemctl reboot" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null
+          # each failing boot reboots by itself; wait until a boot without the marker argument and with another boot id shows up (up to 20 min, ~6 boots)
+          GBEND=$(( $(date +%s) + 1200 )); GBOK=
+          while [ "$(date +%s)" -lt "$GBEND" ]; do
+            o=$(R "grep -c mountain.gbfail=1 /proc/cmdline; cat /proc/sys/kernel/random/boot_id" 2>/dev/null | paste -sd' ')
+            [[ $o == "0 "* && "${o#0 }" != "$GBID" ]] && { GBOK=1; break; }
+            [ -z "$o" ] && ssh $SSHO -O exit root@127.0.0.1 2>/dev/null
+            sleep 15
+          done
+          echo "greenboot wait: ok=${GBOK:-no} last=$o"
+          chk "greenboot: the failed new deployment was rolled back automatically" 0 "grep -q mountain.gbfail /proc/cmdline && echo still-new || echo previous" '^previous$'
+          chk "greenboot: rolled back, boot counter and status" 2 "grub2-editenv list 2>&1 | grep '^boot' | paste -sd' '; journalctl -b -u greenboot-healthcheck -o cat | tail -3" '.'
+          R "rm -f /etc/greenboot/check/required.d/90-mt-marker.sh; if [ -e /root/gb.conf.orig ]; then cp -a /root/gb.conf.orig /etc/greenboot/greenboot.conf; rm -f /root/gb.conf.orig; else rm -f /etc/greenboot/greenboot.conf; fi" # the test's own marker and config go
+          chk "greenboot: the test's marker is removed" 0 "test ! -e /etc/greenboot/check/required.d/90-mt-marker.sh && echo gone" '^gone$'
+          fi # part greenboot
           # clean shutdown: the VM must power itself off
           R "systemctl poweroff" || true; ssh $SSHO -O exit root@127.0.0.1 2>/dev/null
           if timeout 180 sudo podman wait qemu >/dev/null 2>&1; then echo "| shutdown | PASS | VM powered off |" >> report.md

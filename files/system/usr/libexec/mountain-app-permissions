@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Data and actions behind Settings > App permissions (Flatpak apps): Files (home folder), Camera, Microphone.
+#   mountain-app-permissions list                       -> tab-separated: id, name, files, camera, mic (on|off)
+#   mountain-app-permissions set ID files|camera|mic on|off
+# Reads the effective result with `flatpak info --show-permissions` (the app's own permissions merged with system and user overrides,
+# user wins). Writes only per-user overrides (undo: flatpak override --user --reset ID) and the camera portal's permission store.
+# A change reaches the app the next time it starts.
+set -uo pipefail
+ctx() { flatpak info --show-permissions "$1" 2>/dev/null; }
+has() { ctx "$1" | sed -n "s/^$2=//p" | tr ';' '\n' | grep -qE "$3"; }   # has ID key regex-on-one-value
+portal_no() { flatpak permissions devices camera 2>/dev/null | awk -v a="$1" '$3 == a && $4 ~ /no/ { f = 1 } END { exit !f }'; }
+# Files = the home folder and every personal folder in it (the page says "home folder, Documents and Downloads"); an app
+# can have only some of them (Heroic: Documents + Desktop), so off must remove each one, not only home (VM run 44640889714)
+PERS='^(home|host|host-os|xdg-(desktop|documents|download|music|pictures|videos|public-share|templates))(/[^:]*)?(:(rw|ro|create))?$'
+files_on() { has "$1" filesystems "$PERS"; }
+cam_on() { # off when the camera portal says no, or when the app's own direct /dev access was taken away
+  portal_no "$1" && return 1
+  flatpak info -M "$1" 2>/dev/null | grep -E '^devices=' | grep -qE '(^|[=;])all(;|$)' && ! has "$1" devices '^all$' && return 1
+  return 0
+}
+mic_on() { has "$1" sockets '^pulseaudio$'; }
+case ${1:-} in
+list)
+  flatpak list --app --columns=application,name | while IFS=$'\t' read -r id name; do
+    [[ -n $id ]] || continue
+    s=(off off off); files_on "$id" && s[0]=on; cam_on "$id" && s[1]=on; mic_on "$id" && s[2]=on
+    printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "${s[@]}"
+  done ;;
+set)
+  id=${2:?app id}; kind=${3:?files|camera|mic}; v=${4:?on|off}
+  [[ $id =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*$ ]] || { echo "bad app id" >&2; exit 1; }
+  case $kind/$v in
+  files/on)  a=(--filesystem=home) # and lift the folder blocks "off" left: a blocked Documents stays hidden even with home
+             while read -r f; do a+=(--filesystem="$f"); done < <(flatpak override --user --show "$id" 2>/dev/null | sed -n 's/^filesystems=//p' | tr ';' '\n' | sed -n 's/^!\(xdg-[^:]*\)$/\1/p')
+             flatpak override --user "${a[@]}" "$id" ;;
+  files/off) a=(--nofilesystem=home --nofilesystem=host)
+             while read -r f; do a+=(--nofilesystem="${f%%:*}"); done < <(ctx "$id" | sed -n 's/^filesystems=//p' | tr ';' '
+' | grep -E "$PERS")
+             flatpak override --user "${a[@]}" "$id" ;;
+  mic/on)    flatpak override --user --socket=pulseaudio "$id" ;;
+  mic/off)   flatpak override --user --nosocket=pulseaudio "$id" ;;
+  camera/on) flatpak permission-set devices camera "$id" yes
+             flatpak info -M "$id" 2>/dev/null | grep -E '^devices=' | grep -qE '(^|[=;])all(;|$)' && flatpak override --user --device=all "$id"; true ;;
+  camera/off) flatpak permission-set devices camera "$id" no
+             flatpak info -M "$id" 2>/dev/null | grep -E '^devices=' | grep -qE '(^|[=;])all(;|$)' && flatpak override --user --nodevice=all "$id"; true ;;
+  *) echo "usage: set ID files|camera|mic on|off" >&2; exit 1 ;;
+  esac ;;
+*) echo "usage: mountain-app-permissions list | set ID files|camera|mic on|off" >&2; exit 1 ;;
+esac
