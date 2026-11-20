@@ -1237,6 +1237,7 @@ check_phase42() { # v7.4: Active Protection only stops with the admin password (
   assert_grep 'protect-off-' $X/usr/libexec/mountain-protect-guard
   assert_grep 'FreezerState' $X/usr/libexec/mountain-protect-guard # frozen but "active" is undone too
   assert_grep '^UnsetEnvironment=LD_PRELOAD' $u
+  assert_grep '^minimumSpace=2048$' $X/etc/xdg/freespacenotifierrc # KDE's low-disk warning: 2 GB or 10%
   assert_grep 'ExecStart=/usr/libexec/mountain-protect-guard' $X/usr/lib/systemd/system/mountain-protect-guard.service
   assert_grep '^Restart=always$' $X/usr/lib/systemd/system/mountain-protect-guard.service
   assert_grep 'pkexec /usr/libexec/mountain-protect-admin' $X/usr/libexec/mountain-security

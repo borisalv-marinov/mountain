@@ -1,0 +1,6 @@
+[General]
+enableNotification=true
+# KDE's own low-disk warning (kded freespacenotifier) for every writable disk, / and the home folder included.
+# It warns below the smaller of these two: 2 GB or 10% of the disk.
+minimumSpace=2048
+minimumSpacePercentage=10

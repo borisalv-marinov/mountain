@@ -93,7 +93,7 @@ ColumnLayout {
             Kirigami.Icon {
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
-                source: sec.overall === 0 ? "dialog-ok-apply" : "dialog-warning"
+                source: !sec.loaded ? "view-refresh" : sec.overall === 0 ? "dialog-ok-apply" : "dialog-warning"
                 isMask: true
                 color: sec.overall === 0 ? "#7EE2A8" : (sec.overall === 1 ? "#F2CC60" : "#FF9B94")
             }
@@ -112,7 +112,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     dim: true
-                    text: sec.overall === 0 ? i18n("Nothing needs your attention. New files are checked as they arrive, on this PC only.")
+                    text: !sec.loaded ? i18n("Reading the state of your protection…") : sec.overall === 0 ? i18n("Nothing needs your attention. New files are checked as they arrive, on this PC only.")
                         : sec.overall === 1 ? i18n("Your device is working, but a few settings below could be stronger.")
                         : i18n("Something below is turned off. Open the tile marked Action needed to fix it.")
                 }
