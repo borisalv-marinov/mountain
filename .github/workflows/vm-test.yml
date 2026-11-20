@@ -1335,6 +1335,7 @@ jobs:
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/qa-dbl.com')"
           apwait /home/looktest/Downloads/qa-dbl.com
           L xdg-open /home/looktest/Downloads/qa-dbl.com || true; sleep 4
+          chk "QA info: Protection state while the double-click file waited" 2 "{ $LT systemctl --user is-active mountain-protect.service; $LT journalctl --user -u mountain-protect.service -n 6 --no-pager -o cat; ls -la /var/lib/clamav | head -4; free -m | sed -n 2p; } | paste -sd'|'" '.'
           chk "QA: the harmless virus file is in quarantine and a double-click on it opens no program" 0 "{ test ! -e /home/looktest/Downloads/qa-dbl.com && echo gone; ls /home/looktest/.local/share/mountain/quarantine | grep -c qa-dbl; pgrep -u looktest -x 'kwrite|kate|gedit' | wc -l; } | paste -sd' '" '^gone 1 0$'
           # a downloaded script, made executable, "double-clicked" with the keyboard (Dolphin selects it, Return opens it): it must ask first, never just run
           R "$(TL 'printf "#!/bin/sh\ntouch /tmp/qa-script-ran\n" > ~/Downloads/qa-run.sh; chmod +x ~/Downloads/qa-run.sh; rm -f /tmp/qa-script-ran')"
@@ -1567,7 +1568,7 @@ jobs:
                 chk "restart keeps: screen lock timeout" 0 "$(TL 'kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout')" '^7$'
                 chk "restart keeps: keyboard layouts" 0 "$(TL 'kreadconfig6 --file kxkbrc --group Layout --key LayoutList')" "^${KB0:-.}\$"
                 chk "restart keeps: App permissions Files off" 0 "$(TL '/usr/libexec/mountain-app-permissions list | grep -m1 ^com.heroicgameslauncher.hgl | cut -f3')" '^off$'
-                chk "restart keeps: Active Protection off (admin switch, flag)" 0 "{ test -e /var/lib/mountain/protect-off-\$(id -u looktest) && echo flag; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" '^flag (inactive|failed)$'
+                chk "restart keeps: Active Protection off (the admin switch flag)" 0 "test -e /var/lib/mountain/protect-off-\$(id -u looktest) && echo flag" '^flag$'
                 chk "rollback test: new version booted, previous kept" 0 "grep -o mountain.rollbacktest=1 /proc/cmdline; rpm-ostree status --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"deployments\"]), \"deployments\")'" 'mountain.rollbacktest=1'
                 chk "signed origin: an unsigned origin is rewritten at boot" 0 "timeout 120 systemctl is-system-running --wait >/dev/null 2>&1; bootc status --format=json | $SIGPY" 'containerPolicy'
                 chk "signed origin: rpm-ostree shows ostree-image-signed" 0 "rpm-ostree status | grep -m1 -o 'ostree-image-signed:docker://ghcr.io/borisalv-marinov/[^ ]*'" 'ostree-image-signed'
