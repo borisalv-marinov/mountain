@@ -86,7 +86,8 @@ PlasmaCore.Dialog {
     property bool searching: (searchField.text != "")
 
     // v7.4: what is left of the free screen (above the taskbar) for the page area, after search box, footer, frame and a margin
-    property int maxViewHeight: kicker.availableScreenRect.height - searchField.height - footer.height - Kirigami.Units.gridUnit * 5
+    // (a fixed allowance for search box, footer and frame: reading their heights here ran before they existed)
+    property int maxViewHeight: kicker.availableScreenRect.height - Kirigami.Units.gridUnit * 12
 
     onSearchingChanged: {
         // Mountain: U21 diagnostic, the VM compares the menu's geometry in normal and search mode

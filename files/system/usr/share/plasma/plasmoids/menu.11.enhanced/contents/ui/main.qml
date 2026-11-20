@@ -39,6 +39,8 @@ PlasmoidItem {
     signal reset
 
     preferredRepresentation: compactRepresentation
+    // v7.4: no "Mountain" tooltip floating over the open menu (the button reports attention while the menu is open)
+    toolTipMainText: Plasmoid.status === PlasmaCore.Types.RequiresAttentionStatus ? "" : Plasmoid.title
     compactRepresentation: compactRepresentation
     fullRepresentation: compactRepresentation
 

@@ -38,8 +38,6 @@ Item {
     property QtObject dashWindow: null
 
     Plasmoid.status: dashWindow && dashWindow.visible ? PlasmaCore.Types.RequiresAttentionStatus : PlasmaCore.Types.PassiveStatus
-    // v7.4: no "Mountain" tooltip floating over the open menu (owner report, short screen)
-    Plasmoid.toolTipMainText: dashWindow && dashWindow.visible ? "" : Plasmoid.title
     Kirigami.Icon {
         id: buttonIcon
 
