@@ -967,6 +967,10 @@ jobs:
           R "$KS output.$OUT.mode.${SMID:-1}" >>kscreen-log.txt 2>&1; sleep 6
           QM key meta_l; sleep 4; shot start-short-screen
           chk "Start fits above the taskbar on the shortest screen mode ($SMH)" 0 "journalctl -b --no-pager -t plasmashell | grep -o 'mountain-start open.*' | tail -1 | awk '{n=split(\$0,a,\" \"); for(i=1;i<=n;i++){split(a[i],k,\"=\"); v[k[1]]=k[2]}; print (v[\"y\"]>=0 ? (v[\"h\"]<=v[\"avail\"] ? \"fits\" : \"clipped\") : \"clipped\")}'" '^fits$'
+          # the same short screen, three more journeys a user does: Start search, Settings, File Explorer (shots judged afterwards)
+          QM type settings; sleep 3; shot short-start-search
+          QM key ret; sleep 8; shot short-settings; QM key alt f4; sleep 2
+          L dolphin; sleep 7; shot short-file-explorer; K -x dolphin
           QM key esc; sleep 1
           R "$KS output.$OUT.mode.${M0:-1}" >>kscreen-log.txt 2>&1; sleep 6
 
