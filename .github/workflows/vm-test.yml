@@ -1330,6 +1330,11 @@ jobs:
           R "$(TL 'chmod +x ~/Downloads/qa-later.txt')"; R "$APC check /var/home/looktest/Downloads/qa-later.txt" || true
           chk "attack: the same file made executable later is listed as unverified" 0 "$APC status | grep -c 'qa-later'" '^1$'
           R "rm -f /var/home/looktest/.local/share/applications/qa-fake-firefox.desktop /var/home/looktest/Downloads/qa-later.txt" 2>/dev/null || true
+          # a user double-clicks the harmless EICAR test file: Protection has already moved it, so the double-click opens nothing
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/qa-dbl.com')"
+          apwait /home/looktest/Downloads/qa-dbl.com
+          L xdg-open /home/looktest/Downloads/qa-dbl.com || true; sleep 4
+          chk "QA: the harmless virus file is in quarantine and a double-click on it opens no program" 0 "{ test ! -e /home/looktest/Downloads/qa-dbl.com && echo gone; ls /home/looktest/.local/share/mountain/quarantine | grep -c qa-dbl; pgrep -u looktest -x 'kwrite|kate|gedit' | wc -l; } | paste -sd' '" '^gone 1 0$'
           R "userdel -r rtadmin" 2>/dev/null || true
           # a web download of the EICAR test file (best effort: needs the internet)
           R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"
@@ -1530,6 +1535,13 @@ jobs:
           SIGPY="python3 -c 'import json,sys; print(json.load(sys.stdin)[\"spec\"][\"image\"].get(\"signature\",\"insecure\"))'"
           chk "signed origin: the test origin is unverified before the reboot" 0 "unshare -m sh -c 'mount -o remount,rw /sysroot && bootc switch --mutate-in-place --transport registry $MR:latest' >/dev/null 2>&1; bootc status --format=json | $SIGPY" '^insecure$'
           chk "new deployment for the rollback test" 2 "rpm-ostree kargs --append=mountain.rollbacktest=1 2>&1 | tail -2" '.'
+          # v7.4 QA: five settings a user changes, checked again after the reboot below (restart survival)
+          KB0=$(R "$(TL 'kreadconfig6 --file kxkbrc --group Layout --key LayoutList')" | tr -d '\r')
+          R "$(TL 'kwriteconfig6 --file kscreenlockerrc --group Daemon --key Timeout 7')"
+          R "$(TL '/usr/libexec/mountain-app-permissions set com.heroicgameslauncher.hgl files off')" || true
+          PA off || true
+          # the disk-full row below runs while VS Code is open: a full disk gives a mapped file a SIGBUS (the one crash in 3 full runs, 44717308274); close it first
+          R "pkill -u looktest -x code || true"; sleep 2
           chk "attack: fill the disk" 2 "fallocate -l \$(( \$(df --output=avail -B1 /var | tail -1) - 64*1024*1024 )) /var/rt-fill; df -h /var | tail -1" '.'
 
           R "rm -f /etc/sddm.conf.d/zz-autologin.conf /etc/plasmalogin.conf"
@@ -1540,6 +1552,10 @@ jobs:
             sleep 30
             if wait_ssh 600 && newboot "$BID"; then chk "reboot $n failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
               if [ $n = 1 ]; then
+                chk "restart keeps: screen lock timeout" 0 "$(TL 'kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout')" '^7$'
+                chk "restart keeps: keyboard layouts" 0 "$(TL 'kreadconfig6 --file kxkbrc --group Layout --key LayoutList')" "^${KB0:-.}\$"
+                chk "restart keeps: App permissions Files off" 0 "$(TL '/usr/libexec/mountain-app-permissions list | grep -m1 ^com.heroicgameslauncher.hgl | cut -f3')" '^off$'
+                chk "restart keeps: Active Protection off (admin switch, flag)" 0 "{ test -e /var/lib/mountain/protect-off-\$(id -u looktest) && echo flag; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" '^flag (inactive|failed)$'
                 chk "rollback test: new version booted, previous kept" 0 "grep -o mountain.rollbacktest=1 /proc/cmdline; rpm-ostree status --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[\"deployments\"]), \"deployments\")'" 'mountain.rollbacktest=1'
                 chk "signed origin: an unsigned origin is rewritten at boot" 0 "timeout 120 systemctl is-system-running --wait >/dev/null 2>&1; bootc status --format=json | $SIGPY" 'containerPolicy'
                 chk "signed origin: rpm-ostree shows ostree-image-signed" 0 "rpm-ostree status | grep -m1 -o 'ostree-image-signed:docker://ghcr.io/borisalv-marinov/[^ ]*'" 'ostree-image-signed'
@@ -1551,6 +1567,8 @@ jobs:
               fi
             else echo "| reboot $n | FAIL | ssh not back |" >> report.md; fi
           done
+          PA on || true
+          R "$(TL '/usr/libexec/mountain-app-permissions set com.heroicgameslauncher.hgl files on')" || true
           fi # part rollback
 
           if part greenboot; then
