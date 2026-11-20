@@ -649,6 +649,13 @@ jobs:
           done
           K -x kdeconnectd
           R "$LT notify-send -a Security -i security-high -h string:desktop-entry:org.mountain.security 'Mountain Security' 'Toast name test'"; sleep 2; shot toast-app-name
+          # v7.4 (owner test, item 3): clicking the "No virus definitions yet" notice must open Security on Privacy & security, in front. QM click = the toast body (bottom right)
+          R "$LT notify-send -a Security -i security-medium -h string:desktop-entry:org.mountain.security 'Mountain Security' 'No virus definitions yet. Click to open Security.'"; sleep 3
+          QM click $((1000*W/1280)) $((690*H/800)); sleep 9; shot toast-click-security
+          chk "a click on a Security notification opens Settings in front" 0 "journalctl -b --no-pager | grep -o 'MWC|act|[^|]*|[^|]*|[^|]*|[^|]*' | tail -1" 'org.mountain.settings'
+          TC=$(convert "$(ls shots/*-toast-click-security.png | tail -1)" -negate - 2>/dev/null | tesseract - stdout --psm 11 2>/dev/null | grep -ci 'virus\|threat' || true)
+          chk "a click on a Security notification lands on Privacy & security (page text seen)" 0 "echo ${TC:-0}" '^[1-9]'
+          QM key alt f4; sleep 2
           L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
           chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
           # Win+R: Run dialog (plasmawindowed org.mountain.run), Esc closes, typing a folder opens File Explorer
