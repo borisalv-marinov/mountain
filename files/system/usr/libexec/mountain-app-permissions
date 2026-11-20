@@ -30,7 +30,9 @@ set)
   id=${2:?app id}; kind=${3:?files|camera|mic}; v=${4:?on|off}
   [[ $id =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad app id" >&2; exit 1; }
   case $kind/$v in
-  files/on)  flatpak override --user --filesystem=home "$id" ;;
+  files/on)  a=(--filesystem=home) # and lift the folder blocks "off" left: a blocked Documents stays hidden even with home
+             while read -r f; do a+=(--filesystem="$f"); done < <(flatpak override --user --show "$id" 2>/dev/null | sed -n 's/^filesystems=//p' | tr ';' '\n' | sed -n 's/^!\(xdg-[^:]*\)$/\1/p')
+             flatpak override --user "${a[@]}" "$id" ;;
   files/off) a=(--nofilesystem=home --nofilesystem=host)
              while read -r f; do a+=(--nofilesystem="${f%%:*}"); done < <(ctx "$id" | sed -n 's/^filesystems=//p' | tr ';' '
 ' | grep -E "$PERS")

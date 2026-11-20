@@ -1009,19 +1009,19 @@ jobs:
           chk "lock after 5 idle minutes" 0 "$LT kreadconfig6 --file kscreenlockerrc --group Daemon --key Timeout" '^5$'
           # v7.4 App permissions (Flatpak Files / Camera / Microphone): the helper behind Settings > App permissions, then the page
           APP=com.heroicgameslauncher.hgl; LTH=$(R "realpath ~looktest") # real path: the sandbox has the home there, not under /home
-          H="$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-app-permissions"
-          F="$LT systemd-run --user --wait --pipe --quiet --collect flatpak"
+          APH="$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-app-permissions"
+          APF="$LT systemd-run --user --wait --pipe --quiet --collect flatpak"
           R "$(TL 'mkdir -p ~/Documents; echo x > ~/Documents/ap-test.txt')"
-          chk "App permissions: helper lists the Flatpak apps with three on/off states" 0 "$H list | grep -cP '^\S+\t[^\t]+\t(on|off)\t(on|off)\t(on|off)\$'" '^[1-9]'
-          chk "App permissions: Files off (helper)" 0 "$H set $APP files off; $H list | grep ^$APP | cut -f3" '^off$'
-          chk "App permissions: with Files off the app cannot list ~/Documents" 0 "$F run --command=ls $APP $LTH/Documents 2>&1; echo rc=\$?" 'rc=[1-9]'
-          chk "App permissions: Files on (helper)" 0 "$H set $APP files on; $H list | grep ^$APP | cut -f3" '^on$'
-          chk "App permissions: with Files on the app lists ~/Documents" 0 "$F run --command=ls $APP $LTH/Documents 2>&1" 'ap-test.txt'
-          chk "App permissions: Microphone off removes the PulseAudio socket" 0 "$H set $APP mic off; $F override --user --show $APP" 'sockets=.*!pulseaudio'
-          chk "App permissions: Microphone on gives it back" 0 "$H set $APP mic on; $F override --user --show $APP" 'sockets=[^!]*pulseaudio'
-          chk "App permissions: Camera off (helper)" 0 "$H set $APP camera off; $H list | grep ^$APP | cut -f4" '^off$'
-          chk "App permissions: Camera on again" 0 "$H set $APP camera on; $H list | grep ^$APP | cut -f4" '^on$'
-          R "$F override --user --reset $APP; $F permission-remove devices camera $APP; rm -f ~looktest/Documents/ap-test.txt" # leave no trace
+          chk "App permissions: helper lists the Flatpak apps with three on/off states" 0 "$APH list | grep -cP '^\S+\t[^\t]+\t(on|off)\t(on|off)\t(on|off)\$'" '^[1-9]'
+          chk "App permissions: Files off (helper)" 0 "$APH set $APP files off; $APH list | grep ^$APP | cut -f3" '^off$'
+          chk "App permissions: with Files off the app cannot list ~/Documents" 0 "$APF run --command=sh $APP -c 'ls $LTH/Documents; echo ran' 2>&1 | grep -v '^ls: ' | paste -sd' '" '^ran$'
+          chk "App permissions: Files on (helper)" 0 "$APH set $APP files on; $APH list | grep ^$APP | cut -f3" '^on$'
+          chk "App permissions: with Files on the app lists ~/Documents" 0 "$APF run --command=ls $APP $LTH/Documents 2>&1" 'ap-test.txt'
+          chk "App permissions: Microphone off removes the PulseAudio socket" 0 "$APH set $APP mic off; $APF override --user --show $APP" 'sockets=.*!pulseaudio'
+          chk "App permissions: Microphone on gives it back" 0 "$APH set $APP mic on; $APF override --user --show $APP" 'sockets=[^!]*pulseaudio'
+          chk "App permissions: Camera off (helper)" 0 "$APH set $APP camera off; $APH list | grep ^$APP | cut -f4" '^off$'
+          chk "App permissions: Camera on again" 0 "$APH set $APP camera on; $APH list | grep ^$APP | cut -f4" '^on$'
+          R "$APF override --user --reset $APP; $APF permission-remove devices camera $APP; rm -f ~looktest/Documents/ap-test.txt" # leave no trace
           L "/usr/libexec/mountain-settings-open apppermissions"; PGF=-f wchk "App permissions page opens Settings" 0 org.mountain.settings 20; sleep 6; shot app-permissions
           K -f org.mountain.settings
           PAOFF # on-demand scans must not race the watcher
