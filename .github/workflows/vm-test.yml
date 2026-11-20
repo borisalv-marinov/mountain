@@ -1103,6 +1103,7 @@ jobs:
           apwait /home/looktest/Downloads/apa-150.zip; apwait /home/looktest/Downloads/apa-swap.com; sleep 10
           AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
           chk "Active Protection: a 2.1 GB non-archive in Downloads is listed too large to scan" 0 "echo '$(grep -c 'ap_unverified=.*apa-big.mkv|too large to scan' <<<"$AP")'" '^1$'
+          R "rm -f ~looktest/Downloads/apa-big.mkv" # the 2.1 GB file must not sit on the small test disk while later rows run
           chk "Active Protection: EICAR after 500 MB inside a zip is caught (past the old 400 MB limit)" 0 "test ! -e ~looktest/Downloads/apa-150.zip && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-150 && echo caught" '^caught$'
           chk "Active Protection: a same-size swap with the old mtime is caught" 0 "test ! -e ~looktest/Downloads/apa-swap.com && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-swap && echo caught" '^caught$'
           chk "Active Protection: a script in autostart-scripts is flagged (persistence)" 0 "echo '$(grep -c 'ap_unverified=.*autostart-scripts/apa-as.sh|starts at sign-in' <<<"$AP")'" '^1$'
@@ -1340,6 +1341,12 @@ jobs:
           L dolphin --select /home/looktest/Downloads/qa-run.sh; sleep 7; QM key ret; sleep 4; shot qa-script-double-click
           chk "QA: a downloaded script opened with Return in File Explorer does not run by itself" 0 "test ! -e /tmp/qa-script-ran && echo not-run || echo RAN" '^not-run$'
           QM key esc; sleep 1; K -x dolphin; R "rm -f /var/home/looktest/Downloads/qa-run.sh /tmp/qa-script-ran" || true
+          # v7.4: KDE's low-disk warning (freespacenotifier) fires before the disk is full: fill to half of its limit, expect the notification, clean up at once
+          R "nohup $LT dbus-monitor --session \"interface='org.freedesktop.Notifications',member='Notify'\" > /tmp/qa-dbus.txt 2>&1 & sleep 2"
+          R "T=\$(df -B1 --output=size /var/home | tail -1); A=\$(df -B1 --output=avail /var/home | tail -1); L=\$(( T/10 < 2048*1048576 ? T/10 : 2048*1048576 )); fallocate -l \$(( A - L/2 )) /var/home/qa-lowdisk-fill; df -h /var/home | tail -1"
+          for _ in $(seq 40); do R "grep -q 'running out of disk space' /tmp/qa-dbus.txt" && break; sleep 5; done
+          chk "low disk space: a warning appears before the disk is full" 0 "grep -c 'running out of disk space' /tmp/qa-dbus.txt" '^[1-9]'
+          R "rm -f /var/home/qa-lowdisk-fill; pkill -f 'dbus-monitor --session' || true; sync"
           R "userdel -r rtadmin" 2>/dev/null || true
           # a web download of the EICAR test file (best effort: needs the internet)
           R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"

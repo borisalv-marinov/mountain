@@ -250,6 +250,9 @@ msgstr "Проверка за поддръжка на игри"
 msgid "Checking your device…"
 msgstr "Проверка на устройството…"
 
+msgid "Reading the state of your protection…"
+msgstr "Прочитане на състоянието на защитата…"
+
 msgid "Choose"
 msgstr "Избор"
 
