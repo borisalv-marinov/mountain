@@ -14,6 +14,8 @@ ExecStart=/usr/libexec/mountain-protect daemon
 Restart=always
 RestartSec=30
 Nice=19
+# a ~/.config/systemd/user.conf or environment.d line must not load code into the watcher
+UnsetEnvironment=LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT
 IOSchedulingClass=idle
 # the watcher itself: scans run in their own unit, so these limits are for the idle part
 MemoryHigh=150M

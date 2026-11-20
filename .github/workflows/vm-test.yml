@@ -1109,6 +1109,13 @@ jobs:
           R "$LT systemctl --user mask mountain-protect.service; $LT systemctl --user kill mountain-protect.service"
           for _ in $(seq 45); do R "$LT systemctl --user is-active -q mountain-protect.service && [ ! -L ~looktest/.config/systemd/user/mountain-protect.service ]" && break; sleep 2; done
           chk "Active Protection: a program that masks it is undone by the guard within 90 s" 0 "{ $LT systemctl --user is-active mountain-protect.service; [ ! -L ~looktest/.config/systemd/user/mountain-protect.service ] && echo unmasked; } | paste -sd' '" '^active unmasked$'
+          # frozen while it still says "active": the guard must notice (security review, 20 Nov)
+          R "$LT systemctl --user freeze mountain-protect.service" || true
+          for _ in $(seq 60); do [ "$(R "$LT systemctl --user show -p FreezerState --value mountain-protect.service")" = running ] && break; sleep 2; done
+          chk "Active Protection: a program that freezes it is thawed by the guard within 2 min" 0 "$LT systemctl --user show -p FreezerState --value mountain-protect.service" '^running$'
+          P0=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); R "kill -STOP $P0" || true; P1=$P0
+          for _ in $(seq 60); do P1=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); [ "$P1" != "$P0" ] && [ "$P1" != 0 ] && break; sleep 2; done
+          chk "Active Protection: a watcher paused with SIGSTOP is replaced by the guard within 2 min" 0 "test '$P1' != '$P0' && test '$P1' != 0 && $LT systemctl --user is-active mountain-protect.service" '^active$'
           PAOFF; sleep 90
           chk "Active Protection: off with the admin helper stays off for 90 s (flag set)" 0 "{ $LT systemctl --user is-active mountain-protect.service; test -e /var/lib/mountain/protect-off-$LTU && echo flag; } | paste -sd' '" '^(inactive|failed) flag$'
           PA on; sleep 3
