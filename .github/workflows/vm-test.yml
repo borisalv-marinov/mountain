@@ -1335,6 +1335,11 @@ jobs:
           apwait /home/looktest/Downloads/qa-dbl.com
           L xdg-open /home/looktest/Downloads/qa-dbl.com || true; sleep 4
           chk "QA: the harmless virus file is in quarantine and a double-click on it opens no program" 0 "{ test ! -e /home/looktest/Downloads/qa-dbl.com && echo gone; ls /home/looktest/.local/share/mountain/quarantine | grep -c qa-dbl; pgrep -u looktest -x 'kwrite|kate|gedit' | wc -l; } | paste -sd' '" '^gone 1 0$'
+          # a downloaded script, made executable, "double-clicked" with the keyboard (Dolphin selects it, Return opens it): it must ask first, never just run
+          R "$(TL 'printf "#!/bin/sh\ntouch /tmp/qa-script-ran\n" > ~/Downloads/qa-run.sh; chmod +x ~/Downloads/qa-run.sh; rm -f /tmp/qa-script-ran')"
+          L dolphin --select /home/looktest/Downloads/qa-run.sh; sleep 7; QM key ret; sleep 4; shot qa-script-double-click
+          chk "QA: a downloaded script opened with Return in File Explorer does not run by itself" 0 "test ! -e /tmp/qa-script-ran && echo not-run || echo RAN" '^not-run$'
+          QM key esc; sleep 1; K -x dolphin; R "rm -f /var/home/looktest/Downloads/qa-run.sh /tmp/qa-script-ran" || true
           R "userdel -r rtadmin" 2>/dev/null || true
           # a web download of the EICAR test file (best effort: needs the internet)
           R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"
