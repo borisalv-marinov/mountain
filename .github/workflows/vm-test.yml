@@ -960,6 +960,15 @@ jobs:
           R "$KS output.$OUT.mode.${M0:-1}" >>kscreen-log.txt 2>&1; sleep 6; shot back-to-1280
           chk "screen back to 1280x800 after the full HD shots" 1 "$KS -o 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -o '[0-9]*x[0-9]*@[0-9.]*\*' | head -1" '^1280x800@'
           R "rpm -q libkscreen kscreen qt6-qtbase qt6-qtwayland code; coredumpctl list --no-pager kscreen-doctor; journalctl -b --no-pager -o cat _COMM=kscreen-doctor | tail -20" >>kscreen-log.txt 2>&1 || true
+          # v7.4 (owner report from a phone: Start cut off behind the taskbar): on the shortest screen mode the menu must fit above the taskbar and nothing may float over it
+          SMID=$(sed 's/\x1b\[[0-9;]*m//g' kscreen-log.txt | grep -o '[0-9]*:[0-9]*x[0-9]*@[0-9.]*' | awk -F'[:x@]' '{print $3, $1}' | sort -n | head -1 | cut -d' ' -f2)
+          SMH=$(sed 's/\x1b\[[0-9;]*m//g' kscreen-log.txt | grep -o "[0-9]*:[0-9]*x[0-9]*@[0-9.]*" | grep -m1 "^$SMID:" | cut -d: -f2)
+          QM key esc; sleep 1
+          R "$KS output.$OUT.mode.${SMID:-1}" >>kscreen-log.txt 2>&1; sleep 6
+          QM key meta_l; sleep 4; shot start-short-screen
+          chk "Start fits above the taskbar on the shortest screen mode ($SMH)" 0 "journalctl -b --no-pager -t plasmashell | grep -o 'mountain-start open.*' | tail -1 | awk '{n=split(\$0,a,\" \"); for(i=1;i<=n;i++){split(a[i],k,\"=\"); v[k[1]]=k[2]}; print (v[\"y\"]>=0 ? (v[\"h\"]<=v[\"avail\"] ? \"fits\" : \"clipped\") : \"clipped\")}'" '^fits$'
+          QM key esc; sleep 1
+          R "$KS output.$OUT.mode.${M0:-1}" >>kscreen-log.txt 2>&1; sleep 6
 
           QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu; QM key esc; QM key esc
           fi # part taskmgr
