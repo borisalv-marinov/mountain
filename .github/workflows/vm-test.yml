@@ -1334,6 +1334,7 @@ jobs:
           # a user double-clicks the harmless EICAR test file. Two facts are recorded, neither hidden by a longer wait:
           #  (1) an immediate double-click (1 s after the file arrives): does a program open it? Protection scans AFTER the file is written (a scan takes tens of seconds), so this can open; INFO row, known limit
           #  (2) with the watcher idle, is the file quarantined within 3 min, and after how many seconds? (the earlier failure: the file waited behind scans of the rows just before)
+          R "rm -f ~looktest/.local/share/mountain/protect/allowed" # the restore row above allowed this exact EICAR content (by design: a restored file stays allowed); without this the identical bytes here are skipped (run 44799520457)
           for _ in $(seq 60); do R "pgrep -u looktest -f 'mountain-security scan' >/dev/null" || break; sleep 3; done
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/qa-dbl.com')"; T0=$(date +%s)
           sleep 1; L xdg-open /home/looktest/Downloads/qa-dbl.com || true; sleep 4
