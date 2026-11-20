@@ -960,6 +960,19 @@ jobs:
           R "$KS output.$OUT.mode.${M0:-1}" >>kscreen-log.txt 2>&1; sleep 6; shot back-to-1280
           chk "screen back to 1280x800 after the full HD shots" 1 "$KS -o 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -o '[0-9]*x[0-9]*@[0-9.]*\*' | head -1" '^1280x800@'
           R "rpm -q libkscreen kscreen qt6-qtbase qt6-qtwayland code; coredumpctl list --no-pager kscreen-doctor; journalctl -b --no-pager -o cat _COMM=kscreen-doctor | tail -20" >>kscreen-log.txt 2>&1 || true
+          # v7.4 (owner report from a phone: Start cut off behind the taskbar): on the shortest screen mode the menu must fit above the taskbar and nothing may float over it
+          SMID=$(sed 's/\x1b\[[0-9;]*m//g' kscreen-log.txt | grep -o '[0-9]*:[0-9]*x[0-9]*@[0-9.]*' | awk -F'[:x@]' '{print $3, $1}' | sort -n | head -1 | cut -d' ' -f2)
+          SMH=$(sed 's/\x1b\[[0-9;]*m//g' kscreen-log.txt | grep -o "[0-9]*:[0-9]*x[0-9]*@[0-9.]*" | grep -m1 "^$SMID:" | cut -d: -f2)
+          QM key esc; sleep 1
+          R "$KS output.$OUT.mode.${SMID:-1}" >>kscreen-log.txt 2>&1; sleep 6
+          QM key meta_l; sleep 4; shot start-short-screen
+          chk "Start fits above the taskbar on the shortest screen mode ($SMH)" 0 "journalctl -b --no-pager -t plasmashell | grep -o 'mountain-start open.*' | tail -1 | awk '{n=split(\$0,a,\" \"); for(i=1;i<=n;i++){split(a[i],k,\"=\"); v[k[1]]=k[2]}; print (v[\"y\"]>=0 ? (v[\"h\"]<=v[\"avail\"] ? \"fits\" : \"clipped\") : \"clipped\")}'" '^fits$'
+          # the same short screen, three more journeys a user does: Start search, Settings, File Explorer (shots judged afterwards)
+          QM type settings; sleep 3; shot short-start-search
+          QM key ret; sleep 8; shot short-settings; QM key alt f4; sleep 2
+          L dolphin; sleep 7; shot short-file-explorer; K -x dolphin
+          QM key esc; sleep 1
+          R "$KS output.$OUT.mode.${M0:-1}" >>kscreen-log.txt 2>&1; sleep 6
 
           QM key meta_l; sleep 3; QM click $((937*W/1280)) $((700*H/800)); sleep 2; shot start-power-menu; QM key esc; QM key esc
           fi # part taskmgr
@@ -1103,7 +1116,7 @@ jobs:
           R "rm -f ~looktest/Downloads/apa-big.mkv ~looktest/Downloads/apa-150.bin ~looktest/Downloads/apa-swap.com ~looktest/Downloads/apa-enc.zip ~looktest/Downloads/apa-mixed.zip ~looktest/Documents/a.jpg ~looktest/.config/autostart-scripts/apa-as.sh"
           # v7.4 Active Protection is locked: only the admin helper (pkexec + password) turns it off; the guard (timer, 60 s) undoes anything else
           LTU=$(R "id -u looktest")
-          chk "Active Protection: guard timer enabled and active" 0 "echo \$(systemctl is-enabled mountain-protect-guard.timer) \$(systemctl is-active mountain-protect-guard.timer)" '^enabled active$'
+          chk "Active Protection: guard service enabled and active" 0 "echo \$(systemctl is-enabled mountain-protect-guard.service) \$(systemctl is-active mountain-protect-guard.service)" '^enabled active$'
           chk "Active Protection: a program cannot stop it (systemctl --user stop is refused)" 0 "{ $LT systemctl --user stop mountain-protect.service 2>&1 | head -1; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" 'refus.* active$'
           chk "Active Protection: pkexec protect off without the admin password is refused" 0 "{ $LT timeout 20 pkexec /usr/libexec/mountain-protect-admin off </dev/null 2>&1 | head -1; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" '([Nn]ot authorized|uthenticat|ismissed|rror).* active$'
           R "$LT systemctl --user mask mountain-protect.service; $LT systemctl --user kill mountain-protect.service"
@@ -1112,10 +1125,10 @@ jobs:
           # frozen while it still says "active": the guard must notice (security review, 20 Nov)
           R "$LT systemctl --user freeze mountain-protect.service" || true
           for _ in $(seq 60); do [ "$(R "$LT systemctl --user show -p FreezerState --value mountain-protect.service")" = running ] && break; sleep 2; done
-          chk "Active Protection: a program that freezes it is thawed by the guard within 2 min" 0 "$LT systemctl --user show -p FreezerState --value mountain-protect.service" '^running$'
+          chk "Active Protection: a program that freezes it is thawed by the guard within 30 s" 0 "$LT systemctl --user show -p FreezerState --value mountain-protect.service" '^running$'
           P0=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); R "kill -STOP $P0" || true; P1=$P0
           for _ in $(seq 60); do P1=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); [ "$P1" != "$P0" ] && [ "$P1" != 0 ] && break; sleep 2; done
-          chk "Active Protection: a watcher paused with SIGSTOP is replaced by the guard within 2 min" 0 "test '$P1' != '$P0' && test '$P1' != 0 && $LT systemctl --user is-active mountain-protect.service" '^active$'
+          chk "Active Protection: a watcher paused with SIGSTOP is replaced by the guard within 30 s" 0 "test '$P1' != '$P0' && test '$P1' != 0 && $LT systemctl --user is-active mountain-protect.service" '^active$'
           PAOFF; sleep 90
           chk "Active Protection: off with the admin helper stays off for 90 s (flag set)" 0 "{ $LT systemctl --user is-active mountain-protect.service; test -e /var/lib/mountain/protect-off-$LTU && echo flag; } | paste -sd' '" '^(inactive|failed) flag$'
           PA on; sleep 3
@@ -1308,6 +1321,15 @@ jobs:
           chk "attack: after the refusals port 4444 is not open (runtime or permanent)" 0 "echo \$(firewall-cmd --list-all-zones | grep -c '4444/tcp') \$(firewall-cmd --permanent --list-all-zones | grep -c '4444/tcp') \$(ss -ltn | grep -c ':4444 ')" '^0 0 0$'
           chk "attack: after the refusals firewalld is still active" 0 "systemctl is-active firewalld" '^active$'
           chk "attack: after the refusals Active Protection is still active" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
+          # v7.4 QA, user's side: harmless stand-ins only. A .desktop file pretending to be Firefox, and a downloaded text file made executable later
+          APC="$LT HOME=/var/home/looktest /usr/libexec/mountain-protect"
+          R "$(TL 'mkdir -p ~/.local/share/applications; printf "[Desktop Entry]\nType=Application\nName=Firefox\nIcon=firefox\nExec=sh -c true\n" > ~/.local/share/applications/qa-fake-firefox.desktop; printf "plain text\n" > ~/Downloads/qa-later.txt')"
+          R "$APC check /var/home/looktest/.local/share/applications/qa-fake-firefox.desktop /var/home/looktest/Downloads/qa-later.txt" || true
+          chk "attack: a .desktop file that pretends to be Firefox is listed as unverified" 0 "$APC status | grep -c 'qa-fake-firefox'" '^1$'
+          chk "attack: a plain downloaded text file is not listed" 0 "$APC status | grep -c 'qa-later' || true" '^0$'
+          R "$(TL 'chmod +x ~/Downloads/qa-later.txt')"; R "$APC check /var/home/looktest/Downloads/qa-later.txt" || true
+          chk "attack: the same file made executable later is listed as unverified" 0 "$APC status | grep -c 'qa-later'" '^1$'
+          R "rm -f /var/home/looktest/.local/share/applications/qa-fake-firefox.desktop /var/home/looktest/Downloads/qa-later.txt" 2>/dev/null || true
           R "userdel -r rtadmin" 2>/dev/null || true
           # a web download of the EICAR test file (best effort: needs the internet)
           R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"

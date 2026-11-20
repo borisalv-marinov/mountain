@@ -1,7 +1,13 @@
 [Unit]
-Description=Mountain: turn Active Protection back on if a program turned it off (not the admin password)
+Description=Mountain: keep Active Protection running (a program of the user cannot stop, freeze or pause it)
+After=systemd-logind.service
 
 [Service]
-Type=oneshot
 ExecStart=/usr/libexec/mountain-protect-guard
+Restart=always
+RestartSec=2
 Nice=19
+# a root service: nothing of the user's reaches it (no user environment, own cgroup, signals from other users are refused)
+
+[Install]
+WantedBy=multi-user.target

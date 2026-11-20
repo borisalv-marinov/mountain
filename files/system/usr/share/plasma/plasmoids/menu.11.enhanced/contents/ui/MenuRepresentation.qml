@@ -85,6 +85,10 @@ PlasmaCore.Dialog {
 
     property bool searching: (searchField.text != "")
 
+    // v7.4: what is left of the free screen (above the taskbar) for the page area, after search box, footer, frame and a margin
+    // (a fixed allowance for search box, footer and frame: reading their heights here ran before they existed)
+    property int maxViewHeight: kicker.availableScreenRect.height - Kirigami.Units.gridUnit * 12
+
     onSearchingChanged: {
         // Mountain: U21 diagnostic, the VM compares the menu's geometry in normal and search mode
         console.warn("mountain-start geometry searching=" + searching + " x=" + x + " y=" + y + " w=" + width + " h=" + height + " item=" + rootItem.height);
@@ -102,6 +106,8 @@ PlasmaCore.Dialog {
             var pos = popupPosition(width, height);
             x = pos.x;
             y = pos.y;
+            // v7.4: the VM checks on a short screen that the menu fits (y >= 0, y + h <= the free screen height)
+            console.warn("mountain-start open y=" + y + " h=" + height + " avail=" + kicker.availableScreenRect.height);
             reset();
         } else {
             view.currentIndex = 0;
@@ -411,7 +417,8 @@ PlasmaCore.Dialog {
             }
 
             width: rootItem.widthComputed / 0.1
-            height: (root.cellSizeHeight * Plasmoid.configuration.numberRows) + (topRow.height * 2) + ((docsIconSize + Kirigami.Units.largeSpacing) * 5) + (3 * Kirigami.Units.largeSpacing)
+            // v7.4: never taller than the free screen (a short or phone-sized screen cut the menu off behind the taskbar)
+            height: Math.min((root.cellSizeHeight * Plasmoid.configuration.numberRows) + (topRow.height * 2) + ((docsIconSize + Kirigami.Units.largeSpacing) * 5) + (3 * Kirigami.Units.largeSpacing), Math.max(root.maxViewHeight, root.cellSizeHeight))
 
             // PAGE 1
             Column {
@@ -455,7 +462,7 @@ PlasmaCore.Dialog {
                     width: parent.width
                     height: {
                         if (Plasmoid.configuration.showRecentDocuments) {
-                            return root.cellSizeHeight * Plasmoid.configuration.numberRows;
+                            return Math.min(root.cellSizeHeight * Plasmoid.configuration.numberRows, Math.max(view.height - topRow.height - Kirigami.Units.largeSpacing, root.cellSizeHeight / 2)); // scrolls when the screen is short
                         } else {
                             return view.height - topRow.height - Kirigami.Units.largeSpacing - Kirigami.Units.gridUnit;
                         }
