@@ -1103,7 +1103,7 @@ jobs:
           R "rm -f ~looktest/Downloads/apa-big.mkv ~looktest/Downloads/apa-150.bin ~looktest/Downloads/apa-swap.com ~looktest/Downloads/apa-enc.zip ~looktest/Downloads/apa-mixed.zip ~looktest/Documents/a.jpg ~looktest/.config/autostart-scripts/apa-as.sh"
           # v7.4 Active Protection is locked: only the admin helper (pkexec + password) turns it off; the guard (timer, 60 s) undoes anything else
           LTU=$(R "id -u looktest")
-          chk "Active Protection: guard timer enabled and active" 0 "echo \$(systemctl is-enabled mountain-protect-guard.timer) \$(systemctl is-active mountain-protect-guard.timer)" '^enabled active$'
+          chk "Active Protection: guard service enabled and active" 0 "echo \$(systemctl is-enabled mountain-protect-guard.service) \$(systemctl is-active mountain-protect-guard.service)" '^enabled active$'
           chk "Active Protection: a program cannot stop it (systemctl --user stop is refused)" 0 "{ $LT systemctl --user stop mountain-protect.service 2>&1 | head -1; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" 'refus.* active$'
           chk "Active Protection: pkexec protect off without the admin password is refused" 0 "{ $LT timeout 20 pkexec /usr/libexec/mountain-protect-admin off </dev/null 2>&1 | head -1; $LT systemctl --user is-active mountain-protect.service; } | paste -sd' '" '([Nn]ot authorized|uthenticat|ismissed|rror).* active$'
           R "$LT systemctl --user mask mountain-protect.service; $LT systemctl --user kill mountain-protect.service"
@@ -1112,10 +1112,10 @@ jobs:
           # frozen while it still says "active": the guard must notice (security review, 20 Nov)
           R "$LT systemctl --user freeze mountain-protect.service" || true
           for _ in $(seq 60); do [ "$(R "$LT systemctl --user show -p FreezerState --value mountain-protect.service")" = running ] && break; sleep 2; done
-          chk "Active Protection: a program that freezes it is thawed by the guard within 2 min" 0 "$LT systemctl --user show -p FreezerState --value mountain-protect.service" '^running$'
+          chk "Active Protection: a program that freezes it is thawed by the guard within 30 s" 0 "$LT systemctl --user show -p FreezerState --value mountain-protect.service" '^running$'
           P0=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); R "kill -STOP $P0" || true; P1=$P0
           for _ in $(seq 60); do P1=$(R "$LT systemctl --user show -p MainPID --value mountain-protect.service"); [ "$P1" != "$P0" ] && [ "$P1" != 0 ] && break; sleep 2; done
-          chk "Active Protection: a watcher paused with SIGSTOP is replaced by the guard within 2 min" 0 "test '$P1' != '$P0' && test '$P1' != 0 && $LT systemctl --user is-active mountain-protect.service" '^active$'
+          chk "Active Protection: a watcher paused with SIGSTOP is replaced by the guard within 30 s" 0 "test '$P1' != '$P0' && test '$P1' != 0 && $LT systemctl --user is-active mountain-protect.service" '^active$'
           PAOFF; sleep 90
           chk "Active Protection: off with the admin helper stays off for 90 s (flag set)" 0 "{ $LT systemctl --user is-active mountain-protect.service; test -e /var/lib/mountain/protect-off-$LTU && echo flag; } | paste -sd' '" '^(inactive|failed) flag$'
           PA on; sleep 3

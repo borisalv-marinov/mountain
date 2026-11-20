@@ -93,7 +93,7 @@ modules:
         - rpm-ostreed-automatic.timer # system updates download in the background (policy stage), applied at the next restart
         - greenboot-healthcheck.service # boot health checks; failing boot_counter times rolls back to the previous system
         - mountain-signed-origin.service # a rebase-installed PC gets a signature-enforced origin
-        - mountain-protect-guard.timer # Active Protection turned off by a program (not the admin password) comes back within a minute
+        - mountain-protect-guard.service # root service: Active Protection stopped, frozen or paused by a program (not the admin password) is put back within 5 s
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
         - uupd.timer # also updates Flatpaks/distrobox; system updates come from rpm-ostreed-automatic.timer

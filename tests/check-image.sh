@@ -1238,7 +1238,7 @@ check_phase42() { # v7.4: Active Protection only stops with the admin password (
   assert_grep 'FreezerState' $X/usr/libexec/mountain-protect-guard # frozen but "active" is undone too
   assert_grep '^UnsetEnvironment=LD_PRELOAD' $u
   assert_grep 'ExecStart=/usr/libexec/mountain-protect-guard' $X/usr/lib/systemd/system/mountain-protect-guard.service
-  assert_grep '^OnUnitActiveSec=60s$' $X/usr/lib/systemd/system/mountain-protect-guard.timer
+  assert_grep '^Restart=always$' $X/usr/lib/systemd/system/mountain-protect-guard.service
   assert_grep 'pkexec /usr/libexec/mountain-protect-admin' $X/usr/libexec/mountain-security
   assert_grep 'pkexec /usr/libexec/mountain-firewall' $X/usr/libexec/mountain-security
   assert_grep 'exec /usr/libexec/mountain-security protect' $X/usr/libexec/mountain-protect
@@ -1250,9 +1250,9 @@ check_phase42() { # v7.4: Active Protection only stops with the admin password (
   assert_grep 'PillSwitch { visible: !sec.confirmFwOff; text: i18n("Firewall")' $ui/SecurityPage.qml
   assert_grep 'protect " + (sec.a("ap")' $ui/SecurityPage.qml
   if [[ -z $X ]]; then # built image only
-    [[ $(systemctl is-enabled mountain-protect-guard.timer 2>/dev/null) == enabled ]] || fail "mountain-protect-guard.timer not enabled"
+    [[ $(systemctl is-enabled mountain-protect-guard.service 2>/dev/null) == enabled ]] || fail "mountain-protect-guard.service not enabled"
   else
-    assert_grep 'mountain-protect-guard.timer' recipes/common.yml
+    assert_grep 'mountain-protect-guard.service' recipes/common.yml
   fi
   python3 -I - "$X/usr/share/plasma/plasmoids" <<'PY' || fail "Bulgarian catalog: firewall switch text missing"
 import gettext, sys
