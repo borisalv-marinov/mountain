@@ -1317,6 +1317,15 @@ jobs:
           chk "attack: after the refusals port 4444 is not open (runtime or permanent)" 0 "echo \$(firewall-cmd --list-all-zones | grep -c '4444/tcp') \$(firewall-cmd --permanent --list-all-zones | grep -c '4444/tcp') \$(ss -ltn | grep -c ':4444 ')" '^0 0 0$'
           chk "attack: after the refusals firewalld is still active" 0 "systemctl is-active firewalld" '^active$'
           chk "attack: after the refusals Active Protection is still active" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
+          # v7.4 QA, user's side: harmless stand-ins only. A .desktop file pretending to be Firefox, and a downloaded text file made executable later
+          APC="$LT HOME=/var/home/looktest /usr/libexec/mountain-protect"
+          R "$(TL 'mkdir -p ~/.local/share/applications; printf "[Desktop Entry]\nType=Application\nName=Firefox\nIcon=firefox\nExec=sh -c true\n" > ~/.local/share/applications/qa-fake-firefox.desktop; printf "plain text\n" > ~/Downloads/qa-later.txt')"
+          R "$APC check /var/home/looktest/.local/share/applications/qa-fake-firefox.desktop /var/home/looktest/Downloads/qa-later.txt" || true
+          chk "attack: a .desktop file that pretends to be Firefox is listed as unverified" 0 "$APC status | grep -c 'qa-fake-firefox'" '^1$'
+          chk "attack: a plain downloaded text file is not listed" 0 "$APC status | grep -c 'qa-later' || true" '^0$'
+          R "$(TL 'chmod +x ~/Downloads/qa-later.txt')"; R "$APC check /var/home/looktest/Downloads/qa-later.txt" || true
+          chk "attack: the same file made executable later is listed as unverified" 0 "$APC status | grep -c 'qa-later'" '^1$'
+          R "rm -f /var/home/looktest/.local/share/applications/qa-fake-firefox.desktop /var/home/looktest/Downloads/qa-later.txt" 2>/dev/null || true
           R "userdel -r rtadmin" 2>/dev/null || true
           # a web download of the EICAR test file (best effort: needs the internet)
           R "$(TL 'curl -fsSL -m 20 -o ~/Downloads/web-eicar.com https://secure.eicar.org/eicar.com')" && apwait /home/looktest/Downloads/web-eicar.com && r=caught || r="not downloaded"
