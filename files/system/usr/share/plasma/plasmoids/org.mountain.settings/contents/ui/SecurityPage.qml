@@ -64,7 +64,7 @@ ColumnLayout {
                 sec.note = out.indexOf("av_result=cancelled") >= 0 ? ""
                          : out.indexOf("av_result=found") >= 0 ? i18n("Threats found. They were moved to quarantine, where they can't run.")
                          : out.indexOf("av_result=clean") >= 0 ? i18n("Scan finished: no threats found.")
-                         : out.indexOf("av_result=no-definitions") >= 0 ? i18n("No virus definitions yet. Connect to the internet and press Scan now to download them.")
+                         : out.indexOf("av_result=no-definitions") >= 0 ? i18n("No virus definitions yet. They download by themselves once the PC is online; or press Update.")
                          : i18n("The scan could not finish. Try again, or see Active Protection's log.");
             } else if (sec.running === "rollback") {
                 sec.note = data["exit code"] === 0 ? i18n("Done. Restart your PC to go back to the previous version.") : i18n("Going back was cancelled.");
@@ -141,9 +141,9 @@ ColumnLayout {
             title: i18n("Virus & threat protection")
             level: sec.lvAv
             details: (sec.v("av_last", "never") === "never" ? i18n("No scan yet.") : i18n("Last scan: %1", sec.v("av_last")) + (sec.v("av_result") === "found" ? i18n(" · %1 found", sec.v("av_found")) : sec.v("av_result") === "clean" ? i18n(" · no threats") : ""))
-                     + "\n" + i18n("Definitions: %1", sec.v("av_defs") === "none" ? i18n("No virus definitions — press Update (Scan now downloads them)") : sec.v("av_defs"))
+                     + "\n" + i18n("Definitions: %1", sec.v("av_defs") === "none" ? i18n("No virus definitions yet — they download by themselves once the PC is online (or press Update)") : sec.v("av_defs"))
                      + i18n(" · In quarantine: %1", sec.v("av_quarantine", "0"))
-                     + "\n" + (sec.v("dl_watch") === "on" ? i18n("Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have. Games are never scanned. Right-click any file: Scan with Mountain Security.") : i18n("Definitions download only when you click a scan button. New files in Downloads are checked with the definitions you have (off). Games are never scanned. Right-click any file: Scan with Mountain Security."))
+                     + "\n" + (sec.v("dl_watch") === "on" ? i18n("Definitions download by themselves: once the PC is online, then every day. Update gets them now. New files in Downloads are checked with the definitions you have. Games are never scanned. Right-click any file: Scan with Mountain Security.") : i18n("Definitions download by themselves: once the PC is online, then every day. Update gets them now. New files in Downloads are checked with the definitions you have (off). Games are never scanned. Right-click any file: Scan with Mountain Security."))
             tech: sec.v("dl_watch") === "on" ? i18n("Scanner: ClamAV, on demand only. Download checks: on.") : i18n("Scanner: ClamAV, on demand only. Download checks: off.")
             buttons: [
                 GlassButton { text: i18n("Update"); highlighted: true; visible: sec.v("av_defs") === "none"; enabled: sec.running === ""; onClicked: sec.start("update", sec.helper + " update") },

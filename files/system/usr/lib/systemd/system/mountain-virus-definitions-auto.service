@@ -1,0 +1,15 @@
+[Unit]
+Description=Mountain: download virus definitions by itself (once the PC is online, then every day)
+After=network-online.target
+Wants=network-online.target
+# same limit as the manual start: at most 3 downloads an hour in total (the ClamAV CDN blocks loops)
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+# the real download is mountain-virus-definitions.service (also started by Update definitions and Scan now)
+ExecStart=/usr/bin/systemctl start mountain-virus-definitions.service
+# offline at first boot: try again in half an hour
+Restart=on-failure
+RestartSec=30min
+Nice=10

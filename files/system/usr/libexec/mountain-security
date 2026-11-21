@@ -11,7 +11,7 @@
 #   mountain-security firewall on|off        firewall on/off (admin password)
 #   mountain-security rollback        go back to the previous Mountain version at the next restart
 #   mountain-security reset           Reset this PC, keep my files (removes system changes made on this PC)
-# Definitions download only here (Scan now / Update definitions): no background downloads (owner's rule).
+# Definitions download by themselves (mountain-virus-definitions-auto.timer: a minute after start, then daily; owner, 21 Nov) and on Scan now / Update definitions.
 set -uo pipefail
 state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
 quarantine=$state/quarantine
@@ -150,7 +150,7 @@ scan() { # [--no-update] quick|full|DIR...
     rmdir "${f%/*}"/.clamav-unlink-* 2>/dev/null
   done < <([[ -n ${mvq[*]} ]] && sed -n 's/: [^:]* FOUND$//p' <<<"$out")
   find "$quarantine" -type f -exec chmod 0400 {} + 2>/dev/null # nothing in quarantine can run
-  found=$(grep -c ' FOUND$' <<<"$out"); ((found == 0 && rc == 1)) && rc=0
+  found=$(sed -n 's/^\(.*\): [^:]* FOUND$/\1/p' <<<"$out" | sort -u | grep -c . || true); ((found == 0 && rc == 1)) && rc=0
   case $rc in 0) r=clean ;; 1) r=found ;; *) r=error ;; esac
   [[ ${found:-0} -gt 0 ]] && r=found # a failed move is an error too, but the threat was found
   printf 'av_last=%s\nav_result=%s\nav_found=%s\n' "$now" "$r" "${found:-0}" > "$state/last-scan"
@@ -170,7 +170,7 @@ scan_notify() { # right-click > Scan with Mountain Security
   case $out in
     *av_result=found*) notify-send -a "Security" -i security-low -h string:desktop-entry:org.mountain.security "Mountain Security" "Threat found and moved to quarantine." ;;
     *av_result=clean*) notify-send -a "Security" -i security-high -h string:desktop-entry:org.mountain.security "Mountain Security" "No threats found." ;;
-    *) notify-send -a "Security" -i security-medium -h string:desktop-entry:org.mountain.security "Mountain Security" "No virus definitions yet: open Security and click Scan now." ;;
+    *) notify-send -a "Security" -i security-medium -h string:desktop-entry:org.mountain.security "Mountain Security" "No virus definitions yet. They download by themselves once the PC is online. Click to open Security." ;;
   esac 2>/dev/null
   echo "$out"
 }
@@ -242,7 +242,7 @@ rollback() {
 case ${1:-} in
   status) status ;;
   scan) shift; scan "$@" ;;
-  update) systemctl start mountain-virus-definitions.service && newest_def ;; # Update definitions: the only download (owner's rule)
+  update) systemctl start mountain-virus-definitions.service && newest_def ;; # Update definitions: the manual download
   scan-notify) shift; scan_notify "$@" ;;
   quarantine-list) ls -1 "$quarantine" 2>/dev/null ;;
   quarantine-restore) restore "${2:-}" ;;
