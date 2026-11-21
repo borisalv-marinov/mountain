@@ -26,6 +26,9 @@ for t in test-protect test-security-scan test-security-conn test-app-permissions
   r=$(timeout 500 bash tests/$t.sh 2>&1); echo "$r" | grep -qE "^FAIL|^not ok|[1-9][0-9]* failed" && { echo "$r" | grep -E "^FAIL|^not ok|failed" | head -4; fail "tests/$t.sh"; }
 done
 
+# the image check's rule (build 44857266527): every notify-send call, comments included, needs -a
+bad_ns=$(grep -rn 'notify-send [^>]' files/system/usr/libexec/mountain-* | grep -v 'notify-send -a ' || true); [[ -z $bad_ns ]] || { echo "$bad_ns" | head -3; fail "notify-send without -a (toast header says notify-send)"; }
+
 # image check, repo mode: every phase from 41 on (v7.4 and later). Image-mode paths (no MOUNTAIN_ROOT) are NOT exercised: read each new assert_grep path by eye.
 out=$(MOUNTAIN_ROOT=files/system bash -c 'source <(sed "/^phases=/,\$d" tests/check-image.sh | tr -d "\r"); for p in $(declare -F | sed -n "s/.*check_phase\(4[1-9]\|[5-9][0-9]\)$/check_phase\1/p"); do $p || echo "phase failed: $p"; done' 2>&1 | grep -E "FAIL|phase failed" | head -5)
 [[ -z $out ]] || { echo "$out"; fail "image check (repo mode)"; }
