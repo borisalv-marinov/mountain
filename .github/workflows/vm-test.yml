@@ -649,13 +649,6 @@ jobs:
           done
           K -x kdeconnectd
           R "$LT notify-send -a Security -i security-high -h string:desktop-entry:org.mountain.security 'Mountain Security' 'Toast name test'"; sleep 2; shot toast-app-name
-          # v7.4 (owner test, item 3): clicking the "No virus definitions yet" notice must open Security on Privacy & security, in front. QM click = the toast body (bottom right)
-          R "cat > /tmp/notify-click.sh; chmod 755 /tmp/notify-click.sh" < "$GITHUB_WORKSPACE/tests/vm/notify-click.sh"; L /tmp/notify-click.sh; sleep 3 # the real wrapper from mountain-security, started with the session environment
-          QM click $((1000*W/1280)) $((690*H/800)); sleep 9; shot toast-click-security
-          chk "a click on a Security notification opens Settings in front" 0 "journalctl -b --no-pager | grep -o 'MWC|act|[^|]*|[^|]*|[^|]*|[^|]*' | tail -1" 'org.mountain.settings'
-          TC=$(convert "$(ls shots/*-toast-click-security.png | tail -1)" -negate - 2>/dev/null | tesseract - stdout --psm 11 2>/dev/null | grep -ci 'virus\|threat' || true)
-          chk "a click on a Security notification lands on Privacy & security (page text seen)" 0 "echo ${TC:-0}" '^[1-9]'
-          QM key alt f4; sleep 2
           L konsole; wchk "konsole for Alt+F4" 2 konsole 15; sleep 4; QM key alt f4; sleep 3
           chk "shortcut Alt+F4 closes the window" 0 "pgrep -u looktest -x konsole || echo closed" '^closed$'
           # Win+R: Run dialog (plasmawindowed org.mountain.run), Esc closes, typing a folder opens File Explorer
@@ -1054,7 +1047,6 @@ jobs:
           # v7.4 (lead, 21 Nov): the threat notice of the first file is open and unclicked now. Protection must keep scanning: a second file dropped right away is quarantined as usual
           R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/auto-eicar2.com')"; for _ in $(seq 40); do R "test -e ~looktest/Downloads/auto-eicar2.com" || break; sleep 3; done
           chk "Protection keeps scanning while a threat notice is open and unclicked (second file quarantined)" 2 "test ! -e ~looktest/Downloads/auto-eicar2.com && echo quarantined" '^quarantined$'
-          chk "no waiting notifier process blocks Protection (open notices: count, info)" 2 "pgrep -u looktest -fc 'notify-send.*default=Open' || true" '.'
           chk "definitions: a new EICAR file is quarantined with no click before it (needs the definitions above)" 2 "test ! -e ~looktest/Downloads/auto-eicar.com && echo quarantined" '^quarantined$'
           R "rm -f ~looktest/Downloads/auto-eicar.com ~looktest/Downloads/auto-eicar2.com; rm -f ~looktest/.local/share/mountain/quarantine/auto-eicar*.com"
           PAOFF # back to how the next rows expect it (on-demand scans must not race the watcher)
