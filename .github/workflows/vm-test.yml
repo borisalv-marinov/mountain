@@ -1051,8 +1051,12 @@ jobs:
           chk "definitions: they exist without any click (needs the ClamAV server to answer the CI machine)" 2 "ls /var/lib/clamav | grep -cE '\.c[lv]d\$'" '^[1-9]'
           PA on; sleep 5 # an earlier row switched Protection off for the on-demand scans: this row needs it on
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/auto-eicar.com')"; for _ in $(seq 40); do R "test -e ~looktest/Downloads/auto-eicar.com" || break; sleep 3; done
+          # v7.4 (lead, 21 Nov): the threat notice of the first file is open and unclicked now. Protection must keep scanning: a second file dropped right away is quarantined as usual
+          R "$(TL 'echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/auto-eicar2.com')"; for _ in $(seq 40); do R "test -e ~looktest/Downloads/auto-eicar2.com" || break; sleep 3; done
+          chk "Protection keeps scanning while a threat notice is open and unclicked (second file quarantined)" 2 "test ! -e ~looktest/Downloads/auto-eicar2.com && echo quarantined" '^quarantined$'
+          chk "no waiting notifier process blocks Protection (open notices: count, info)" 2 "pgrep -u looktest -fc 'notify-send.*default=Open' || true" '.'
           chk "definitions: a new EICAR file is quarantined with no click before it (needs the definitions above)" 2 "test ! -e ~looktest/Downloads/auto-eicar.com && echo quarantined" '^quarantined$'
-          R "rm -f ~looktest/Downloads/auto-eicar.com; rm -f ~looktest/.local/share/mountain/quarantine/auto-eicar.com"
+          R "rm -f ~looktest/Downloads/auto-eicar.com ~looktest/Downloads/auto-eicar2.com; rm -f ~looktest/.local/share/mountain/quarantine/auto-eicar*.com"
           PAOFF # back to how the next rows expect it (on-demand scans must not race the watcher)
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
           # without --quiet systemd-run prints the scan unit's runtime, CPU time and memory peak (the "virus scan cost" row)

@@ -38,7 +38,7 @@ grep -nE "assert_(grep|file)[^#]*[ '](recipes|tests|files)/" tests/check-image.s
 python3 tools/po2mo.py >/dev/null 2>&1; git diff --quiet -- '*.mo' || fail "a .mo is out of date with its .po: run python3 tools/po2mo.py and commit the .mo"
 node try/keysym.test.mjs >/dev/null 2>&1 || fail "try/keysym.test.mjs"
 
-if command -v gh >/dev/null; then
+if command -v gh >/dev/null && [[ ${PREPUSH_ALLOW_BUILD:-} != 1 ]]; then # PREPUSH_ALLOW_BUILD=1: you know a build is running and accept that this push cancels it
   n=$(gh run list --workflow bluebuild --branch "$(git branch --show-current)" --status in_progress --json databaseId -q 'length' 2>/dev/null)
   q=$(gh run list --workflow bluebuild --branch "$(git branch --show-current)" --status queued --json databaseId -q 'length' 2>/dev/null)
   (( ${n:-0} + ${q:-0} == 0 )) || fail "a build of this branch is running or queued: a push now would cancel it. Wait for it, or accept that it is lost."
