@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Tests Active Protection's "unverified" rule and the review actions (no ClamAV needed).
+export MOUNTAIN_NOTIFY_PLAIN=1 # the scripts send notices from a background process otherwise (click action); these tests read the fake notify-send log at once
 S=$(dirname "$0")/../files/system/usr/libexec/mountain-protect
 T=$(mktemp -d); rc=0
 ok() { if eval "$1"; then echo "ok: $2"; else echo "FAIL: $2"; rc=1; fi; }

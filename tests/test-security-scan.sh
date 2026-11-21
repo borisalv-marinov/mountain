@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests mountain-security's scan: what clamscan reports FOUND is moved to quarantine, LOCKED/LIMIT files stay put.
 # clamscan is a stand-in that exits 1 on a find like the real one (that exit once made every re-check say "not found").
+export MOUNTAIN_NOTIFY_PLAIN=1 # the scripts send notices from a background process otherwise (click action); these tests read the fake notify-send log at once
 set -u
 S=$(cd "$(dirname "$0")/../files/system/usr/libexec" && pwd)/mountain-security
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT

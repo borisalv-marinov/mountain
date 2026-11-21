@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The real Active Protection watcher end to end (inotifywait; ClamAV and notifications faked): the VM order of events,
 # a killed watcher restarted, an extracted folder, then a second one with an EICAR named .txt that must be quarantined.
+export MOUNTAIN_NOTIFY_PLAIN=1 # the scripts send notices from a background process otherwise (click action); these tests read the fake notify-send log at once
 S=$(cd "$(dirname "$0")/.." && pwd)/files/system/usr/libexec/mountain-protect
 command -v inotifywait >/dev/null || { echo "FAIL: inotifywait missing (apt install inotify-tools)"; exit 1; }
 T=$(mktemp -d); rc=0
