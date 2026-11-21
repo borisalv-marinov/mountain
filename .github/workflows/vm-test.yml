@@ -1049,9 +1049,11 @@ jobs:
           # v7.4 (owner test, 21 Nov): a fresh PC downloads virus definitions by itself; no Scan or Update click before this point
           chk "definitions: the timer is on and the download already started by itself after boot" 0 "echo \$(systemctl is-enabled mountain-virus-definitions-auto.timer) \$(systemctl show -p ExecMainStartTimestamp --value mountain-virus-definitions-auto.service | grep -c .)" '^enabled 1$'
           chk "definitions: they exist without any click (needs the ClamAV server to answer the CI machine)" 2 "ls /var/lib/clamav | grep -cE '\.c[lv]d\$'" '^[1-9]'
+          PA on; sleep 5 # an earlier row switched Protection off for the on-demand scans: this row needs it on
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/auto-eicar.com')"; for _ in $(seq 40); do R "test -e ~looktest/Downloads/auto-eicar.com" || break; sleep 3; done
           chk "definitions: a new EICAR file is quarantined with no click before it (needs the definitions above)" 2 "test ! -e ~looktest/Downloads/auto-eicar.com && echo quarantined" '^quarantined$'
           R "rm -f ~looktest/Downloads/auto-eicar.com; rm -f ~looktest/.local/share/mountain/quarantine/auto-eicar.com"
+          PAOFF # back to how the next rows expect it (on-demand scans must not race the watcher)
           R "$(TL 'mkdir -p ~/Downloads; echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > ~/Downloads/eicar.com')" # the harmless EICAR test file
           # without --quiet systemd-run prints the scan unit's runtime, CPU time and memory peak (the "virus scan cost" row)
           SCAN=$(R "timeout 600 $LT systemd-run --user --wait --pipe --collect /usr/libexec/mountain-security scan /home/looktest/Downloads" 2>&1); echo "$SCAN" > scan-log.txt

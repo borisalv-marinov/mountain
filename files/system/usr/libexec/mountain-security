@@ -13,6 +13,9 @@
 #   mountain-security reset           Reset this PC, keep my files (removes system changes made on this PC)
 # Definitions download by themselves (mountain-virus-definitions-auto.timer: a minute after start, then daily; owner, 21 Nov) and on Scan now / Update definitions.
 set -uo pipefail
+# v7.4: a click on a notice opens the page it is about: the default action. notify-send waits for the click, so it runs in the background.
+# The action options go BEFORE the message: the unit tests' fake notify-send records the last argument (the text).
+notify-send() { ( [[ $(command notify-send -A default=Open -w "$@" 2>/dev/null) == default ]] && /usr/libexec/mountain-settings-open privacy >/dev/null 2>&1 ) & }
 state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
 quarantine=$state/quarantine
 db=${MOUNTAIN_CLAMAV_DB:-/var/lib/clamav}

@@ -20,6 +20,12 @@ done < <({ git diff --name-only origin/main; git diff --name-only; git ls-files 
 python3 -c "import yaml,sys; [yaml.safe_load(open(f,encoding='utf-8')) for f in sys.argv[1:]]" .github/workflows/*.yml recipes/*.yml 2>&1 | tail -2
 [[ ${PIPESTATUS[0]} == 0 ]] || fail "YAML does not parse"
 
+# the lint job's unit tests that need no Linux-only tool (Git Bash is enough); test-protect.sh is the one that failed build 44839387969
+for t in test-protect test-security-scan test-security-conn test-app-permissions test-i18n; do
+  [[ -f tests/$t.sh ]] || continue
+  r=$(timeout 500 bash tests/$t.sh 2>&1); echo "$r" | grep -qE "^FAIL|^not ok|[1-9][0-9]* failed" && { echo "$r" | grep -E "^FAIL|^not ok|failed" | head -4; fail "tests/$t.sh"; }
+done
+
 # image check, repo mode: every phase from 41 on (v7.4 and later). Image-mode paths (no MOUNTAIN_ROOT) are NOT exercised: read each new assert_grep path by eye.
 out=$(MOUNTAIN_ROOT=files/system bash -c 'source <(sed "/^phases=/,\$d" tests/check-image.sh | tr -d "\r"); for p in $(declare -F | sed -n "s/.*check_phase\(4[1-9]\|[5-9][0-9]\)$/check_phase\1/p"); do $p || echo "phase failed: $p"; done' 2>&1 | grep -E "FAIL|phase failed" | head -5)
 [[ -z $out ]] || { echo "$out"; fail "image check (repo mode)"; }

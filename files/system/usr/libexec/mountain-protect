@@ -8,6 +8,9 @@
 # New executables and scripts are listed as "unverified" until you Allow, Quarantine or Delete them.
 #   mountain-protect daemon | status | on | off | allow FILE | allow-hash FILE | quarantine FILE | delete FILE | check FILE...
 set -uo pipefail
+# v7.4: a click on a notice opens the page it is about: the default action. notify-send waits for the click, so it runs in the background.
+# The action options go BEFORE the message: the unit tests' fake notify-send records the last argument (the text).
+notify-send() { ( [[ $(command notify-send -A default=Open -w "$@" 2>/dev/null) == default ]] && /usr/libexec/mountain-settings-open protection >/dev/null 2>&1 ) & }
 state=${XDG_DATA_HOME:-$HOME/.local/share}/mountain
 pdir=$state/protect
 mkdir -p "$pdir"
