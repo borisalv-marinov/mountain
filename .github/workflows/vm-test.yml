@@ -650,7 +650,7 @@ jobs:
           K -x kdeconnectd
           R "$LT notify-send -a Security -i security-high -h string:desktop-entry:org.mountain.security 'Mountain Security' 'Toast name test'"; sleep 2; shot toast-app-name
           # v7.4 (owner test, item 3): clicking the "No virus definitions yet" notice must open Security on Privacy & security, in front. QM click = the toast body (bottom right)
-          R "$LT notify-send -a Security -i security-medium -h string:desktop-entry:org.mountain.security 'Mountain Security' 'No virus definitions yet. Click to open Security.'"; sleep 3
+          R "cat > /tmp/notify-click.sh; chmod 755 /tmp/notify-click.sh" < "$GITHUB_WORKSPACE/tests/vm/notify-click.sh"; L /tmp/notify-click.sh; sleep 3 # the real wrapper from mountain-security, started with the session environment
           QM click $((1000*W/1280)) $((690*H/800)); sleep 9; shot toast-click-security
           chk "a click on a Security notification opens Settings in front" 0 "journalctl -b --no-pager | grep -o 'MWC|act|[^|]*|[^|]*|[^|]*|[^|]*' | tail -1" 'org.mountain.settings'
           TC=$(convert "$(ls shots/*-toast-click-security.png | tail -1)" -negate - 2>/dev/null | tesseract - stdout --psm 11 2>/dev/null | grep -ci 'virus\|threat' || true)
