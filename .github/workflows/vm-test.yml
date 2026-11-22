@@ -170,7 +170,7 @@ jobs:
           }
           # quick re-check (input parts): run only the named parts; setup, perf data, the stability rows and the shutdown always run
           part() { [ -z "${PARTS// }" ] || [[ " $PARTS " == *" $1 "* ]]; }
-          for p in $PARTS; do case $p in gui|apps|taskmgr|security|attack|hardware|startapps|session|rollback|greenboot) ;; *) echo "::error::unknown part $p"; exit 1 ;; esac; done
+          for p in $PARTS; do case $p in gui|apps|taskmgr|security|attack|hardware|startapps|redraw|session|rollback|greenboot) ;; *) echo "::error::unknown part $p"; exit 1 ;; esac; done
           [ -z "${PARTS// }" ] || { [ "$GITHUB_EVENT_NAME" = schedule ] && QL="security suite" || QL="quick run"; echo "| $QL: only $PARTS (never counts for a merge) | INFO | other parts skipped |" >> report.md; }
 
           if ! wait_ssh 600; then
@@ -1483,6 +1483,33 @@ jobs:
           touch perf/every-alias.txt
           echo "| Start apps: each judged by its own window | $(grep -qvE "^($EVERY_ALIAS)$" perf/every-alias.txt && echo FAIL || echo PASS) | other window judged: $(grep -vE "^($EVERY_ALIAS)$" perf/every-alias.txt | paste -sd' ') |" >> report.md
           fi # part startapps
+          if part redraw; then
+          # v7.4 item 2 (owner test): Firefox stopped repainting and Settings text overlapped until scrolled. Is it Mountain's (blur / glass) or the VM's software rendering?
+          # Oracle without a judge: a page of numbered lines is scrolled with Page Down and each screenshot is read back with OCR; the numbers must come back in strict order.
+          # Run twice, blur on and blur off. Settings is scrolled the same way and the shots are kept for a look. INFO rows only: this part measures, it does not gate.
+          for i in $(seq 1 150); do echo "<p style=\"font:bold 44px monospace;margin:0\">LINE $(printf %04d $i)</p>"; done > redraw.html
+          R "mkdir -p /home/looktest/Downloads; cat > /home/looktest/Downloads/redraw.html; chown looktest /home/looktest/Downloads/redraw.html" < redraw.html
+          redraw_run() { # LABEL
+            L flatpak run org.mozilla.firefox --new-window file:///home/looktest/Downloads/redraw.html; sleep 35
+            local k a=0 n=0 prev=0 list=""
+            for k in 1 2 3 4 5 6; do
+              QM key pgdn; sleep 2; shot redraw-ff-$1-$k
+              for v in $(convert "$(ls shots/*-redraw-ff-$1-$k.png | tail -1)" - 2>/dev/null | tesseract - stdout --psm 6 2>/dev/null | grep -o 'LINE [0-9]\{4\}' | awk '{print $2+0}'); do
+                n=$((n+1)); list="$list $v"; [ "$prev" != 0 ] && [ $((v - prev)) != 1 ] && a=$((a+1)); prev=$v
+              done; prev=0
+            done
+            chk "redraw (blur $1): Firefox scrolled 6 pages, line numbers read back in order" 2 "echo out-of-order=$a read=$n" '.'
+            echo "redraw $1 firefox:$list" >> redraw-log.txt
+            K -f firefox; sleep 3
+            L /usr/libexec/mountain-settings-open privacy; sleep 14
+            for k in 1 2 3; do shot redraw-settings-$1-$k; QM key pgdn; sleep 2; done
+            QM key alt f4; sleep 2
+          }
+          redraw_run on
+          R "$(TL 'kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false')"; R "$LT dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure" || true; sleep 5
+          redraw_run off
+          R "$(TL 'kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled true')"; R "$LT dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure" || true; sleep 3
+          fi # part redraw
           chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
           # the VM now logs every crash (above; the path is read from any column: a SIZE column can follow it): kioworker is the known open one (register B1, counted in its own row); any other program fails
