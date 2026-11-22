@@ -1489,8 +1489,9 @@ jobs:
           # Run twice, blur on and blur off. Settings is scrolled the same way and the shots are kept for a look. INFO rows only: this part measures, it does not gate.
           for i in $(seq 1 150); do echo "<p style=\"font:bold 44px monospace;margin:0\">LINE $(printf %04d $i)</p>"; done > redraw.html
           R "mkdir -p /home/looktest/Downloads; cat > /home/looktest/Downloads/redraw.html; chown looktest /home/looktest/Downloads/redraw.html" < redraw.html
+          R "cd /home/looktest/Downloads && nohup setsid python3 -m http.server 8099 --bind 127.0.0.1 >/dev/null 2>&1 &"; sleep 2
           redraw_run() { # LABEL
-            L flatpak run org.mozilla.firefox --new-window file:///home/looktest/Downloads/redraw.html; sleep 35
+            L flatpak run org.mozilla.firefox --new-window http://127.0.0.1:8099/redraw.html; sleep 35; QM click $((640*W/1280)) $((327*H/800)); sleep 4 # first start shows a welcome dialog (Continue); the sandbox cannot read the home folder, so the page comes from a local web server
             local k a=0 n=0 prev=0 list=""
             for k in 1 2 3 4 5 6; do
               QM key pgdn; sleep 2; shot redraw-ff-$1-$k
@@ -1509,6 +1510,7 @@ jobs:
           R "$(TL 'kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false')"; R "$LT dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure" || true; sleep 5
           redraw_run off
           R "$(TL 'kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled true')"; R "$LT dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure" || true; sleep 3
+          R "pkill -f 'http.server 8099' || true"
           fi # part redraw
           chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
