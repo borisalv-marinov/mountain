@@ -25,6 +25,8 @@ jobs:
         run: pip install yamllint
       - name: Check recipe YAML
         run: yamllint -d relaxed recipes/
+      - name: Static image rules (the repo tree checked as the image, before the long build)
+        run: bash tests/check-image-static.sh
       - name: Test lite mode
         run: bash tests/test-lite-mode.sh
       - name: Test first-login setup
