@@ -1511,6 +1511,11 @@ jobs:
           redraw_run off
           R "$(TL 'kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled true')"; R "$LT dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure" || true; sleep 3
           K -f "http.server.8099"
+          # v7.4 items 3+4 (owner test): taskbar icons piling up when apps open; notification panel left half-drawn behind Start after Escape. Shots only, a person/Haiku looks at them.
+          L flatpak run org.mozilla.firefox --new-window about:blank; L dolphin; L konsole; sleep 25; shot taskbar-3apps
+          for i in 1 2 3 4 5 6; do L konsole; sleep 2; done; sleep 4; shot taskbar-9apps
+          R "$LT notify-send -a Mountain 'Redraw test' 'Press Escape next'"; sleep 3; shot notice-shown; QM key meta_l; sleep 2; QM key esc; sleep 2; shot notice-after-start-esc
+          QM key esc; sleep 1; K -f konsole; K -f dolphin; K -f firefox; sleep 4; shot taskbar-after-close
           fi # part redraw
           chk "File Explorer free space facts (0 B free hunt)" 2 "grep -h HomeUrl ~looktest/.config/dolphinrc; getent passwd looktest | cut -d: -f6; stat -f -c 'free=%a*%S' /var/home/looktest /home/looktest; findmnt -T /var/home/looktest -o TARGET,FSTYPE,SOURCE -n; findmnt -T /home/looktest -o TARGET,FSTYPE -n" '.'
           chk "stability: desktop shell and window manager never restarted" 1 "echo \$(pgrep -u looktest -x plasmashell),\$(pgrep -u looktest -x kwin_wayland)" "^$PS0\$"
