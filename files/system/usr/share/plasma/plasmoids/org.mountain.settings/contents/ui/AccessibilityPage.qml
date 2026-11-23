@@ -57,7 +57,7 @@ ColumnLayout {
         Layout.fillWidth: true
         padding: 6
         Head {
-            icon: "preferences-desktop-text-to-speech"; title: i18n("Narrator"); sub: i18n("Reads aloud what is on the screen. Win+Ctrl+Enter turns it on or off")
+            icon: "audio-speakers"; title: i18n("Narrator"); sub: i18n("Reads aloud what is on the screen. Win+Ctrl+Enter turns it on or off")
             GText { text: ac.st.narrator === "on" ? i18n("On") : i18n("Off") }
             PillSwitch { text: i18n("Narrator"); checked: ac.st.narrator === "on"; onClicked: ac.set("narrator " + (checked ? "off" : "on")) }
         }
@@ -66,7 +66,7 @@ ColumnLayout {
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        Head { icon: "zoom-in"; title: i18n("Magnifier"); sub: i18n("Zoom in on the screen: Win+Plus and Win+Minus, Win+Esc back to normal") }
+        Head { icon: "zoom-fit-best"; title: i18n("Magnifier"); sub: i18n("Zoom in on the screen: Win+Plus and Win+Minus, Win+Esc back to normal") }
         Choices {
             GlassButton { text: i18n("Zoom in"); onClicked: ac.set("zoom in") }
             GlassButton { text: i18n("Back to normal"); onClicked: ac.set("zoom off") }

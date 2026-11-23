@@ -112,8 +112,8 @@ PlasmoidItem {
             { t: i18n("Display: VRR and HDR"), d: i18n("Adaptive sync and HDR for your monitor"), i: "monitor", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: i18n("Accessibility"), icon: "preferences-desktop-accessibility", items: [
-            { t: i18n("Narrator"), d: i18n("Screen reader: reads the screen aloud (Win+Ctrl+Enter)"), i: "preferences-desktop-text-to-speech", page: "accessibility", k: "narrator screen reader orca blind speech read aloud" },
-            { t: i18n("Magnifier"), d: i18n("Zoom in on the screen (Win+Plus, Win+Esc)"), i: "zoom-in", page: "accessibility", k: "magnifier zoom low vision bigger" },
+            { t: i18n("Narrator"), d: i18n("Screen reader: reads the screen aloud (Win+Ctrl+Enter)"), i: "audio-speakers", page: "accessibility", k: "narrator screen reader orca blind speech read aloud" },
+            { t: i18n("Magnifier"), d: i18n("Zoom in on the screen (Win+Plus, Win+Esc)"), i: "zoom-fit-best", page: "accessibility", k: "magnifier zoom low vision bigger" },
             { t: i18n("Color filters"), d: i18n("For color blindness (Win+Ctrl+C)"), i: "color-management", page: "accessibility", k: "color colour filter blind blindness deuteranopia protanopia tritanopia" },
             { t: i18n("Mouse pointer size"), d: i18n("A bigger pointer"), i: "input-mouse", page: "accessibility", k: "mouse pointer cursor size bigger large" },
             { t: i18n("Sticky keys"), d: i18n("Shortcut keys one at a time"), i: "input-keyboard", page: "accessibility", k: "sticky keys keyboard shortcut one hand" },
