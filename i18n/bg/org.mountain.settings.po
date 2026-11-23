@@ -1381,3 +1381,91 @@ msgstr "Оставяне включена"
 
 msgid "Firewall"
 msgstr "Защитна стена"
+
+# v7.5 Accessibility (Windows 11 Bulgarian names)
+msgid "Narrator"
+msgstr "Диктор"
+
+msgid "Magnifier"
+msgstr "Лупа"
+
+msgid "Color filters"
+msgstr "Цветни филтри"
+
+msgid "Mouse pointer size"
+msgstr "Размер на показалеца на мишката"
+
+msgid "Sticky keys"
+msgstr "Лепкави клавиши"
+
+msgid "Animation effects"
+msgstr "Ефекти на анимация"
+
+msgid "Text size"
+msgstr "Размер на текста"
+
+msgid "A bigger pointer"
+msgstr "По-голям показалец"
+
+msgid "Back to normal"
+msgstr "Обратно към нормален"
+
+msgid "Blue-yellow"
+msgstr "Синьо-жълто"
+
+msgid "Red-green (green weak)"
+msgstr "Червено-зелено (слабо зелено)"
+
+msgid "Red-green (red weak)"
+msgstr "Червено-зелено (слабо червено)"
+
+msgid "For color blindness (Win+Ctrl+C)"
+msgstr "При цветна слепота (Win+Ctrl+C)"
+
+msgid "Glass on the taskbar, start menu and flyouts: click to turn on or off"
+msgstr "Стъкло в лентата на задачите, менюто \"Старт\" и изскачащите панели: щракнете, за да включите или изключите"
+
+msgid "Large"
+msgstr "Голям"
+
+msgid "Larger"
+msgstr "По-голям"
+
+msgid "Largest"
+msgstr "Най-голям"
+
+msgid "Normal"
+msgstr "Нормален"
+
+msgid "Zoom in"
+msgstr "Увеличаване"
+
+msgid "Make colors easier to tell apart. Win+Ctrl+C turns the filter on or off"
+msgstr "Цветовете се различават по-лесно. Win+Ctrl+C включва или изключва филтъра"
+
+msgid "Make everything bigger with Display > Scale"
+msgstr "Уголемете всичко от Дисплей > Мащаб"
+
+msgid "Make the pointer easier to see (apps opened after the change use it)"
+msgstr "Показалецът се вижда по-лесно (важи за приложенията, отворени след промяната)"
+
+msgid "Press Ctrl, Alt, Shift or Win one at a time for a shortcut"
+msgstr "Натискайте Ctrl, Alt, Shift или Win един по един за клавишна комбинация"
+
+msgid "Reads aloud what is on the screen. Win+Ctrl+Enter turns it on or off"
+msgstr "Чете на глас това, което е на екрана. Win+Ctrl+Enter го включва или изключва"
+
+msgid "Screen reader: reads the screen aloud (Win+Ctrl+Enter)"
+msgstr "Екранен четец: чете екрана на глас (Win+Ctrl+Enter)"
+
+msgid "Shortcut keys one at a time"
+msgstr "Клавиши за комбинации един по един"
+
+msgid "Windows and menus slide and fade"
+msgstr "Прозорците и менютата се плъзгат и избледняват"
+
+msgid "Zoom in on the screen (Win+Plus, Win+Esc)"
+msgstr "Увеличаване на екрана (Win+Plus, Win+Esc)"
+
+msgid "Zoom in on the screen: Win+Plus and Win+Minus, Win+Esc back to normal"
+msgstr "Увеличаване на екрана: Win+Plus и Win+Minus, Win+Esc връща нормалния размер"

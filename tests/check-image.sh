@@ -1330,6 +1330,28 @@ check_phase46() { # v7.4 one app store (Bazaar) and "Back up my files" (Pika Bac
 }
 
 # every check_phaseN defined above runs, so a new phase can never be forgotten
+check_phase47() { # v7.5 Accessibility: Narrator (Orca), Magnifier, Color filters, pointer size, sticky keys, animations + Windows shortcuts
+  local X=${MOUNTAIN_ROOT:-} ui=${MOUNTAIN_ROOT:-}/usr/share/plasma/plasmoids/org.mountain.settings/contents/ui h=${MOUNTAIN_ROOT:-}/usr/libexec/mountain-accessibility d
+  assert_file $h
+  [[ -n $X || -x $h ]] || fail "mountain-accessibility is not executable"
+  bash -n $h || fail "mountain-accessibility has a syntax error"
+  assert_file $ui/AccessibilityPage.qml
+  assert_grep 'accessibility: "AccessibilityPage.qml"' $ui/main.qml
+  assert_grep 'page: "accessibility"' $ui/main.qml
+  for d in narrator:Meta+Ctrl+Return colorfilter:Meta+Ctrl+C magnifier-off:Meta+Esc; do
+    assert_grep "^X-KDE-Shortcuts=${d#*:}\$" $X/usr/share/applications/org.mountain.${d%%:*}.desktop
+    assert_grep '^NoDisplay=true$' $X/usr/share/applications/org.mountain.${d%%:*}.desktop
+  done
+  [[ -n $X ]] || assert_cmd orca # image only: the screen reader itself
+  python3 -I - "$X/usr/share/plasma/plasmoids" <<'PY' || fail "Bulgarian catalog: Accessibility text missing"
+import gettext, sys
+t = gettext.GNUTranslations(open(sys.argv[1] + '/org.mountain.settings/contents/locale/bg/LC_MESSAGES/plasma_applet_org.mountain.settings.mo', 'rb'))
+bad = [w for w in ['Narrator', 'Magnifier', 'Color filters', 'Mouse pointer size', 'Sticky keys', 'Animation effects'] if t.gettext(w) == w]
+print(bad); sys.exit(1 if bad else 0)
+PY
+  true
+}
+
 phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
 [[ -n $phases ]] || fail "no check_phase functions found"
 for fn in $phases; do "$fn"; done

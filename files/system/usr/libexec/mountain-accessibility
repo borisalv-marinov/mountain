@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Settings > Accessibility, applied live for the signed-in user (Windows 11 names):
+#   mountain-accessibility status                 narrator= filter= cursor= sticky= animations= (what is really set)
+#   mountain-accessibility narrator on|off|toggle  Orca screen reader (Win+Ctrl+Enter)
+#   mountain-accessibility filter off|protanopia|deuteranopia|tritanopia|toggle   KWin colour filter (Win+Ctrl+C)
+#   mountain-accessibility cursor 24|32|48|64     mouse pointer size
+#   mountain-accessibility sticky on|off          sticky keys
+#   mountain-accessibility animations on|off      animation effects
+#   mountain-accessibility zoom in|off            Magnifier (Win+Plus / Win+Esc)
+# Same steps as Plasma's kaccess and KCMs, done here so they work without kaccess and read back the real state.
+set -uo pipefail
+usage() { sed -n '2,9p' "$0" >&2; exit 2; }
+[[ $(id -u) == 0 ]] && { echo "mountain-accessibility: run it as the user, never root" >&2; exit 3; }
+kw() { kwriteconfig6 --file "$1" --group "$2" --key "$3" --notify "$4"; }
+kr() { kreadconfig6 --file "$1" --group "$2" --key "$3" --default "$4"; }
+kwin() { dbus-send --session --type=method_call --dest=org.kde.KWin "$@" 2>/dev/null || true; }
+modes=(protanopia deuteranopia tritanopia)
+last=${XDG_STATE_HOME:-$HOME/.local/state}/mountain/color-filter
+orca_on() { pgrep -u "$(id -u)" -x orca >/dev/null; }
+filter_now() { [[ $(kr kwinrc Plugins colorblindnesscorrectionEnabled false) == true ]] && echo "${modes[$(kr kwinrc Effect-colorblindnesscorrection Mode 1)]:-deuteranopia}" || echo off; }
+
+narrator() { # $1 on|off
+  local b=$([[ $1 == on ]] && echo true || echo false)
+  kw kaccessrc ScreenReader Enabled "$b"
+  gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled "$b"
+  if [[ $1 == on ]]; then orca_on || setsid -f orca --replace >/dev/null 2>&1
+  else pkill -u "$(id -u)" -x orca; fi # Orca normally quits on the gsettings key; never leave one talking
+  return 0
+}
+filter() { # $1 off or a mode
+  if [[ $1 == off ]]; then kw kwinrc Plugins colorblindnesscorrectionEnabled false
+  else
+    local i; for i in "${!modes[@]}"; do [[ ${modes[$i]} == "$1" ]] && kw kwinrc Effect-colorblindnesscorrection Mode "$i"; done
+    kw kwinrc Plugins colorblindnesscorrectionEnabled true
+    mkdir -p "${last%/*}"; echo "$1" > "$last"
+  fi
+  kwin /KWin org.kde.KWin.reconfigure
+  kwin /Effects org.kde.kwin.Effects.reconfigureEffect string:colorblindnesscorrection # a mode change while it is loaded
+}
+
+case ${1:-}:${2:-} in
+  status:)
+    echo "narrator=$(orca_on && echo on || echo off)"
+    echo "filter=$(filter_now)"
+    echo "cursor=$(kr kcminputrc Mouse cursorSize 24)"
+    echo "sticky=$([[ $(kr kaccessrc Keyboard StickyKeys false) == true ]] && echo on || echo off)"
+    echo "animations=$([[ $(kr kdeglobals KDE AnimationDurationFactor 0.75) == 0 ]] && echo off || echo on)" ;;
+  narrator:on|narrator:off) narrator "$2" ;;
+  narrator:toggle) orca_on && narrator off || narrator on ;;
+  filter:off|filter:protanopia|filter:deuteranopia|filter:tritanopia) filter "$2" ;;
+  filter:toggle)
+    if [[ $(filter_now) != off ]]; then filter off
+    else m=$(cat "$last" 2>/dev/null); [[ " ${modes[*]} " == *" $m "* ]] || m=deuteranopia; filter "$m"; fi ;;
+  cursor:24|cursor:32|cursor:48|cursor:64)
+    plasma-apply-cursortheme "$(kr kcminputrc Mouse cursorTheme breeze_cursors)" --size "$2" || { echo "pointer size $2 not applied" >&2; exit 1; }
+    gsettings set org.gnome.desktop.interface cursor-size "$2" ;;
+  sticky:on|sticky:off) kw kaccessrc Keyboard StickyKeys "$([[ $2 == on ]] && echo true || echo false)" ;;
+  animations:on|animations:off) kw kdeglobals KDE AnimationDurationFactor "$([[ $2 == on ]] && echo 0.75 || echo 0)" ;;
+  zoom:in|zoom:off)
+    dbus-send --session --type=method_call --dest=org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.invokeShortcut \
+      "string:$([[ $2 == in ]] && echo view_zoom_in || echo view_actual_size)" ;;
+  *) usage ;;
+esac

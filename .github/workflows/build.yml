@@ -45,6 +45,8 @@ jobs:
         run: bash tests/test-windows-boot.sh
       - name: Test App permissions helper
         run: bash tests/test-app-permissions.sh
+      - name: Test Accessibility helper
+        run: bash tests/test-accessibility.sh
       - name: Test Active Protection rules
         run: bash tests/test-protect.sh
       - name: Test virus scan moves threats to quarantine

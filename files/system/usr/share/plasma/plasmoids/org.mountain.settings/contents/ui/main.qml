@@ -33,7 +33,7 @@ PlasmoidItem {
 
     property string page: "home"
     // pages without their own nav entry light up their category
-    readonly property var nativePages: ({ display: "DisplayPage.qml", sound: "SoundPage.qml", bluetooth: "BluetoothPage.qml", nightlight: "NightLightPage.qml", language: "LanguagePage.qml", typing: "TypingPage.qml", notifications: "NotificationsPage.qml", mouse: "MousePage.qml", defaultapps: "DefaultAppsPage.qml", power: "PowerPage.qml", about: "AboutPage.qml", storage: "StoragePage.qml", startup: "StartupPage.qml", datetime: "DateTimePage.qml", lockscreen: "LockScreenPage.qml", colors: "ColorsPage.qml", controllers: "ControllersPage.qml", printers: "PrintersPage.qml", youraccount: "AccountPage.qml", apppermissions: "AppPermissionsPage.qml" })
+    readonly property var nativePages: ({ display: "DisplayPage.qml", sound: "SoundPage.qml", bluetooth: "BluetoothPage.qml", nightlight: "NightLightPage.qml", language: "LanguagePage.qml", typing: "TypingPage.qml", notifications: "NotificationsPage.qml", mouse: "MousePage.qml", defaultapps: "DefaultAppsPage.qml", power: "PowerPage.qml", about: "AboutPage.qml", storage: "StoragePage.qml", startup: "StartupPage.qml", datetime: "DateTimePage.qml", lockscreen: "LockScreenPage.qml", colors: "ColorsPage.qml", controllers: "ControllersPage.qml", printers: "PrintersPage.qml", youraccount: "AccountPage.qml", apppermissions: "AppPermissionsPage.qml", accessibility: "AccessibilityPage.qml" })
     readonly property string navPage: categories.some(c => c.id === page) ? page : page === "protection" ? "privacy"
         : (categories.find(c => c.items.some(it => it.page === page)) || categories[0]).id
     readonly property var navCategory: categories.find(c => c.id === navPage)
@@ -112,11 +112,19 @@ PlasmoidItem {
             { t: i18n("Display: VRR and HDR"), d: i18n("Adaptive sync and HDR for your monitor"), i: "monitor", page: "display", k: "vrr freesync gsync hdr adaptive sync refresh" }
         ] },
         { id: "accessibility", name: i18n("Accessibility"), icon: "preferences-desktop-accessibility", items: [
+            { t: i18n("Narrator"), d: i18n("Screen reader: reads the screen aloud (Win+Ctrl+Enter)"), i: "preferences-desktop-text-to-speech", page: "accessibility", k: "narrator screen reader orca blind speech read aloud" },
+            { t: i18n("Magnifier"), d: i18n("Zoom in on the screen (Win+Plus, Win+Esc)"), i: "zoom-in", page: "accessibility", k: "magnifier zoom low vision bigger" },
+            { t: i18n("Color filters"), d: i18n("For color blindness (Win+Ctrl+C)"), i: "color-management", page: "accessibility", k: "color colour filter blind blindness deuteranopia protanopia tritanopia" },
+            { t: i18n("Mouse pointer size"), d: i18n("A bigger pointer"), i: "input-mouse", page: "accessibility", k: "mouse pointer cursor size bigger large" },
+            { t: i18n("Sticky keys"), d: i18n("Shortcut keys one at a time"), i: "input-keyboard", page: "accessibility", k: "sticky keys keyboard shortcut one hand" },
+            { t: i18n("Animation effects"), d: i18n("Windows and menus slide and fade"), i: "preferences-desktop-effects", page: "accessibility", k: "animation effects motion reduce visual" },
+            { t: i18n("Text size"), d: i18n("Make everything bigger with Display > Scale"), i: "monitor", page: "display", k: "text size font bigger scale" },
             { t: i18n("Night light"), d: i18n("Warmer colors at night"), i: "redshift-status-on", page: "nightlight", k: "night light blue light" }
         ] },
         { id: "privacy", name: i18n("Privacy & security"), icon: "security-high", items: [
             { t: i18n("Screen lock"), d: i18n("Lock automatically, require password"), i: "system-lock-screen", page: "lockscreen", k: "lock password security" },
-            { t: i18n("Virus & threat protection"), d: i18n("Scan now, quarantine, Previous versions"), i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" },
+            { t: i18n("Virus & threat protection"), d: i18n("Scan now, quarantine, Previous versions"), i: "security-high", page: "privacy", k: "virus antivirus malware scan threat ransomware security firewall" }
+,
             { t: i18n("App permissions"), d: i18n("Choose which apps may use your files, camera and microphone"), i: "preferences-system-privacy", page: "apppermissions", k: "app permissions files camera microphone flatpak sandbox access privacy" }
         ] },
         { id: "updates", name: i18n("Updates"), icon: "system-software-update", items: [
