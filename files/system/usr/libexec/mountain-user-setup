@@ -96,7 +96,7 @@ for p in .local/share/Steam .var/app/com.valvesoftware.Steam .var/app/com.heroic
 done
 # hourly read-only snapshots (mountain-snapshot), only where /var/home is a Btrfs subvolume (its top inode is 256)
 snap=${MOUNTAIN_SNAP_SRC:-/var/home}
-[[ ${MOUNTAIN_SNAPSHOTS_PLACE:-} == 1 || $(stat -c %i "$snap" 2>/dev/null) == 256 ]] && add "$(url "$snap/.snapshots")" "Previous versions" document-revert
+[[ ${MOUNTAIN_SNAPSHOTS_PLACE:-} == 1 || $(stat -c %i "$snap" 2>/dev/null) == 256 ]] && add "$(url "$snap/.snapshots")" "Versions" document-revert
 mkdir -p "$(dirname "$out")"
 python3 - "$tpl" "$out" "$places" "$(url "${XDG_DATA_HOME:-$HOME/.local/share}/mountain/This PC")" <<'PY'
 import sys
