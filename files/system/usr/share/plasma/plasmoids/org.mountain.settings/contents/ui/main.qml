@@ -117,7 +117,7 @@ PlasmoidItem {
             { t: i18n("Color filters"), d: i18n("For color blindness (Win+Ctrl+C)"), i: "color-management", page: "accessibility", k: "color colour filter blind blindness deuteranopia protanopia tritanopia" },
             { t: i18n("Mouse pointer size"), d: i18n("A bigger pointer"), i: "input-mouse", page: "accessibility", k: "mouse pointer cursor size bigger large" },
             { t: i18n("Sticky keys"), d: i18n("Shortcut keys one at a time"), i: "input-keyboard", page: "accessibility", k: "sticky keys keyboard shortcut one hand" },
-            { t: i18n("Animation effects"), d: i18n("Windows and menus slide and fade"), i: "preferences-desktop-effects", page: "accessibility", k: "animation effects motion reduce visual" },
+            { t: i18n("Animation effects"), d: i18n("Windows and menus slide and fade"), i: "special-effects", page: "accessibility", k: "animation effects motion reduce visual" },
             { t: i18n("Text size"), d: i18n("Make everything bigger with Display > Scale"), i: "monitor", page: "display", k: "text size font bigger scale" },
             { t: i18n("Night light"), d: i18n("Warmer colors at night"), i: "redshift-status-on", page: "nightlight", k: "night light blue light" }
         ] },

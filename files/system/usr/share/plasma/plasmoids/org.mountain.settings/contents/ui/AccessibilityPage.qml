@@ -107,7 +107,7 @@ ColumnLayout {
             PillSwitch { text: i18n("Sticky keys"); checked: ac.st.sticky === "on"; onClicked: ac.set("sticky " + (checked ? "off" : "on")) }
         }
         Head {
-            icon: "preferences-desktop-effects"; title: i18n("Animation effects"); sub: i18n("Windows and menus slide and fade")
+            icon: "special-effects"; title: i18n("Animation effects"); sub: i18n("Windows and menus slide and fade")
             GText { text: ac.st.animations === "off" ? i18n("Off") : i18n("On") }
             PillSwitch { text: i18n("Animation effects"); checked: ac.st.animations !== "off"; onClicked: ac.set("animations " + (checked ? "off" : "on")) }
         }
