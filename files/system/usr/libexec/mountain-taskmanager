@@ -96,8 +96,8 @@ services() { # id, Name (the unit's description, like Windows), Status, Offer (s
     awk 'function out(  n, st, o) {
            if (id == "") return
            # not meant to be started by hand: image plumbing, one-shot jobs that just run and finish, idle static units
-           if (id ~ /^(bazzite|bootc|ostree)-/ || (ty == "oneshot" && rae != "yes") || (uf == "static" && act != "active")) return
-           n = (d != "" ? d : id); if (d == "") sub(/\.service$/, "", n)
+           if (id ~ /^(bazzite|bootc|ostree|fedora-atomic)-/ || (ty == "oneshot" && rae != "yes") || (uf == "static" && act != "active")) return
+           n = (d != "" && d != id ? d : id); if (d == "" || d == id) { sub(/\.service$/, "", n); gsub(/-/, " ", n) } # no description: the unit name in plain words
            st = (act == "active") ? "Running" : (act == "failed" ? "Failed" : "Stopped")
            o = (st == "Running") ? "stop" : "start"
            if (id ~ /^(dbus|dbus-broker|systemd-logind|polkit|plasmalogin|sddm)\.service$/) o = "" # stopping these ends the session
