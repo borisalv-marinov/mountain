@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Magnifier off
+Comment=Back to normal size
+Exec=/usr/libexec/mountain-accessibility zoom off
+Icon=zoom-out
+NoDisplay=true
+X-KDE-Shortcuts=Meta+Esc

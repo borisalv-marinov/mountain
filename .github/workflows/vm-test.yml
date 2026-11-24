@@ -516,9 +516,9 @@ jobs:
           chk "KWin contrast effect is loaded" 2 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:contrast | awk '/boolean/{print \$2}'" '^true$'
           R "$LT /usr/libexec/mountain-background color '#0078D4'" >> bg-apply.txt 2>&1; sleep 12
           # v7 Settings pages are native: no KDE System Settings or kcmshell6 window opens for them
-          declare -A PT=([display]="Display" [sound]="Sound" [bluetooth]="Bluetooth" [nightlight]="Night light" [language]="Language & region" [typing]="Typing" [notifications]="Notifications" [mouse]="Mouse & touchpad" [defaultapps]="Default apps" [power]="Power & battery" [about]="About" [storage]="Storage" [startup]="Startup apps" [datetime]="Date & time" [lockscreen]="Lock screen" [colors]="Colors" [controllers]="Game controllers" [printers]="Printers & scanners" [youraccount]="Your account")
+          declare -A PT=([display]="Display" [sound]="Sound" [bluetooth]="Bluetooth" [nightlight]="Night light" [language]="Language & region" [typing]="Typing" [notifications]="Notifications" [mouse]="Mouse & touchpad" [defaultapps]="Default apps" [power]="Power & battery" [about]="About" [storage]="Storage" [startup]="Startup apps" [datetime]="Date & time" [lockscreen]="Lock screen" [colors]="Colors" [controllers]="Game controllers" [printers]="Printers & scanners" [youraccount]="Your account" [accessibility]="Mouse pointer size")
           # the page title must be on screen over AT-SPI (a blank or solid window has none)
-          for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount; do
+          for p in display sound bluetooth nightlight language typing notifications mouse defaultapps power about storage startup datetime lockscreen colors controllers printers youraccount accessibility; do
             L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 "/usr/libexec/mountain-settings-open $p"; PGF=-f wchk "Settings opens on $p" 0 org.mountain.settings 20; sleep 6; shot "settings-$p"
             R "$LT python3 /tmp/names.py plasmawindowed 20 > /tmp/set-names.txt 2>&1; true"
             chk "Settings $p: page shows its title" 0 "grep -ciF '${PT[$p]}' /tmp/set-names.txt" "^[1-9]"
@@ -527,6 +527,32 @@ jobs:
             K -f org.mountain.settings
           done
           chk "Settings pages load without QML errors" 0 "journalctl -b --no-pager | grep -E 'org.mountain.settings/contents/ui/[A-Za-z]+Page.qml' | grep -ciE 'ReferenceError|TypeError|is not a type|is not installed|Error loading|Cannot assign' || true" '^0$'
+          # v7.5 Accessibility: each switch must really change KWin / Orca, not only the config (user view: shots + AT-SPI title above)
+          # the session's real Wayland socket (not always wayland-0): with a wrong name plasma-apply-cursortheme aborted and Orca never started
+          WD=$(R "ls /run/user/\$(id -u looktest)" | grep -m1 -xE 'wayland-[0-9]+')
+          A11Y="$LT WAYLAND_DISPLAY=${WD:-wayland-0} /usr/libexec/mountain-accessibility"
+          FX="$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:colorblindnesscorrection | awk '/boolean/{print \$2}'"
+          chk "Orca (Narrator) is installed" 1 "command -v orca" 'orca$'
+          R "$A11Y filter deuteranopia"; sleep 3
+          chk "Color filter on: KWin loads the colour-blindness effect" 1 "$FX" '^true$'
+          L kwrite; sleep 6; shot accessibility-color-filter-on; K -x kwrite
+          R "$A11Y filter toggle"; sleep 3
+          chk "Win+Ctrl+C action turns the filter off: effect unloaded" 1 "$FX" '^false$'
+          R "$A11Y sticky on"; sleep 1
+          chk "Sticky keys on reaches kaccessrc" 0 "grep -A3 '^\[Keyboard\]' ~looktest/.config/kaccessrc" '^StickyKeys=true'
+          R "$A11Y cursor 48"; sleep 2
+          chk "Mouse pointer size 48 is saved for Plasma" 0 "grep -h '^cursorSize=' ~looktest/.config/kcminputrc" '^cursorSize=48$'
+          R "$A11Y narrator on"; sleep 8
+          chk "Narrator on: Orca runs as the user" 1 "pgrep -u looktest -x orca >/dev/null && echo running || echo none" '^running$'
+          chk "Narrator on: status says on" 1 "$A11Y status" '^narrator=on$'
+          R "$A11Y narrator off"; sleep 6
+          chk "Narrator off: Orca is gone" 1 "pgrep -u looktest -x orca >/dev/null && echo running || echo none" '^none$'
+          chk "Orca never runs as root" 1 "pgrep -u root -x orca >/dev/null && echo root || echo none" '^none$'
+          R "$A11Y zoom in"; sleep 2; shot accessibility-magnifier-zoomed; R "$A11Y zoom off"; sleep 2; shot accessibility-magnifier-normal
+          # the three new Windows shortcuts must not take a key another action already holds
+          chk "Win+Esc, Win+Ctrl+C, Win+Ctrl+Enter: no clash in kglobalshortcutsrc" 0 "awk '/^\[/{g=\$0} /(=|\t|,)Meta\+(Esc|Ctrl\+C|Ctrl\+Return)(\t|,|$)/ && g !~ /org\.mountain\./ {n++} END{print \"clash=\" n+0}' ~looktest/.config/kglobalshortcutsrc" '^clash=0$'
+          R "$A11Y sticky off; $A11Y cursor 24; $A11Y filter off; $A11Y animations on" # back to defaults for the later shots
+          chk "Accessibility back to defaults" 0 "$A11Y status | tr '\n' ' '" 'narrator=off filter=off cursor=24 sticky=off animations=on'
           chk "no QML id masks a global" 0 "journalctl -b --no-pager | grep -c 'illegally masks' || true" '^0$'
           chk "tray layout indicator says ENG" 0 "grep -h '^DisplayNames=' /etc/xdg/kxkbrc ~looktest/.config/kxkbrc 2>/dev/null | tail -1" 'ENG'
           R "$LT /usr/libexec/mountain-background picture /usr/share/wallpapers/mountain-silk/ 2" >> bg-apply.txt 2>&1; sleep 3 # back to the default for the later shots

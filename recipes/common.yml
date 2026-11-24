@@ -22,6 +22,7 @@ modules:
         - python3
         - python3-pip
         - git
+        - orca # v7.5 Narrator (Settings > Accessibility, Win+Ctrl+Enter); pulls speech-dispatcher + espeak-ng
         - kvantum
         - kvantum-data
         - papirus-icon-theme

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Narrator
+Comment=Turn the screen reader on or off
+Exec=/usr/libexec/mountain-accessibility narrator toggle
+Icon=preferences-desktop-text-to-speech
+NoDisplay=true
+X-KDE-Shortcuts=Meta+Ctrl+Return

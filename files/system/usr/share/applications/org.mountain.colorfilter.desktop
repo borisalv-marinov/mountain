@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Color filter
+Comment=Turn the color filter on or off
+Exec=/usr/libexec/mountain-accessibility filter toggle
+Icon=color-management
+NoDisplay=true
+X-KDE-Shortcuts=Meta+Ctrl+C
