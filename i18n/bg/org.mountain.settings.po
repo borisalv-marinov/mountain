@@ -1473,8 +1473,5 @@ msgstr "Увеличаване на екрана: Win+Plus и Win+Minus, Win+Esc
 msgid "Mountain %1 (build %2)"
 msgstr "Mountain %1 (компилация %2)"
 
-msgid "Other users"
-msgstr "Други потребители"
-
 msgid "Add, remove or change other people who use this PC"
 msgstr "Добавяне, премахване или промяна на други хора, които използват този компютър"

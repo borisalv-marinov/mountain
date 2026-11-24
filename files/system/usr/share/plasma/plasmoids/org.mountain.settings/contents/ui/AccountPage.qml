@@ -26,12 +26,5 @@ ColumnLayout {
             divider: true
             onClicked: app.run("konsole -e passwd")
         }
-        SettingRow {
-            text: i18n("Other users")
-            description: i18n("Add, remove or change other people who use this PC")
-            iconName: "system-users"
-            divider: true
-            onClicked: app.run("systemsettings kcm_users")
-        }
     }
 }

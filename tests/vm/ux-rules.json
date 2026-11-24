@@ -24,7 +24,6 @@
   "task-view-open-window": {"must_not_read": ["No Windows"]},
   "settings-about": {"must_read": ["Mountain 7."], "must_not_read": ["Bazzite"]},
   "settings-network|settings-network-page|settings-nav-focus|hw-wifi-settings-network-connected": {"must_not_read": ["since you t"]},
-  "settings-youraccount": {"must_read": ["Other users"]},
   "settings-home|settings-updates|shortcut-win-i": {"must_not_read": ["are manual"]},
   "app-notepad|open-text|app-title-kwrite|every-org.kde.kwrite|speed-open-text": {"must_not_read": ["INSERT", "Soft Tabs"]},
   "taskbar-hover-clock|app-clock|every-org.kde.kclock": {"must_not_read": ["+00:00:01"]},

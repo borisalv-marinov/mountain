@@ -19,7 +19,6 @@ awk '/id: "time", name/,/id: "gaming"/' $U/main.qml | grep -q 'page: "typing"' |
 awk '/id: "devices", name/,/id: "network"/' $U/main.qml | grep -q 'page: "typing"' && { echo "FAIL Typing still under Bluetooth & devices"; rc=1; }
 t "About reads the build from /usr/lib/os-release" 'usr/lib/os-release' $U/AboutPage.qml
 n "About does not show PRETTY_NAME (Bazzite)" 'PRETTY_NAME' $U/AboutPage.qml
-t "Accounts has Other users (kcm_users)" 'systemsettings kcm_users' $U/AccountPage.qml
 t "card subtitles wrap, not clip" 'wrapMode: Text.WordWrap' $U/CardHeader.qml
 t "quick-settings tile labels wrap" 'wrapMode: Text.WordWrap' $Q/Tile.qml
 n "quick-settings tile labels do not elide" 'elide:' $Q/Tile.qml
