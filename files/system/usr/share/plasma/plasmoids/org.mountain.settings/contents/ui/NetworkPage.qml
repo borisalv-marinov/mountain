@@ -121,10 +121,8 @@ ColumnLayout {
                 }
             }
             SettingRow {
+                Layout.fillWidth: true // with preferredWidth 1 on both items the two columns share the card evenly; without it Data usage got ~0 px and its text spilled out
                 Layout.preferredWidth: 1
-                Layout.minimumWidth: 0
-                Layout.maximumWidth: parent ? parent.width : 10000
-                clip: true
                 text: i18n("Data usage")
                 description: net.usage || i18n("Not connected")
                 iconName: "network-wired"

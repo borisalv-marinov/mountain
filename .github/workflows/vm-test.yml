@@ -639,6 +639,11 @@ jobs:
           QM key meta_l up; sleep 2 # a known state first: the window may already be snapped left
           scut "Win+Left (snap)" meta_l left
           # the shortcut row above only times the redraw: prove where the window landed (left half, full height above the taskbar)
+          # from a normal (floating) window, like a person who just opened it: the rows above leave it in a corner tile (Win+Up on a left tile = top-left quarter, as on Windows)
+          R "printf '%s' 'const w = workspace.activeWindow; const a = workspace.clientArea(KWin.MaximizeArea, w); w.setMaximize(false, false); w.frameGeometry = {x: a.x + 150, y: a.y + 100, width: 700, height: 450};' > /tmp/float.js; chmod 644 /tmp/float.js"
+          SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/float.js string:floatwin" | awk '/int32/{print $2}')
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 1
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:floatwin" >/dev/null || true
           QM key meta_l left; sleep 2
           R "printf '%s' 'const w = workspace.activeWindow; const a = workspace.clientArea(KWin.MaximizeArea, w); console.warn(\"SNAP|\" + Math.round(w.frameGeometry.x - a.x) + \"|\" + Math.round(w.frameGeometry.width * 100 / a.width) + \"|\" + Math.round(w.frameGeometry.height * 100 / a.height));' > /tmp/snap.js; chmod 644 /tmp/snap.js"
           SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/snap.js string:snapgeo" | awk '/int32/{print $2}')
@@ -1621,7 +1626,7 @@ jobs:
           # Bulgarian: what Language & region writes (plasma-localerc [Translations] LANGUAGE), sign out and in, look at KDE-owned and
           # Mountain windows, then back to English. Only KDE's own text (Dolphin, Plasma menus) is Bulgarian: Mountain's plasmoids ship no bg catalog.
           chk "Bulgarian: KDE catalogs are installed" 0 "ls /usr/share/locale/bg/LC_MESSAGES/dolphin.mo /usr/share/locale/bg/LC_MESSAGES/plasmashell.mo" 'dolphin.mo'
-          R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE bg:en_US"
+          R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE bg@mountain:bg:en_US" # exactly what Settings > Language writes for Bulgarian
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
           for _ in $(seq 30); do R "loginctl list-sessions --no-legend | grep -q looktest" || break; sleep 2; done
           sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret

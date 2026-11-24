@@ -98,6 +98,7 @@ GlassCard {
         Layout.bottomMargin: 6
         spacing: 8
         SettingRow {
+            Layout.fillWidth: true // takes the room left of the button; without it the label was cut ("Всички ус…")
             text: i18n("View all devices")
             chevron: false
             onClicked: app.page = "bluetooth"

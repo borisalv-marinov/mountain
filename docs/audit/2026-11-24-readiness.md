@@ -9,7 +9,7 @@ Question: **how far is Mountain from a real OS that runs well on every system?**
 |---|---|---|---|
 | vm-test 45345700383 (main, af6f1d7) | full suite, 341 shots | 838 PASS, 0 FAIL | 07:08–09:08 |
 | vm-test 45385211772 (main, nightly) | security + attack + rollback + greenboot | **4 FAIL**, 218 PASS | 11:33–12:37 |
-| vm-test 45414130278 (main, af6f1d7) | fresh full run for this audit | see "Fresh run" below | started 16:26 |
+| vm-test 45414130278 (main, af6f1d7) | fresh full run for this audit | 838 PASS, 0 FAIL | 16:26–18:27 |
 | Try Mountain 45414136379 (main) | live desktop link | link posted as commit status "Mountain link" | started 16:26 |
 | Screens judged by hand | all 291 screenshots of run 45345700383, 3×3 contact sheets, zoom crops on every finding | 22 findings | 16:40–17:20 |
 
@@ -114,7 +114,18 @@ All proof is from run 45345700383 (`main`, 1280×800 unless noted). Shot names a
 
 ## 3. Fresh run 45414130278
 
-_Filled in when the run finishes (about 18:30)._
+Started 16:26, finished 18:27, `main` af6f1d7, full suite.
+
+| Result | Value |
+|---|---|
+| Rows | **838 PASS, 0 FAIL** (same as this morning's run) |
+| Sign-in to desktop | 2 s |
+| Start menu opens | 166 ms (median of 3) |
+| plasmashell idle RAM | 972 MB (this morning 960 MB) |
+| Archive and definitions rows | all PASS in the full suite; they fail only in the slower security-only suite (see B3) |
+| Network page overflow (S1) | still there: "2.2 GB since you t…" outside the card — reproducible, not a one-off |
+
+So the full suite is stable on `main`, and every screen finding above still stands.
 
 ---
 

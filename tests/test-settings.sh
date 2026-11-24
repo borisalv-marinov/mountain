@@ -7,7 +7,7 @@ Q=files/system/usr/share/plasma/plasmoids/org.mountain.quicksettings/contents/ui
 rc=0
 t() { if ! grep -qE -- "$2" "$3"; then echo "FAIL $1"; rc=1; fi; }
 n() { if grep -qE -- "$2" "$3"; then echo "FAIL $1"; rc=1; fi; }
-t "Data usage row is clipped to its card" 'Layout.maximumWidth: parent' $U/NetworkPage.qml
+t "Data usage row shares the card width (it got ~0 px before)" 'Layout.fillWidth: true // with preferredWidth 1 on both' $U/NetworkPage.qml
 n "no 'Updates are manual' wording" 'Updates are manual' $U/main.qml
 n "no 'Updates are manual' wording (Home)" 'Updates are manual' $U/HomePage.qml
 t "updates text says they download by themselves" 'download by themselves' $U/main.qml
