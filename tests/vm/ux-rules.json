@@ -20,5 +20,17 @@
   "toast-pointer-away": {"must_not_read": ["Pointer toast test"]},
   "security-home|security-protection-history": {"must_not_read": ["It was moved to quarantine"]},
   "security-protection-history": {"must_not_read": ["/var/home/"]},
-  "_brave": "Brave's frame is dark; its first-run page is purple web artwork, not the theme"
+  "_brave": "Brave's frame is dark; its first-run page is purple web artwork, not the theme",
+  "task-view-open-window": {"must_not_read": ["No Windows"]},
+  "settings-about": {"must_read": ["Mountain 7."], "must_not_read": ["Bazzite"]},
+  "settings-network|settings-network-page|settings-nav-focus|hw-wifi-settings-network-connected": {"must_not_read": ["since you t"]},
+  "settings-youraccount": {"must_read": ["Other users"]},
+  "settings-home|settings-updates|shortcut-win-i": {"must_not_read": ["are manual"]},
+  "app-notepad|open-text|app-title-kwrite|every-org.kde.kwrite|speed-open-text": {"must_not_read": ["INSERT", "Soft Tabs"]},
+  "taskbar-hover-clock|app-clock|every-org.kde.kclock": {"must_not_read": ["+00:00:01"]},
+  "every-org.kde.kinfocenter": {"must_not_read": ["Mountain 45"]},
+  "explorer-thispc": {"must_not_read": ["boot", "sysroot"]},
+  "pictures-folder|speed-folder": {"must_not_read": ["looktest"]},
+  "explorer-launchers": {"must_not_read": [".desktop"]},
+  "bg-taskmanager": {"ocr_lang": "eng+bul", "must_read": ["Диспечер"], "must_not_read": ["Мониториране"]}
 }

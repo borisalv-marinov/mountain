@@ -29,6 +29,11 @@ Faces.SensorFace {
     Layout.minimumHeight: mode === "device" ? Kirigami.Units.gridUnit * 6 : Kirigami.Units.gridUnit * (procs ? 14 : 10)
     Layout.minimumWidth: Kirigami.Units.gridUnit * 12
 
+    // Bulgarian session (LANGUAGE/LANG bg*): the few fixed English labels; the script's rows stay as they are
+    readonly property bool bg: (Qt.locale().uiLanguages[0] || Qt.locale().name).substring(0, 2) === "bg"
+    readonly property var bgText: ({"Name": "Име", "CPU": "Процесор", "Memory": "Памет", "End task": "Край на задачата"})
+    function tr(t) { return bg && bgText[t] ? bgText[t] : t; }
+
     function quote(s) {
         return "'" + String(s).split("'").join("'\\''") + "'";
     }
@@ -118,7 +123,7 @@ Faces.SensorFace {
         standardButtons: Kirigami.Dialog.Cancel
         customFooterActions: [
             Kirigami.Action {
-                text: "End task"
+                text: root.tr("End task")
                 icon.name: "process-stop"
                 onTriggered: {
                     root.act("end " + root.quote(confirm.pid));
@@ -180,7 +185,7 @@ Faces.SensorFace {
                 QQC2.Label {
                     required property string modelData
                     required property int index
-                    text: modelData
+                    text: root.tr(modelData)
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: index === 0
@@ -249,7 +254,7 @@ Faces.SensorFace {
                         readonly property bool on: root.mode === "startup" ? line.modelData[3] === "Enabled" : line.modelData[2] === "Running"
                         QQC2.Button {
                             visible: root.procs
-                            text: "End task"
+                            text: root.tr("End task")
                             enabled: !root.busy && line.modelData[4] !== "locked" // the desktop and admin prompts need these
                             onClicked: {
                                 confirm.pid = line.modelData[0];

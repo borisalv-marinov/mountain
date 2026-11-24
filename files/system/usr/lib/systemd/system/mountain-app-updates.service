@@ -1,0 +1,12 @@
+[Unit]
+Description=Mountain: update system Flatpak apps (quiet, low priority, skipped offline or on a metered connection)
+
+[Service]
+Type=oneshot
+# exit 1 = skipped, not failed: offline, or NetworkManager says the connection is metered ("yes" or "yes (guessed)")
+ExecCondition=/usr/bin/sh -c 'nm-online -q -t 5 && ! nmcli -t -f GENERAL.METERED device show 2>/dev/null | grep -q ":yes"'
+ExecStart=/usr/bin/flatpak update --system --noninteractive -y
+TimeoutStartSec=1h
+Nice=19
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle

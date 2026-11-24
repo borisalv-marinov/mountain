@@ -116,8 +116,7 @@ ColumnLayout {
     GlassCard {
         Layout.fillWidth: true
         padding: 6
-        SettingRow { iconName: "redshift-status-on"; text: i18n("Night light"); description: i18n("Warmer colors at night"); onClicked: app.page = "nightlight" }
-        SettingRow { divider: true; iconName: "monitor"; text: i18n("Text size"); description: i18n("Make everything bigger with Display > Scale"); onClicked: app.page = "display" }
+        SettingRow { iconName: "monitor"; text: i18n("Text size"); description: i18n("Make everything bigger with Display > Scale"); onClicked: app.page = "display" }
         SettingRow { divider: true; iconName: "special-effects"; text: i18n("Transparency effects"); description: i18n("Glass on the taskbar, start menu and flyouts: click to turn on or off"); onClicked: app.run("/usr/libexec/mountain-personalize glass toggle") }
     }
 }

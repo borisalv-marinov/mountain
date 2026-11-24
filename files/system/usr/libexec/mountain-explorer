@@ -26,8 +26,9 @@ tr=$(realpath -m -- "$t"); tu=file://${tr// /%20} # the This PC folder, spelled 
 a=()
 for u; do
   p=$u; [[ $p == file://* ]] && { p=${p#file://}; p=$(printf '%b' "${p//%/\\x}"); } # file:///a%20b -> /a b
-  [[ $p == /* ]] && p=$(realpath -m -- "$p")
-  [[ $p == "$tr" ]] && u=$tu
+  # a real path, so the location bar matches the Home/Pictures/This PC places (they are real paths): "Home > Pictures", not "/ > home > user > Pictures"
+  [[ $p == /* ]] && { p=$(realpath -m -- "$p"); u=$p; }
+  [[ $p == / || $p == "$tr" ]] && u=$tu # the Linux root (bin, boot, dev...) is not a Windows folder: This PC shows the drives
   if [[ $p == "$d" || $p == "$d"/* ]]; then u="desktop:/${p#"$d"}"; u=${u/#desktop:\/\//desktop:\/}; fi
   a+=("$u")
 done

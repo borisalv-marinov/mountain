@@ -206,8 +206,15 @@ jobs:
           chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
           chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
           chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
-          chk "uupd.timer off (no background updates)" 0 "systemctl is-enabled uupd.timer 2>&1; true" 'disabled|masked|not-found|No such file'
+          chk "uupd.timer off (Mountain's own update timers instead)" 0 "systemctl is-enabled uupd.timer 2>&1; true" 'disabled|masked|not-found|No such file'
           chk "no fetching timers" 0 "systemctl list-timers --no-legend | grep -Ec 'uupd|dnf-makecache|countme|freshclam|flatpak-(system|user)-update|ublue|bazzite' || true" '^0$'
+          chk "app updates: timer enabled and active" 0 "echo \$(systemctl is-enabled mountain-app-updates.timer) \$(systemctl is-active mountain-app-updates.timer)" '^enabled active$'
+          chk "app updates: user timer enabled" 0 "systemctl --global is-enabled mountain-app-updates.timer" '^enabled$'
+          chk "Bazzite Portal not in Start" 0 "f=/usr/share/applications/io.github.ublue_os.yafti_gtk.desktop; test ! -e \$f || grep -q '^NoDisplay=true' \$f && echo hidden" '^hidden$'
+          chk "KDE Desktop Sharing (krfb) not installed" 0 "rpm -q krfb >/dev/null && echo installed || echo gone" '^gone$'
+          chk "os-release carries Mountain's version and build" 0 "grep -E '^MOUNTAIN_(VERSION|BUILD)=' /usr/lib/os-release | paste -sd' '" '^MOUNTAIN_VERSION="[0-9.]+" MOUNTAIN_BUILD="[0-9]{8}"$'
+          chk "greenboot: sign-in screen check present and this boot passed it" 0 "test -x /usr/lib/greenboot/check/required.d/20-mountain-greeter.sh && systemctl show -p Result --value greenboot-healthcheck.service" '^success$'
+          chk "app updates: dry run lists updates without error (needs network)" 2 "flatpak remote-ls --system --updates >/dev/null && echo ok" '^ok$'
           chk "gpu-check no bootc at boot" 0 "pgrep -f '[b]ootc switch' || echo none" '^none$'
           chk "gpu-check dry-run" 0 "/usr/libexec/mountain-gpu-check --dry-run" 'nothing to do|would switch|already switched'
           chk "skel Desktop (tester)" 0 "$(TU 'ls ~/Desktop')" 'Browsers'
@@ -432,7 +439,7 @@ jobs:
           R "printf '%s' 'for (const w of workspace.windowList()) console.warn(\"CAP|\" + w.caption + \"|\" + w.desktopFileName);' > /tmp/caps.js; chmod 644 /tmp/caps.js"
           mkdir -p perf # the app-open timing (apps part) writes perf/opent.txt
           caps() { local s n0; n0=$(R "journalctl -b --no-pager | grep -c 'CAP|'"); s=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/caps.js string:caps-$1" | awk '/int32/{print $2}'); R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$s org.kde.kwin.Script.run" >/dev/null; sleep 2; R "for _ in \$(seq 10); do [ \$(journalctl -b --no-pager | grep -c 'CAP|') -gt $n0 ] && break; sleep 1; done"; }
-          apwait() { for _ in $(seq 60); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
+          apwait() { for _ in $(seq "${2:-60}"); do R "test -e '$1'" || return 0; sleep 3; done; return 1; }
           opent() { # label "command" process-pattern
             local m0 m t0 t i out=""
             for i in cold warm; do
@@ -631,6 +638,16 @@ jobs:
           QM key meta_l v; sleep 2; QM key esc; sleep 1; shot flyout-clipboard-closed
           QM key meta_l up; sleep 2 # a known state first: the window may already be snapped left
           scut "Win+Left (snap)" meta_l left
+          # the shortcut row above only times the redraw: prove where the window landed (left half, full height above the taskbar)
+          QM key meta_l left; sleep 2
+          R "printf '%s' 'const w = workspace.activeWindow; const a = workspace.clientArea(KWin.MaximizeArea, w); console.warn(\"SNAP|\" + Math.round(w.frameGeometry.x - a.x) + \"|\" + Math.round(w.frameGeometry.width * 100 / a.width) + \"|\" + Math.round(w.frameGeometry.height * 100 / a.height));' > /tmp/snap.js; chmod 644 /tmp/snap.js"
+          SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/snap.js string:snapgeo" | awk '/int32/{print $2}')
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 1
+          chk "Win+Left puts the window on the left half, full height" 0 "journalctl -b --no-pager | grep -o 'SNAP|.*' | tail -1" '^SNAP[|]0[|](49|50|51)[|](9[89]|100)$'
+          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:snapgeo" >/dev/null || true
+          QM key meta_l tab; sleep 2; shot task-view-open-window # File Explorer is open: Task view must show it (ux-rules: no "No Windows")
+          chk "Task view lists the open window" 0 "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.freedesktop.DBus.Properties.Get string:org.kde.kwin.Effects string:activeEffects | grep -c windowview" '^1$'
+          QM key esc; sleep 1
           scut "Win+D (show desktop)" meta_l d
           K -x dolphin
           QM key meta_l i; PGF=-f wchk "shortcut Win+I (Settings)" 0 org.mountain.settings 20; sleep 4; shot shortcut-win-i; K -f org.mountain.settings
@@ -657,7 +674,7 @@ jobs:
           R "$LT dbus-send --session --type=method_call --dest=org.kde.keyboard /Layouts org.kde.KeyboardLayouts.setLayout uint32:0" || true # if that check failed, the later typing stays English
           # Cyrillic names in File Explorer
           R "$(TL 'mkdir -p ~/Документи-тест; cp /usr/share/mountain/wallpaper.png ~/Документи-тест/снимка.png; echo здравей > ~/Документи-тест/бележка.txt')"
-          L 'dolphin /home/looktest/Документи-тест'; sleep 7; shot cyrillic-names; K -x dolphin
+          L '/usr/libexec/mountain-explorer /home/looktest/Документи-тест'; sleep 7; shot cyrillic-names; K -x dolphin
           chk "Bulgarian translations installed" 2 "ls /usr/share/locale/bg/LC_MESSAGES 2>/dev/null | wc -l" '.'
           # everyday apps with Windows names
           for t in "Calculator:kcalc" "Clock:kclock" "Paint:kolourpaint" "Camera:kamoso" "Sound Recorder:krecorder" "Scanner:skanlite" "Notepad:kwrite"; do
@@ -732,15 +749,15 @@ jobs:
           QM key ctrl f; sleep 2; QM type notes; sleep 3; shot explorer-search; QM key esc; sleep 1
           QM rclick $((700*W/1280)) $((500*H/800)); sleep 2; shot explorer-context-menu; QM key esc; sleep 1 # "New", "Sort"
           chk "File Explorer uses the Windows labels (en@mountain first)" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep '^LANGUAGE='" 'en@mountain' 
-          K -x dolphin; L 'dolphin /'; sleep 7; shot explorer-thispc; K -x dolphin
+          K -x dolphin; L '/usr/libexec/mountain-explorer /'; sleep 7; shot explorer-thispc; K -x dolphin
           R "$LT /usr/libexec/mountain-explorer --this-pc"
           chk "This PC lists Local Disk (C:)" 0 "$LT ls '/home/looktest/.local/share/mountain/This PC'" 'Local Disk \(C:\)'
           L --setenv=QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 /usr/libexec/mountain-explorer --open-this-pc; sleep 7; shot this-pc; K -x dolphin
           QM key meta_l; sleep 3; shot start-menu-pins; QM key esc; sleep 1
-          L 'dolphin /home/looktest/Pictures'; sleep 6; shot pictures-folder; K -x dolphin
+          L '/usr/libexec/mountain-explorer /home/looktest/Pictures'; sleep 6; shot pictures-folder; K -x dolphin
           chk "shipped launcher is trusted (u+x and metadata::trusted): no open-or-run dialog" 0 "{ stat -c %A /home/looktest/Desktop/Coding/Terminal.desktop | cut -c4; $LT gio info -a metadata::trusted /home/looktest/Desktop/Coding/Terminal.desktop | grep -o 'trusted: .*'; } | paste -sd' '" '^x trusted: true$'
           # a folder launcher opened the way File Explorer opens it starts its app
-          L 'dolphin "/home/looktest/Desktop/Coding"'; sleep 6; shot explorer-launchers; K -x dolphin
+          L '/usr/libexec/mountain-explorer "/home/looktest/Desktop/Coding"'; sleep 6; shot explorer-launchers; K -x dolphin
           L 'kioclient exec "/home/looktest/Desktop/Coding/Terminal.desktop"'; wchk "a folder launcher opens its app" 0 konsole 20; sleep 2; K -x konsole
           L 'dolphin remote:/'; sleep 7; shot explorer-network; K -x dolphin
           L dolphin; sleep 6
@@ -870,7 +887,7 @@ jobs:
           MS() { QM measure 60 "$@" | tail -1; } # -> first=MS settle=MS
           num() { sed -n 's/.*first=\([0-9-]*\).*/\1/p' <<<"$1"; }
           R "$(TL 'mkdir -p ~/Speed/Folder; cp /usr/share/mountain/wallpaper.png ~/Speed/photo.png; rsvg-convert -f pdf -o ~/Speed/letter.pdf /usr/share/mountain/wallpaper.svg; echo speed > ~/Speed/notes.txt; seq 6 | xargs -I{} cp ~/Speed/photo.png ~/Speed/Folder/picture-{}.png')"
-          L dolphin /home/looktest/Speed; sleep 8; shot speed-folder
+          L /usr/libexec/mountain-explorer /home/looktest/Speed; sleep 8; shot speed-folder
           SPEED=""
           for t in "photo:photo:gwenview" "pdf:letter:okular" "text:notes:kwrite"; do
             IFS=: read n sel app <<<"$t"
@@ -1066,6 +1083,7 @@ jobs:
           K -f org.mountain.settings
           PAOFF # on-demand scans must not race the watcher
           # v7.4 (owner test, 21 Nov): a fresh PC downloads virus definitions by itself; no Scan or Update click before this point
+          for _ in $(seq 40); do R "systemctl show -p ExecMainStartTimestamp --value mountain-virus-definitions-auto.service | grep -q ." && break; sleep 3; done # first run is 1 min + up to 20 s after boot
           chk "definitions: the timer is on and the download already started by itself after boot" 0 "echo \$(systemctl is-enabled mountain-virus-definitions-auto.timer) \$(systemctl show -p ExecMainStartTimestamp --value mountain-virus-definitions-auto.service | grep -c .)" '^enabled 1$'
           chk "definitions: they exist without any click (needs the ClamAV server to answer the CI machine)" 2 "ls /var/lib/clamav | grep -cE '\.c[lv]d\$'" '^[1-9]'
           PA on; sleep 5 # an earlier row switched Protection off for the on-demand scans: this row needs it on
@@ -1138,7 +1156,8 @@ jobs:
           Z=$(mktemp -d); (cd "$Z" && echo secret > m1.txt && echo WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo= | base64 -d > m2.txt && zip -q -P pw enc.zip m1.txt && zip -q -P pw mixed.zip m1.txt && zip -q mixed.zip m2.txt && head -c 500M /dev/zero > pad.bin && zip -q big.zip pad.bin m2.txt) # big.zip: EICAR after 500 MB unpacked (past the old 400 MB limit)
           put_dl() { R "cat > /tmp/apa-put && install -o looktest -g looktest -m 644 /tmp/apa-put /home/looktest/Downloads/$2; rm -f /tmp/apa-put" < "$Z/$1"; }
           put_dl enc.zip apa-enc.zip; put_dl big.zip apa-150.zip
-          apwait /home/looktest/Downloads/apa-150.zip; apwait /home/looktest/Downloads/apa-swap.com; sleep 10
+          apwait /home/looktest/Downloads/apa-150.zip 150; apwait /home/looktest/Downloads/apa-swap.com # the 500 MB batch takes ~2.5 min on a slow runner (lowest-priority scan by design)
+          for _ in $(seq 60); do R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status | grep -q 'apa-enc.zip|'" && break; sleep 3; done # wait for the event, not a fixed time
           AP=$(R "$LT systemd-run --user --wait --pipe --quiet --collect /usr/libexec/mountain-protect status")
           chk "Active Protection: a 2.1 GB non-archive in Downloads is listed too large to scan" 0 "echo '$(grep -c 'ap_unverified=.*apa-big.mkv|too large to scan' <<<"$AP")'" '^1$'
           R "rm -f ~looktest/Downloads/apa-big.mkv" # the 2.1 GB file must not sit on the small test disk while later rows run
@@ -1148,7 +1167,7 @@ jobs:
           chk "Active Protection: a program renamed a.jpg in Documents is flagged" 0 "echo '$(grep -c 'ap_unverified=.*Documents/a.jpg|' <<<"$AP")'" '^1$'
           chk "Active Protection: a password-protected zip is listed as unscannable and stays in place" 0 "echo '$(grep -c 'apa-enc.zip|can.t be scanned (password-protected)' <<<"$AP")' \$(test -e ~looktest/Downloads/apa-enc.zip && echo kept)" '^1 kept$'
           # an encrypted member FIRST, then a plain EICAR member: the virus must still be found (--allmatch), the zip quarantined
-          put_dl mixed.zip apa-mixed.zip; rm -rf "$Z"; sleep 20
+          put_dl mixed.zip apa-mixed.zip; rm -rf "$Z"; apwait /home/looktest/Downloads/apa-mixed.zip 100
           chk "Active Protection: an EICAR member behind an encrypted member of the same zip is caught" 0 "test ! -e ~looktest/Downloads/apa-mixed.zip && ls ~looktest/.local/share/mountain/quarantine | grep -q apa-mixed && echo caught" '^caught$'
           R "$LT pkill -TERM -f 'mountain-protect daemon'"; for _ in $(seq 25); do sleep 2; R "$LT systemctl --user is-active -q mountain-protect.service" && break; done
           chk "Active Protection: a clean exit of the watcher (SIGTERM) restarts it (Restart=always)" 0 "$LT systemctl --user is-active mountain-protect.service" '^active$'
@@ -1473,6 +1492,7 @@ jobs:
           R "cat > /tmp/start-apps.sh; chmod 755 /tmp/start-apps.sh" < "$GITHUB_WORKSPACE/tests/vm/start-apps.sh"
           APPS=$(R "bash /tmp/start-apps.sh"); NA=$(echo "$APPS" | grep -c .)
           echo "| Start apps to open | INFO | $NA |" >> report.md
+          R "cat > /tmp/closeall.sh; chmod 755 /tmp/closeall.sh" < "$GITHUB_WORKSPACE/tests/vm/closeall.sh" # every window closed between apps: each shot shows only its own app
           n=0
           for f in $APPS; do
             n=$((n+1)); id=$(basename "$f" .desktop)
@@ -1502,10 +1522,11 @@ jobs:
             [ -n "$act" ] && [[ $pid =~ ^[0-9]+$ ]] && R "echo $id \$(cat /proc/$pid/cgroup) >> /tmp/every-cgroup.txt; { grep -qE 'every-$n[.]service|app-flatpak-' /proc/$pid/cgroup || grep -E '/app-[^/]*[.]scope' /proc/$pid/cgroup | grep -qvE 'plasma|kde|baloo'; } && true" >/dev/null 2>&1 && XC $pid || true
             R "$LT systemctl --user stop every-$n.service 'app-flatpak-*.scope'" >/dev/null 2>&1
             R "$LT systemctl --user list-units --plain --no-legend 'app-*.scope' | awk '{print \$1}' | grep -v -e plasma -e kde -e baloo | xargs -r $LT systemctl --user stop" >/dev/null 2>&1
+            R "$LT bash /tmp/closeall.sh" >/dev/null 2>&1
             sleep 2
           done
           R "cat /tmp/every-cgroup.txt" > perf/every-cgroup.txt 2>&1 || true
-          EVERY_ALIAS='btrfs-assistant=org.kde.polkit-kde-authentication-agent-1|mountain-node=org.kde.konsole|mountain-python=org.kde.konsole|org.gnome.DiskUtility=gnome-disks|org.kde.krfb=org.freedesktop.impl.portal.desktop.kde|org.mountain.(protection|run|security|settings)=org.kde.plasmawindowed|webapp-manager=webapp-manager.py|org.onlyoffice.desktopeditors=ONLYOFFICE'
+          EVERY_ALIAS='btrfs-assistant=org.kde.polkit-kde-authentication-agent-1|mountain-node=org.kde.konsole|mountain-python=org.kde.konsole|org.gnome.DiskUtility=gnome-disks|org.mountain.(protection|run|security|settings)=org.kde.plasmawindowed|webapp-manager=webapp-manager.py|org.onlyoffice.desktopeditors=ONLYOFFICE'
           touch perf/every-alias.txt
           echo "| Start apps: each judged by its own window | $(grep -qvE "^($EVERY_ALIAS)$" perf/every-alias.txt && echo FAIL || echo PASS) | other window judged: $(grep -vE "^($EVERY_ALIAS)$" perf/every-alias.txt | paste -sd' ') |" >> report.md
           fi # part startapps
@@ -1606,7 +1627,7 @@ jobs:
           sleep 10; QM click 640 200; sleep 2; QM type $LPW; QM key ret
           for _ in $(seq 60); do R "pgrep -u looktest -x plasmashell" >/dev/null 2>&1 && break; sleep 2; done; sleep 20
           R "$LT kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE --delete" # English again for the next sign-in (this session keeps bg)
-          chk "Bulgarian: the shell runs in bg" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x plasmashell | head -1)/environ | grep '^LANGUAGE='" 'bg'
+          chk "Bulgarian: the shell runs in bg" 0 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x plasmashell | head -1)/environ | grep '^LANGUAGE='" 'bg@mountain'
           QM key meta_l; sleep 3; shot bg-start-menu; QM key esc; sleep 1
           QM key meta_l a; sleep 2; shot bg-quick-settings; QM key esc; sleep 1
           QM key meta_l d; sleep 2; QM rclick $((700*W/1280)) $((300*H/800)); sleep 2; shot bg-desktop-menu; QM key esc; sleep 1

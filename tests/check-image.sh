@@ -1355,6 +1355,24 @@ PY
   true
 }
 
+check_phase48() { # v7.6 readiness audit: app auto-updates, sign-in health check, no krfb, Mountain version, no Bazzite portal in Start
+  local X=${MOUNTAIN_ROOT:-} g=${MOUNTAIN_ROOT:-}/usr/lib/greenboot/check/required.d/20-mountain-greeter.sh u
+  for u in system user; do
+    assert_file $X/usr/lib/systemd/$u/mountain-app-updates.timer
+    assert_grep 'flatpak update' $X/usr/lib/systemd/$u/mountain-app-updates.service
+  done
+  assert_file $g
+  bash -n $g || fail "greenboot sign-in check has a syntax error"
+  [[ -n $X || -x $g ]] || fail "greenboot sign-in check is not executable"
+  assert_grep '^RandomizedDelaySec=20s' $X/usr/lib/systemd/system/mountain-virus-definitions-auto.timer
+  [[ -n $X ]] && return 0 # the rest needs the built image
+  assert_no_rpm krfb
+  grep -qE '^MOUNTAIN_BUILD="[0-9]{8}"$' /usr/lib/os-release || fail "os-release has no Mountain build number"
+  systemctl is-enabled mountain-app-updates.timer >/dev/null || fail "app updates timer not enabled"
+  local y=/usr/share/applications/io.github.ublue_os.yafti_gtk.desktop
+  [[ ! -e $y ]] || grep -q '^NoDisplay=true' $y || fail "Bazzite Portal is listed in Start"
+}
+
 phases=$(declare -F | awk '{print $3}' | grep -E '^check_phase[0-9]+$' | sort -V)
 [[ -n $phases ]] || fail "no check_phase functions found"
 for fn in $phases; do "$fn"; done

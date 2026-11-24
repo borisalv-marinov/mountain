@@ -55,8 +55,8 @@ ColumnLayout {
         text: tile.text // "Not available" stays in the accessible description; a second line made "Wi-Fi" wrap and elide to "Wi-Fi..."
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignTop
-        wrapMode: Text.Wrap
-        elide: Text.ElideRight
+        wrapMode: Text.WordWrap // Windows wraps long tile names onto a second line
+        Layout.maximumWidth: tile.width // the label never grows past its tile, so it wraps instead of eliding
         maximumLineCount: 2
         color: tile.available ? "#FFFFFF" : "#949494" // 5.9:1 on the flyout
         Accessible.ignored: true

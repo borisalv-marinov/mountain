@@ -54,6 +54,7 @@ PlasmoidItem {
         { id: "home", name: i18n("Home"), icon: "go-home", items: [] },
         { id: "system", name: i18n("System"), icon: "preferences-system", items: [
             { t: i18n("Display"), d: i18n("Monitors, brightness, resolution, scale"), i: "monitor", page: "display", k: "screen monitor resolution refresh hdr" },
+            { t: i18n("Night light"), d: i18n("Warmer colors at night"), i: "redshift-status-on", page: "nightlight", k: "night light blue light display" },
             { t: i18n("Sound"), d: i18n("Volume, output and input devices"), i: "audio-speakers", page: "sound", k: "audio speaker microphone headphones" },
             { t: i18n("Notifications"), d: i18n("Alerts from apps and system, do not disturb"), i: "preferences-desktop-notification", page: "notifications", k: "alerts do not disturb" },
             { t: i18n("Power & battery"), d: i18n("Sleep, screen off, battery saver"), i: "battery-080", page: "power", k: "power sleep suspend energy" },
@@ -64,7 +65,6 @@ PlasmoidItem {
         { id: "devices", name: i18n("Bluetooth & devices"), icon: "network-bluetooth", items: [
             { t: i18n("Bluetooth"), d: i18n("Pair and manage Bluetooth devices"), i: "preferences-system-bluetooth", page: "bluetooth", k: "bluetooth pair headphones" },
             { t: i18n("Mouse & touchpad"), d: i18n("Pointer speed, scrolling, buttons, taps"), i: "input-mouse", page: "mouse", k: "mouse touchpad trackpad pointer cursor speed natural scrolling left handed tap" },
-            { t: i18n("Keyboard"), d: i18n("Layouts and keys"), i: "input-keyboard", page: "typing", k: "layout typing keys" },
             { t: i18n("Printers & scanners"), d: i18n("Your printers and test page; network printers are added automatically"), i: "printer", page: "printers", k: "print" },
             { t: i18n("Scanner"), d: i18n("Scan a document or photo"), i: "preferences-devices-scanner", cmd: "kstart --application org.kde.skanlite", k: "scan scanner document" },
             { t: i18n("Phone Link"), d: i18n("Your phone's messages, files and notifications on this PC"), i: "kdeconnect", cmd: "/usr/libexec/mountain-phonelink", k: "phone android iphone link kde connect" },
@@ -100,7 +100,7 @@ PlasmoidItem {
         { id: "time", name: i18n("Time & language"), icon: "clock", items: [
             { t: i18n("Date & time"), d: i18n("Time zone, clock"), i: "clock", page: "datetime", k: "clock time zone date" },
             { t: i18n("Language & region"), d: i18n("Language, formats, region"), i: "preferences-desktop-locale", page: "language", k: "language region locale format add a language display" },
-            { t: i18n("Typing"), d: i18n("Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches"), i: "input-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български" }
+            { t: i18n("Typing"), d: i18n("Keyboard layouts (English and Bulgarian phonetic): Alt+Shift or Win+Space switches"), i: "input-keyboard", page: "typing", k: "input method layout bulgarian cyrillic български keyboard keys" }
         ] },
         { id: "gaming", name: i18n("Gaming"), icon: "input-gamepad", items: [
             { t: i18n("Game Mode"), d: i18n("Full power while a game runs, your power mode back after (on by default): click to turn on or off"), i: "speedometer", cmd: "/usr/libexec/mountain-gamemode toggle", k: "game mode performance full power fps boost" },
@@ -118,8 +118,7 @@ PlasmoidItem {
             { t: i18n("Mouse pointer size"), d: i18n("A bigger pointer"), i: "input-mouse", page: "accessibility", k: "mouse pointer cursor size bigger large" },
             { t: i18n("Sticky keys"), d: i18n("Shortcut keys one at a time"), i: "input-keyboard", page: "accessibility", k: "sticky keys keyboard shortcut one hand" },
             { t: i18n("Animation effects"), d: i18n("Windows and menus slide and fade"), i: "special-effects", page: "accessibility", k: "animation effects motion reduce visual" },
-            { t: i18n("Text size"), d: i18n("Make everything bigger with Display > Scale"), i: "monitor", page: "display", k: "text size font bigger scale" },
-            { t: i18n("Night light"), d: i18n("Warmer colors at night"), i: "redshift-status-on", page: "nightlight", k: "night light blue light" }
+            { t: i18n("Text size"), d: i18n("Make everything bigger with Display > Scale"), i: "monitor", page: "display", k: "text size font bigger scale" }
         ] },
         { id: "privacy", name: i18n("Privacy & security"), icon: "security-high", items: [
             { t: i18n("Screen lock"), d: i18n("Lock automatically, require password"), i: "system-lock-screen", page: "lockscreen", k: "lock password security" },
@@ -128,7 +127,7 @@ PlasmoidItem {
             { t: i18n("App permissions"), d: i18n("Choose which apps may use your files, camera and microphone"), i: "preferences-system-privacy", page: "apppermissions", k: "app permissions files camera microphone flatpak sandbox access privacy" }
         ] },
         { id: "updates", name: i18n("Updates"), icon: "system-software-update", items: [
-            { t: i18n("Check for updates"), d: i18n("Updates are manual: open the Updates app and run it when you choose"), i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
+            { t: i18n("Check for updates"), d: i18n("Updates download by themselves and install when you restart. Open the Updates app to check now"), i: "system-software-update", cmd: "kstart --application io.github.rfrench3.bazzite-updater", k: "update upgrade windows update" },
             { t: i18n("Go back to the previous version"), d: i18n("Undo the last update: Mountain restarts into the version you had before"), i: "document-revert", cmd: "/usr/libexec/mountain-security rollback", k: "rollback undo update previous version recovery" },
             { t: i18n("Reset this PC (keep my files)"), d: i18n("Removes system changes made on this PC and restarts into plain Mountain; files and apps stay"), i: "system-reboot", cmd: "/usr/libexec/mountain-security reset", k: "reset this pc refresh restore factory" },
             { t: i18n("Update virus definitions"), d: i18n("Download the newest definitions now (they never download in the background)"), i: "security-high", cmd: "systemctl start mountain-virus-definitions.service", k: "virus definitions antivirus update" }

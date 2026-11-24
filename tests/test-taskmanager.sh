@@ -99,6 +99,19 @@ ok 'grep -q $'"'"'^134	org.kde.kate$'"'"' <<<"$A"' "apps: app started from Start
 A2=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/none bash -c 'mkdir -p "$1/$$"; printf "%s (plasma-systemmo) S 1 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 0 0 100 0\n" $$ > "$1/$$/stat"; echo "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.kde.plasma\x2dsystemmonitor@0123456789abcdef0123456789abcdef.service" > "$1/$$/cgroup"; bash "$2" apps; rm -r "${1:?}/$$"' _ "$F" "$S" | cut -f2)
 ok 'grep -qx org.kde.plasma-systemmonitor <<<"$A2"' "apps: Task Manager itself (the helper's parent) listed"
 ok '! grep -q "^133" <<<"$A" && MOUNTAIN_PROC=$F bash "$S" processes | grep -q "^133"' "apps: autostart service stays a background process"
+# apps started with systemd-run (no app-*.scope): listed by launcher name when the unit runs a launcher's program; other run-* units stay background
+mkdir -p "$T/lapps"; printf '[Desktop Entry]\nName=Web Browser\nExec=/usr/lib/firefox/firefox %%u\n' > "$T/lapps/org.mozilla.firefox.desktop"
+printf '[Desktop Entry]\nName=Hidden Helper\nNoDisplay=true\nExec=helperd\n' > "$T/lapps/helper.desktop"
+st 140 firefox 0 10; st 141 "Isolated Web Co" 0 10; st 142 endtasktest 0 1; st 143 helperd 0 1
+for n in 140 141; do echo '0::/user.slice/user-1000.slice/user@1000.service/app.slice/run-u123.service' > "$F/$n/cgroup"; done
+for n in 142 143; do echo "0::/user.slice/user-1000.slice/user@1000.service/app.slice/run-u$n.service" > "$F/$n/cgroup"; done
+RA=$(MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 MOUNTAIN_APPS_DIRS=$T/lapps bash "$S" apps | cut -f1,2)
+ok 'grep -q $'"'"'^140,141\tWeb Browser$'"'"' <<<"$RA"' "apps: a systemd-run unit of a launcher's program is one app row, named like Windows"
+ok '! grep -qE "^14[23]" <<<"$RA" && MOUNTAIN_PROC=$F MOUNTAIN_APPS_DIRS=$T/lapps bash "$S" processes | grep -q "^142" && ! MOUNTAIN_PROC=$F MOUNTAIN_APPS_DIRS=$T/lapps bash "$S" processes | grep -qE "^(140|141)"' "apps: run-* unit with no launcher (or a hidden one) stays background"
+# Users: people only (uid >= 1000), never root or system accounts
+mkdir -p "$T/lbin"; printf '#!/bin/sh\nif [ "$1" = list-users ]; then printf "0 root 1 active\\n1000 marin 1 active\\n977 sddm 1 active\\n"; fi\n' > "$T/lbin/loginctl"; chmod +x "$T/lbin/loginctl"
+U=$(PATH=$T/lbin:$PATH bash "$S" users | cut -f1,2)
+ok 'grep -q $'"'"'^1000\tmarin$'"'"' <<<"$U" && ! grep -qE "root|sddm" <<<"$U"' "users: only people (uid >= 1000), not root"
 ok '! bash "$S" end "1; touch $T/pwned" 2>/dev/null && [[ ! -e $T/pwned ]]' "end: refuses non-numeric pid"
 ok '! bash "$S" end 0 2>/dev/null && ! bash "$S" end -1 2>/dev/null' "end: refuses 0 and negative pids"
 if ((EUID != 0)) && [[ -e /proc/1 && ! -O /proc/1 ]]; then ok '! bash "$S" end 1 2>/dev/null' "end: refuses another user's process"; fi
@@ -136,4 +149,9 @@ ok '[[ $(head -1 <<<"$L") == $'"'"'id\tName\tStatus\tOffer'"'"' ]]' "services: h
 ok 'grep -q $'"'"'^a.service\tAudio thing\tRunning\tstop$'"'"' <<<"$L" && grep -q $'"'"'^c.service\tFirewall\tRunning\tstop$'"'"' <<<"$L" && grep -q $'"'"'^e.service\te\tFailed\tstart$'"'"' <<<"$L"' "services: description as name, start/stop offered"
 ok '! grep -q -e ^b.service -e ^d.service -e ^bazzite -e ^bootc -e ^gone <<<"$L"' "services: oneshot, idle static and image units hidden"
 ok 'grep -q $'"'"'^systemd-logind.service\tLogin\tRunning\t$'"'"' <<<"$L"' "services: session-critical unit offers nothing"
+# Bulgarian session: friendly names in Bulgarian (the English ones stay above)
+LB=$(LANGUAGE=bg@mountain:bg MOUNTAIN_PROC=$F MOUNTAIN_NPROC=4 bash "$S" processes)
+ok 'grep -q $'"'"'^104	Интерфейс за администраторско съгласие	'"'"' <<<"$LB" && grep -q $'"'"'^113	Активна защита	'"'"' <<<"$LB" && grep -q $'"'"'^115	Команден шел	'"'"' <<<"$LB" && grep -q $'"'"'^106,107	Достъпност (2)	'"'"' <<<"$LB"' "bg: names in Bulgarian, merged rows too"
+ok '[[ $(head -1 <<<"$LB") == $'"'"'id	Name	CPU	Memory	Locked	Icon'"'"' ]] && grep -q "^103.my (odd) tool" <<<"$LB"' "bg: header kept for the face to translate, unknown names kept"
+ok 'grep -q "tr(\"End task\")" "$(dirname "$S")/../share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml" && grep -q "Процесор" "$(dirname "$S")/../share/ksysguard/sensorfaces/org.mountain.taskmanager.list/contents/ui/FullRepresentation.qml"' "bg: face translates headers and End task"
 rm -rf "$T"; exit $rc

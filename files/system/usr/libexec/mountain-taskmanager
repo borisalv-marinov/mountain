@@ -78,7 +78,7 @@ users() {
       END {for (p in u) {if ((p in a) && (p in b)) c[u[p]]+=b[p]-a[p]; m[u[p]]+=r[p]}
            for (x in m) {v=c[x]*100/(hz*0.5*n); printf "%s %.1f %d\n", x, (v>100?100:v), m[x]/1024}}')
   loginctl list-users --no-legend 2>/dev/null | while read -r uid name _; do
-    [[ -n ${name:-} ]] || continue
+    [[ -n ${name:-} && $uid =~ ^[0-9]+$ ]] && ((uid >= 1000)) || continue # people only: Windows does not list system accounts (root)
     local n line
     n=$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$name" '$3==u' | wc -l)
     line=$(awk -v u="$name" '$1==u' <<<"$stats")
@@ -154,12 +154,37 @@ cupsd=Print Spooler|cups-browsed=Print Spooler|tuned-ppd=Power Profiles Service|
 inotifywait=Active Protection|catatonit=Container Helper|bash=Command Shell
 sshd=SSH Server|sshd-session=SSH Server|systemd-nsresourced=Namespace Resource Service|findmnt=Drive Watcher
 plasmalogin=Sign-in screen'
+# the same names in Bulgarian, as Windows 11 shows them (English name=Bulgarian); used when the session language is bg (mountain-names.sh exports bg@mountain)
+bgnames='Desktop Window Manager=Диспечер на прозорците на работния плот|Desktop Window Manager (older apps)=Диспечер на прозорците на работния плот (по-стари приложения)
+Windows Logon Application=Приложение за влизане в Windows|Service Host: User services=Хост на услугата: Потребителски услуги
+Service Host: Messages=Хост на услугата: Съобщения|Service Host: Desktop services=Хост на услугата: Услуги на работния плот
+Windows Audio=Аудио на Windows|Windows Audio Device Graph=Графика на аудиоустройствата на Windows
+Consent UI for administrative apps=Интерфейс за администраторско съгласие|Credential Manager=Диспечер на идентификационни данни
+Search Indexer=Индексатор на търсенето|Phone Link=Връзка с телефона|Performance counters=Броячи на производителността
+Activity history=История на активностите|Power service=Услуга за захранване|Accessibility=Достъпност
+Notification area=Област за известия|Menu bar helper=Помощник на лентата с менюта|Text Input Host=Хост на въвеждане на текст
+Browser integration=Интеграция с браузъра|Keyboard shortcuts=Клавишни комбинации|File transfers=Прехвърляне на файлове
+File System Helper=Помощник на файловата система|Print Spooler=Диспечер на печата|Power Profiles Service=Услуга за профили на захранването
+Active Protection=Активна защита|Container Helper=Помощник на контейнери|Command Shell=Команден шел|SSH Server=SSH сървър
+Namespace Resource Service=Услуга за ресурси на пространството от имена|Drive Watcher=Наблюдател на устройства
+Sign-in screen=Екран за влизане'
+bg=; case ${LANGUAGE:-${LANG:-}} in bg*) bg=1 ;; esac
 # comm names (15 chars) that must never be ended: ending them signs you out or breaks admin prompts, audio, portals
 locked='^(plasmashell|kwin_.*|ksmserver|startplasma.*|plasma_session|systemd|dbus-.*|Xwayland|kded6|polkit.*|at-spi.*|xdg-desktop-por.*|xdg-document-po.*|xdg-permission-.*|pipewire.*|wireplumber|plasmalogin|sddm.*)$'
 
 # Task Manager row icons (Windows shows one per process); a program without one gets its own name, which Task Manager
 # looks up as an icon and otherwise shows the generic program icon
 icons='kwin_wayland=preferences-system-windows|plasmashell=system-file-manager|kaccess=preferences-desktop-accessibility|at-spi2-registr=preferences-desktop-accessibility|at-spi-bus-laun=preferences-desktop-accessibility|polkit-kde-auth=dialog-password|baloo_file=system-search|baloorunner=system-search|cupsd=printer|inotifywait=security-high|tuned-ppd=battery|pipewire=audio-card|pipewire-pulse=audio-card|wireplumber=audio-card|bash=utilities-terminal|ksmserver=system-log-out|kded6=preferences-system|xdg-desktop-por=preferences-system|kdeconnectd=kdeconnect'
+
+launcher_id() { # comm (15 characters of the program name) -> app id of the launcher that starts that program, or nothing
+  local c=${1//[^A-Za-z0-9._+-]/} id d f re
+  [[ -n $c ]] || return 0
+  for id in "$c" "org.kde.$c"; do app_file "$id.desktop" >/dev/null && { echo "$id"; return; }; done
+  re="^Exec=([^ ]*/)?$c"; ((${#c} >= 15)) && re+='[^ /]*'; re+='( |$)'
+  for d in $apps_dirs; do
+    for f in $(grep -lE "$re" "$d"/*.desktop 2>/dev/null); do [[ $(key NoDisplay "$f") == true ]] || { f=${f##*/}; echo "${f%.desktop}"; return; }; done
+  done
+}
 
 processes() { # [apps]: background processes (default), or the Apps table: processes in app scopes, one row per app
   printf 'id\tName\tCPU\tMemory\tLocked\tIcon\n'
@@ -180,6 +205,17 @@ processes() { # [apps]: background processes (default), or the Apps table: proce
     sed -E '/dbus[\]x2d:/{s|.*/([0-9]+)/cgroup:.*/(app-)?dbus[\]x2d:[0-9.]+[\]x2d([^/]*)@[0-9]+\.service$|\1 \3|; s/[\]x2d/-/g; b;}
       /@[0-9a-f]{32}\.service$/{s|.*/([0-9]+)/cgroup:.*/app-([^/@]*)@[0-9a-f]{32}\.service$|\1 \2|; s/[\]x2d/-/g; b;}
       s|.*/([0-9]+)/cgroup:.*/app-([^/]*)\.scope$|\1 \2|; s/ flatpak-/ /; s/ (.*)-[^-]*$/ \1/; s/[\]x2d/-/g')
+  # apps started without an app unit (systemd-run, a script, the harness): run-*.service/scope. When one process of the unit
+  # is a launcher's program, the whole unit is that app (a unit of anything else stays a background process)
+  r=$(grep -HE '/run-[^/]*\.(service|scope)$' "${own[@]/%//cgroup}" 2>/dev/null | sed -E 's|.*/([0-9]+)/cgroup:.*/(run-[^/]*)$|\1 \2|')
+  if [[ -n $r ]]; then
+    local -A ru=()
+    while read -r pid u; do
+      [[ -z ${ru[$u]:-} ]] || continue
+      c=$(cat "$proc/$pid/stat" 2>/dev/null); c=${c#*\(}; ru[$u]=$(launcher_id "${c%)*}")
+    done <<<"$r"
+    while read -r pid u; do [[ -z ${ru[$u]:-} ]] || cg+=$'\n'"$pid ${ru[$u]}"; done <<<"$r"
+  fi
   if [[ $want == apps ]]; then # app names and icons from their launchers, like Windows
     while read -r id; do
       [[ -n $id ]] || continue
@@ -187,8 +223,8 @@ processes() { # [apps]: background processes (default), or the Apps table: proce
     done < <(awk '{print $2}' <<<"$cg" | sort -u)
   fi
   { sed 's/^/C /' <<<"$cg"; printf '%s' "$nm"; sed 's/^/A /' <<<"$a"; sed 's/^/B /' <<<"$b"; } |
-    names=$names locked=$locked icons=$icons awk -v want="$want" -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
-    BEGIN {lk_re = ENVIRON["locked"]; ki = split(ENVIRON["icons"], im, "|"); for (i = 1; i <= ki; i++) {e = index(im[i], "="); ico[substr(im[i], 1, e - 1)] = substr(im[i], e + 1)}; k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}}
+    names=$names bgnames=$bgnames bg=$bg locked=$locked icons=$icons awk -v want="$want" -v hz="$(getconf CLK_TCK)" -v n="${MOUNTAIN_NPROC:-$(nproc)}" -v pg="$(getconf PAGESIZE)" '
+    BEGIN {lk_re = ENVIRON["locked"]; ki = split(ENVIRON["icons"], im, "|"); for (i = 1; i <= ki; i++) {e = index(im[i], "="); ico[substr(im[i], 1, e - 1)] = substr(im[i], e + 1)}; k = split(ENVIRON["names"], m, /[|\n]/); for (i = 1; i <= k; i++) {e = index(m[i], "="); nm[substr(m[i], 1, (e - 1 > 15 ? 15 : e - 1))] = substr(m[i], e + 1)}; if (ENVIRON["bg"] == 1) {kb = split(ENVIRON["bgnames"], bm, /[|\n]/); for (i = 1; i <= kb; i++) {e = index(bm[i], "="); bt[substr(bm[i], 1, e - 1)] = substr(bm[i], e + 1)}; for (k in nm) if (nm[k] in bt) nm[k] = bt[nm[k]]}}
     $1 == "C" {app[$2] = $3; next}
     $1 == "N" {split($0, q, "\t"); an[$2] = q[2]; ai[$2] = q[3]; next}
     {pid = $2; c = $0; sub(/^[A-Z] [0-9]+ \(/, "", c); r = c; sub(/\) [^)]*$/, "", c); sub(/^.*\) /, "", r); split(r, f, " ")

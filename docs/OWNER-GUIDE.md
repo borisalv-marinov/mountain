@@ -49,6 +49,7 @@ Undo going back: do it again (it swaps the two versions).
 
 ### Secure Boot and disk encryption
 
+- **Where to get the installer ISO**: GitHub → this repo → Releases → newest `iso-<date>` (built and install-tested automatically after each main build; it comes in parts of 1.9 GB, join them with `cat mountain.iso.part* > mountain.iso`, steps in the README). Already on Bazzite? Rebase instead (README).
 - **Disk encryption (recommended for laptops)**: in the installer, on the disk screen, tick **Encrypt my data** and choose a strong passphrase. You type it at every start. It protects your files if the PC is stolen. It can only be turned on when installing; undo = reinstall without it.
 - **Secure Boot**: Mountain is based on Bazzite, which signs its kernel and drivers with its own key. After installing with Secure Boot on, the first start shows a blue **MOK** screen: choose **Enroll MOK**, then enter the password `universalblue` (Bazzite's published key password, not a secret). Undo: turn Secure Boot off in the PC's firmware settings. The Security page shows whether it is on.
 - **Kernel lockdown** is off by default: it would stop unsigned graphics and game-controller drivers from loading when Secure Boot is off. Turn it on (only with Secure Boot on): `sudo rpm-ostree kargs --append=lockdown=integrity`, restart. Undo: `sudo rpm-ostree kargs --delete=lockdown=integrity`.

@@ -1,0 +1,10 @@
+[Unit]
+Description=Mountain: update user Flatpak apps once a day
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
