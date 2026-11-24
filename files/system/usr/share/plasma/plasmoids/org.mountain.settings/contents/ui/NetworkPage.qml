@@ -90,7 +90,7 @@ ColumnLayout {
         GridLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 1 // never wider than the card, so Data usage stays inside it
-            columns: width > 640 ? 2 : 1 // two items (connection, Data usage): a third empty column pushed Data usage past the card edge
+            columns: 1 // Data usage on its own full-width line: sharing one line left it ~0 px wide and its text ran out of the card (vm-test 45456337358)
             columnSpacing: 8
             rowSpacing: 4
             RowLayout {
@@ -121,7 +121,6 @@ ColumnLayout {
                 }
             }
             SettingRow {
-                Layout.fillWidth: true // with preferredWidth 1 on both items the two columns share the card evenly; without it Data usage got ~0 px and its text spilled out
                 Layout.preferredWidth: 1
                 text: i18n("Data usage")
                 description: net.usage || i18n("Not connected")

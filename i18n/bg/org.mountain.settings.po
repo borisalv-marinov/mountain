@@ -119,7 +119,7 @@ msgid "Add a language"
 msgstr "Добавяне на език"
 
 msgid "Add device"
-msgstr "Добавяне на устройство"
+msgstr "Добави устройство"
 
 msgid "Add, connect, manage"
 msgstr "Добавяне, свързване, управление"

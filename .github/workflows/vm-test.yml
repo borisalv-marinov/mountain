@@ -204,6 +204,7 @@ jobs:
           chk "free -m (no desktop)" 0 "free -m" 'Mem:'
           chk "failed units" 0 "systemctl --failed --no-legend | wc -l | xargs test 0 -eq && echo none" '^none$'
           chk "journal errors" 2 "journalctl -p err -b --no-pager | tail -20" '.'
+          R "timeout 300 systemctl is-system-running --wait" >/dev/null 2>&1 || true # wait for the event: first-boot Flatpak setup can take a minute on a slow Flathub (run 45456351573)
           chk "systemd-analyze" 0 "systemd-analyze" 'Startup finished'
           chk "sysctl net" 0 "sysctl net.ipv4.tcp_congestion_control net.core.default_qdisc" 'tcp_congestion_control = bbr'
           chk "uupd.timer off (Mountain's own update timers instead)" 0 "systemctl is-enabled uupd.timer 2>&1; true" 'disabled|masked|not-found|No such file'
@@ -639,11 +640,9 @@ jobs:
           QM key meta_l up; sleep 2 # a known state first: the window may already be snapped left
           scut "Win+Left (snap)" meta_l left
           # the shortcut row above only times the redraw: prove where the window landed (left half, full height above the taskbar)
-          # from a normal (floating) window, like a person who just opened it: the rows above leave it in a corner tile (Win+Up on a left tile = top-left quarter, as on Windows)
-          R "printf '%s' 'const w = workspace.activeWindow; const a = workspace.clientArea(KWin.MaximizeArea, w); w.setMaximize(false, false); w.frameGeometry = {x: a.x + 150, y: a.y + 100, width: 700, height: 450};' > /tmp/float.js; chmod 644 /tmp/float.js"
-          SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/float.js string:floatwin" | awk '/int32/{print $2}')
-          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting/Script$SID org.kde.kwin.Script.run" >/dev/null; sleep 1
-          R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript string:floatwin" >/dev/null || true
+          # from a freshly opened window, like a person who just opened it: the rows above leave File Explorer quick-tiled, and a second
+          # Win+Left on a left tile un-tiles it (KWin's toggle, vm-test 45456337358: SNAP 150/55/60)
+          K -x dolphin; L /usr/libexec/mountain-explorer; for _ in $(seq 20); do R "pgrep -u looktest -x dolphin" >/dev/null && break; sleep 1; done; sleep 4
           QM key meta_l left; sleep 2
           R "printf '%s' 'const w = workspace.activeWindow; const a = workspace.clientArea(KWin.MaximizeArea, w); console.warn(\"SNAP|\" + Math.round(w.frameGeometry.x - a.x) + \"|\" + Math.round(w.frameGeometry.width * 100 / a.width) + \"|\" + Math.round(w.frameGeometry.height * 100 / a.height));' > /tmp/snap.js; chmod 644 /tmp/snap.js"
           SID=$(R "$LT dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript string:/tmp/snap.js string:snapgeo" | awk '/int32/{print $2}')
