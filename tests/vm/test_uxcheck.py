@@ -51,4 +51,12 @@ expect({"every-.*": {"dark_window": True}}, lambda: (app((18, 18, 18)), Image.ne
 # GTK apps: libadwaita grey (#2d) is too light, Mountain dark (#121212) passes
 expect({"every-.*": {"dark_window": 0.12}}, lambda: app((45, 45, 45)), True)
 expect({"every-.*": {"dark_window": 0.12}}, lambda: app((18, 18, 18)), False)
+# the shipped rules: a cloud-gaming web app shows the vendor's site (white when its CSS fails to load in CI), so only Mountain's own apps are judged dark
+import re
+real = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ux-rules.json"), encoding="utf-8"))
+dark = [p for p, c in real.items() if not p.startswith("_") and c.get("dark_window")]
+for name, want in [("every-mountain-xboxcloud", False), ("every-mountain-geforcenow", False), ("every-mountain-boosteroid", False),
+                   ("every-com.brave.Browser", False), ("every-org.kde.dolphin", True), ("every-mountain-python", True)]:
+    got = any(re.fullmatch(p, name) for p in dark)
+    if got != want: print("FAIL: dark_window rule for %s: %s, want %s" % (name, got, want)); rc = 1
 shutil.rmtree(d); sys.exit(rc)
