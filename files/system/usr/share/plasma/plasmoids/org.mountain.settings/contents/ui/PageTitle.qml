@@ -6,6 +6,7 @@ import org.kde.kirigami as Kirigami
 // Windows 11 page title with the category as a link back: "System > Sound".
 RowLayout {
     property string title: ""
+    readonly property bool sameAsCategory: title === app.navCategory.name // "Accessibility" alone, not "Accessibility > Accessibility"
     Layout.topMargin: 6
     Layout.bottomMargin: 14
     Layout.fillWidth: true
@@ -13,6 +14,7 @@ RowLayout {
 
     QQC2.AbstractButton {
         id: crumb
+        visible: !sameAsCategory
         text: app.navCategory.name
         hoverEnabled: true
         activeFocusOnTab: true
@@ -28,6 +30,7 @@ RowLayout {
     }
     GText {
         text: "›"
+        visible: !sameAsCategory
         dim: true
         font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
     }

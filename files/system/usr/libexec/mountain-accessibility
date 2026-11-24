@@ -52,8 +52,9 @@ case ${1:-}:${2:-} in
     if [[ $(filter_now) != off ]]; then filter off
     else m=$(cat "$last" 2>/dev/null); [[ " ${modes[*]} " == *" $m "* ]] || m=deuteranopia; filter "$m"; fi ;;
   cursor:24|cursor:32|cursor:48|cursor:64)
-    plasma-apply-cursortheme "$(kr kcminputrc Mouse cursorTheme breeze_cursors)" --size "$2" || { echo "pointer size $2 not applied" >&2; exit 1; }
-    gsettings set org.gnome.desktop.interface cursor-size "$2" ;;
+    # saved first: without a display Qt aborts in plasma-apply-cursortheme, and the choice must still hold at the next start
+    kw kcminputrc Mouse cursorSize "$2"; gsettings set org.gnome.desktop.interface cursor-size "$2"
+    plasma-apply-cursortheme "$(kr kcminputrc Mouse cursorTheme breeze_cursors)" --size "$2" || { echo "pointer size $2 saved, not applied live" >&2; exit 1; } ;;
   sticky:on|sticky:off) kw kaccessrc Keyboard StickyKeys "$([[ $2 == on ]] && echo true || echo false)" ;;
   animations:on|animations:off) kw kdeglobals KDE AnimationDurationFactor "$([[ $2 == on ]] && echo 0.75 || echo 0)" ;;
   zoom:in|zoom:off)

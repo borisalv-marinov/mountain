@@ -38,7 +38,7 @@ ColumnLayout {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 1
-            GText { Layout.fillWidth: true; text: head.title }
+            GText { Layout.fillWidth: true; text: head.title; Accessible.role: Accessible.Heading; Accessible.name: text } // Orca reads each card by its title
             GText { Layout.fillWidth: true; dim: true; wrapMode: Text.WordWrap; text: head.sub; font.pointSize: Kirigami.Theme.smallFont.pointSize }
         }
         RowLayout { id: slot; spacing: 10 }

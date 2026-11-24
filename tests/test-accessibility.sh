@@ -73,7 +73,9 @@ run zoom off; logged "invokeShortcut string:view_actual_size" "Win+Esc: back to 
 touch "$T/orca-running"; st narrator=on # Orca started some other way (kaccess, Meta+Alt+S): the switch says On
 run narrator toggle; [[ -e $T/orca-running ]] && bad "toggle must stop a running Orca" || ok "toggle follows the real Orca process"
 mkstub plasma-apply-cursortheme 'echo "plasma-apply-cursortheme $*" >> "$LOG"; exit 1'
-run cursor 64; e=$?; [[ $e != 0 ]] && ok "a failed pointer change is an error" || bad "cursor failure exit 0"; st cursor=48
+run cursor 64; e=$?; [[ $e != 0 ]] && ok "a failed live pointer change is still an error" || bad "cursor failure exit 0"
+st cursor=64 # the size is saved first, so Plasma uses it at the next start even when the live change fails (no display: Qt aborts)
+has gs/org.gnome.desktop.interface/cursor-size=64 "GTK size saved even when the live change fails"
 FAKE_UID=0 run narrator on; e=$?; [[ $e == 3 ]] && ok "refuses to run as root (Orca must never be root)" || bad "root exit $e, want 3"
 for a in "" "bogus" "narrator maybe" "cursor 999" "cursor 48;id" "filter red" "animations" "zoom out"; do
   # shellcheck disable=SC2086

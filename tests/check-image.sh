@@ -1338,6 +1338,9 @@ check_phase47() { # v7.5 Accessibility: Narrator (Orca), Magnifier, Color filter
   assert_file $ui/AccessibilityPage.qml
   assert_grep 'accessibility: "AccessibilityPage.qml"' $ui/main.qml
   assert_grep 'page: "accessibility"' $ui/main.qml
+  # card titles must reach screen readers (a plain Text is not in the AT-SPI tree), and a page named like its category shows no "Accessibility > Accessibility" crumb
+  assert_grep 'Accessible.role: Accessible.Heading' $ui/AccessibilityPage.qml
+  assert_grep 'visible: !sameAsCategory' $ui/PageTitle.qml
   for d in narrator:Meta+Ctrl+Return colorfilter:Meta+Ctrl+C magnifier-off:Meta+Esc; do
     assert_grep "^X-KDE-Shortcuts=${d#*:}\$" $X/usr/share/applications/org.mountain.${d%%:*}.desktop
     assert_grep '^NoDisplay=true$' $X/usr/share/applications/org.mountain.${d%%:*}.desktop

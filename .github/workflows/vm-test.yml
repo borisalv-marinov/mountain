@@ -528,7 +528,9 @@ jobs:
           done
           chk "Settings pages load without QML errors" 0 "journalctl -b --no-pager | grep -E 'org.mountain.settings/contents/ui/[A-Za-z]+Page.qml' | grep -ciE 'ReferenceError|TypeError|is not a type|is not installed|Error loading|Cannot assign' || true" '^0$'
           # v7.5 Accessibility: each switch must really change KWin / Orca, not only the config (user view: shots + AT-SPI title above)
-          A11Y="$LT WAYLAND_DISPLAY=wayland-0 /usr/libexec/mountain-accessibility"
+          # the session's real Wayland socket (not always wayland-0): with a wrong name plasma-apply-cursortheme aborted and Orca never started
+          WD=$(R "ls /run/user/\$(id -u looktest)" | grep -m1 -xE 'wayland-[0-9]+')
+          A11Y="$LT WAYLAND_DISPLAY=${WD:-wayland-0} /usr/libexec/mountain-accessibility"
           FX="$LT dbus-send --session --print-reply --dest=org.kde.KWin /Effects org.kde.kwin.Effects.isEffectLoaded string:colorblindnesscorrection | awk '/boolean/{print \$2}'"
           chk "Orca (Narrator) is installed" 1 "command -v orca" 'orca$'
           R "$A11Y filter deuteranopia"; sleep 3
