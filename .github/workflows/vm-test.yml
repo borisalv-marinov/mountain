@@ -834,6 +834,9 @@ jobs:
           chk "language seen by apps" 2 "tr '\0' '\n' < /proc/\$(pgrep -u looktest -x dolphin | head -1)/environ | grep -E '^(LANG|LANGUAGE)='; tr '\0' '\n' < /proc/\$(pgrep -u looktest -x plasmashell | head -1)/environ | grep -E '^(LANG|LANGUAGE)=' | sed 's/^/shell:/'" '.'
           chk "title bar says File Explorer" 0 "journalctl -b --no-pager | grep -o 'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin' | tail -1" 'File Explorer'
           chk "File Explorer opens 1100 px wide" 0 "journalctl -b --no-pager | grep -o 'WIN|[^|]*|[^|]*|[^|]*|org.kde.dolphin|[^|]*|w=[0-9]*' | tail -1" 'w=1[01][0-9][0-9]'
+          # close Edge like a person (the X button): a flatpak kill mid-start crashed it in Flatpak's sandbox helper (zypak, vm-test 45481475088)
+          R "cat > /tmp/closeall.sh; chmod 755 /tmp/closeall.sh" < "$GITHUB_WORKSPACE/tests/vm/closeall.sh"
+          R "$LT bash /tmp/closeall.sh 'msedge|mountain-'" >/dev/null 2>&1; for _ in $(seq 15); do R "pgrep -u looktest -f /app/extra/msedge" >/dev/null || break; sleep 1; done
           R "$LT flatpak kill com.microsoft.Edge" || true; K -f msedge; K -x dolphin
           chk "edge log" 2 "$LT journalctl --user -n 15 --no-pager | grep -i -E \"edge|flatpak|msedge\" | tail -5" '.'
 
@@ -1607,7 +1610,7 @@ jobs:
           R "$LT notify-send -a 'Test app' 'Pointer toast test' 'Leaves by itself.'"; sleep 1; QM move $((W/2)) $((H/3)); sleep 8; shot toast-pointer-away # ux-rules: no "Pointer toast test" left
           if part session; then
           # 11. logout
-          K -x kdebugsettings; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
+          K -x kdebugsettings; R "$LT bash /tmp/closeall.sh 'msedge|mountain-'" >/dev/null 2>&1; for _ in $(seq 15); do R "pgrep -u looktest -f /app/extra/msedge" >/dev/null || break; sleep 1; done; R "$LT flatpak kill com.microsoft.Edge" || true; QM key esc
           R "lsblk -o NAME,FSTYPE,LABEL,RO,SIZE,MOUNTPOINTS; udisksctl dump" > perf/drives.txt 2>&1 || true
           chk "drives seen by udisks" 2 "lsblk -o NAME,FSTYPE,LABEL,RO,MOUNTPOINTS | tr \"\n\" \";\"; udisksctl dump | grep -E \"^/org|HintIgnore|IdType:\" | tr \"\n\" \" \" | cut -c1-600" '.'
           R "$LT dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout" || true
