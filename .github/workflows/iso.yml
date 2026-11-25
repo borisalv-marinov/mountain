@@ -40,6 +40,11 @@ jobs:
         run: |
           echo "${{ github.token }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           sudo podman pull "$REF"
+          # the builder looks up installer repos by os-release ID-VERSION_ID ("bazzite-45" has none, run 45549868427);
+          # its package list falls back to ID_LIKE=fedora, so Fedora's own repos of the same release are given by hand
+          v=$(sudo podman run --rm --entrypoint sh "$REF" -c '. /usr/lib/os-release; echo "$VERSION_ID"')
+          [[ $v =~ ^[0-9]+$ ]] || { echo "unexpected VERSION_ID '$v'"; exit 1; }
+          echo "FEDORA_REPOS=--force-repo https://dl.fedoraproject.org/pub/fedora/linux/releases/$v/Everything/x86_64/os/ --force-repo https://dl.fedoraproject.org/pub/fedora/linux/updates/$v/Everything/x86_64/" >> "$GITHUB_ENV"
 
       # Two ISOs from the same image: the TEST one has an unattended kickstart (never shipped); the RELEASE one only
       # adds the signed-image switch and stays interactive (disk screen with "Encrypt my data").
@@ -55,7 +60,7 @@ jobs:
             -v "$PWD/config.toml:/config.toml:ro" -v "$PWD/output:/output" \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             quay.io/centos-bootc/bootc-image-builder:latest \
-            --type anaconda-iso --rootfs btrfs --local "$REF"
+            --type anaconda-iso --rootfs btrfs $FEDORA_REPOS "$REF" # $FEDORA_REPOS unquoted on purpose: it is four words
           sudo chown -R "$USER" output
           mv output/bootiso/install.iso ../test.iso
           ls -lh ../test.iso; df -h /
@@ -129,7 +134,7 @@ jobs:
             -v "$PWD/config.toml:/config.toml:ro" -v "$PWD/output:/output" \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             quay.io/centos-bootc/bootc-image-builder:latest \
-            --type anaconda-iso --rootfs btrfs --local "$REF"
+            --type anaconda-iso --rootfs btrfs $FEDORA_REPOS "$REF" # $FEDORA_REPOS unquoted on purpose: it is four words
           sudo chown -R "$USER" output
           mv output/bootiso/install.iso mountain.iso
           ls -lh mountain.iso
