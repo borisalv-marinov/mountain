@@ -3,7 +3,9 @@
 Read-only audit of `main` at **af6f1d7** (v7.5 merged). Nothing was changed, built or merged.
 Question: **how far is Mountain from a real OS that runs well on every system?**
 
-**Short answer: about 2.4 out of 5.** Mountain is a well-tested Windows 11 look on top of Bazzite. The desktop you see in the VM is solid (838 checks pass, 0 fail). It is not yet a full OS: there is no installer, browsers never update themselves, the nightly security suite on `main` is red, and nothing about real hardware (GPUs, sleep, battery, Wi-Fi chips, tearing) has been proven.
+**Update 25 Nov:** most gaps below are fixed and proven in the VM; see section 9. New average 2.46 (2.54 once the installer ISO is proven on main).
+
+**Short answer (24 Nov): about 2.4 out of 5.** Mountain is a well-tested Windows 11 look on top of Bazzite. The desktop you see in the VM is solid (838 checks pass, 0 fail). It is not yet a full OS: there is no installer, browsers never update themselves, the nightly security suite on `main` is red, and nothing about real hardware (GPUs, sleep, battery, Wi-Fi chips, tearing) has been proven.
 
 | Run / source | What | Result | Time (local) |
 |---|---|---|---|
@@ -251,3 +253,44 @@ Order inside each group follows the owner's rule: stability → no tearing → W
 - The live Try Mountain desktop: the site password is the owner's, so I did not sign in.
 - Accessibility for screen-reader users beyond what screenshots show.
 - Contrast ratios per text element (only the luminance rule in uxcheck).
+
+---
+
+## 9. Fixed after the audit (24–25 Nov, branch `v76-readiness`)
+
+The owner said go on 24 Nov. Everything below is proven in the VM unless it says otherwise. Proof runs: full vm-test **45504419944** (877 PASS / 0 FAIL) and security suite **45504432410** (228 PASS / 0 FAIL), both on 53bb7b8.
+
+| Gap | What changed | Proof |
+|---|---|---|
+| B1 installer | `iso.yml` builds an installer ISO (Btrfs, Anaconda), installs it unattended in QEMU, boots the installed disk and checks it; the release ISO (no test user) is published in parts as `iso-<date>`. README now installs Mountain, not the template | **Not proven yet.** The workflow can only run from `main`; it runs by itself after the merge. Until its `iso-report` passes, B1 stays open |
+| B2 app updates | Flatpak apps (all browsers) update once a day, system and user, at low priority, never offline or on a metered network | rows "app updates timers enabled and active"; `tests/test-app-updates.sh`; check_phase48 |
+| B3 nightly red | definitions start ~1 min after boot (random delay 5 min → 20 s); archive rows wait for the scan event, not a fixed sleep | security suite 228/0 |
+| M3 greenboot | second required check: the sign-in screen must really come up (bounded 150 s wait) | row "greenboot health check result = success" |
+| M4 krfb | Desktop Sharing removed from the image | row "krfb gone"; check_phase48 `assert_no_rpm krfb` |
+| M5 Task Manager Apps | apps started outside app scopes are listed; system users hidden. Half of the finding was the test itself (it opened raw `dolphin` in `systemd-run` units) | rows "Task Manager Apps lists …"; `tests/test-taskmanager.sh` |
+| M7 / M10 wording, branding | Updates text says what happens ("download by themselves and install when you restart"); Bazzite Portal hidden; About shows "Mountain 7.6 (build 20261124)"; Info Center no longer says "Mountain 45" | OCR rules settings-home/updates (no "are manual"), settings-about (no "Bazzite"), kinfocenter (no "Mountain 45"); os-release row |
+| M8 Explorer internals | "/" opens This PC; paths resolve to places (Desktop → desktop:/); no root folders, `/home/…` crumbs or `.desktop` names | OCR rules explorer-thispc, pictures-folder, explorer-launchers; `tests/test-explorer.sh` |
+| M9 Network overflow | Data usage on its own line inside the card | OCR rule "used since start", no "since you t" |
+| M11 Bulgarian | the Bulgarian catalog really loads now (Plasma overwrote LANGUAGE; Settings writes `bg@mountain:bg:en_US`); Task Manager, Explorer places and Settings strings translated; Quick Settings labels wrap; Bluetooth card stacks its button when narrow | OCR rules bg-taskmanager ("Диспечер"), bg-settings-home ("Всички устройства") |
+| M16 tests that passed without proving | Win+Left asserts the window geometry (0 / 50 % / 100 %); Task view must list the open window; census closes every window between apps; boot-time row waits for `is-system-running` | rows "Win+Left snaps …" `SNAP\|0\|50\|100`, "Task view lists the open window" |
+| P1 Notepad | status bar keys hidden (no INSERT / Soft Tabs) | OCR rule on notepad shots |
+| P2 clock | `/etc/localtime` link made when missing (UTC+00:00:01 came from no zone file) | OCR rule on clock shots |
+| P3 Task Manager root/services | system users (uid < 1000) hidden | `tests/test-taskmanager.sh` |
+| P4 Settings places | Night light under System, Typing only under Time & language | `tests/test-settings.sh` |
+| P5 About version | done (see M10) | settings-about rule |
+
+**Corrections to the audit.** M12 (Btrfs Assistant asks for root's password) was the test account: `looktest` is not in `wheel`, so polkit falls back to root. The first account made at install is an admin (wheel) and gets its own password prompt. S4 and part of M5 were the test too (raw `dolphin`, units the Task Manager rightly does not call apps).
+
+**Found and left open.**
+
+| Item | Why it is open |
+|---|---|
+| Edge aborts while exiting, in its Flatpak sandbox helper (zypak: `Assertion 's->floating' failed … event_free()` from `exit()`) | Seen in 2 of 8 full runs on the branch, after a normal close. Main's test force-killed Edge, so the exit path never ran there; an A/B of 4 quick runs (2 branch, 2 main, 25 Nov) had no crash on either side. The stack is all `exit()` → zypak → libsystemd, nothing of Mountain's. Upstream Edge-Flatpak bug; the test counts exactly this abort in its own row (`tests/vm/crashes.sh`), any other Edge crash still fails. A user may see a crash notice after closing Edge |
+| P6 "Other users" in Accounts | The only way today opens a KDE System Settings window, which the image rule forbids (one Windows style). Needs Mountain's own add-user page |
+| M1 scan before open | Needs fanotify permission events: a bigger change, not started |
+| M6 Discord shows a Firefox logo, P7 tiny taskbar icons, P8 KDE/GNOME app layouts | Not started |
+| M13 memory (plasmashell ~970 MB) | Not started |
+| M14 high contrast, captions, voice access; M15 more languages | Out of scope by the owner's go (no new languages, captions or voice) |
+| M2 real hardware | Needs the owner's PCs |
+
+**Scores now.** Security 2 → **3** (nightly green, browsers update, krfb gone; scan-after-write still open). Install stays **1** until the ISO test passes on `main`, then **2**. The rest are unchanged (they are capped at 3 without real hardware, or the open items above hold them). **Average 2.46 / 5** (32 / 13), **2.54** once the ISO is proven.
