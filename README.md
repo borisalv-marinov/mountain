@@ -1,43 +1,35 @@
-# BlueBuild Template &nbsp; [![bluebuild build badge](https://github.com/blue-build/template/actions/workflows/build.yml/badge.svg)](https://github.com/blue-build/template/actions/workflows/build.yml)
+# Mountain
 
-See the [BlueBuild docs](https://blue-build.org/how-to/setup/) for quick setup instructions for setting up your own repository based on this template.
+A Windows 11-looking desktop OS built on Bazzite (Fedora Atomic, KDE Plasma 6, Wayland), made with BlueBuild.
 
-After setup, it is recommended you update this README to describe your custom image.
+## Install
 
-## Installation
+**From the installer ISO (new PC or fresh disk).** Open the newest [Release](https://github.com/borisalv-marinov/mountain/releases) named `iso-<date>`. The ISO is bigger than GitHub's 2 GiB file limit, so it comes in parts: download every `mountain.iso.partNN` and `SHA256SUMS`, then
 
-> [!WARNING]  
-> [This is an experimental feature](https://www.fedoraproject.org/wiki/Changes/OstreeNativeContainerStable), try at your own discretion.
+```
+cat mountain.iso.part* > mountain.iso
+sha256sum -c SHA256SUMS
+```
 
-To rebase an existing atomic Fedora installation to the latest build:
+On Windows (PowerShell, in the download folder): `cmd /c "copy /b mountain.iso.part* mountain.iso"`, then compare `(Get-FileHash mountain.iso).Hash` with the number in `SHA256SUMS`.
 
-- First rebase to the unsigned image, to get the proper signing keys and policies installed:
-  ```
-  rpm-ostree rebase ostree-unverified-registry:ghcr.io/blue-build/template:latest
-  ```
-- Reboot to complete the rebase:
-  ```
-  systemctl reboot
-  ```
-- Then rebase to the signed image, like so:
-  ```
-  rpm-ostree rebase ostree-image-signed:docker://ghcr.io/blue-build/template:latest
-  ```
-- Reboot again to complete the installation
-  ```
-  systemctl reboot
-  ```
+Write `mountain.iso` to a USB stick (Fedora Media Writer, Ventoy or `dd`) and boot it. On the disk screen tick **Encrypt my data** (recommended for laptops). With an NVIDIA GPU, install from this ISO, then do the `mountain-nvidia` rebase below.
 
-The `latest` tag will automatically point to the latest build. That build will still always use the Fedora version specified in `recipe.yml`, so you won't get accidentally updated to the next major version.
+**From an existing Fedora Atomic / Bazzite install (rebase).**
 
-## ISO
+```
+rpm-ostree rebase ostree-unverified-registry:ghcr.io/borisalv-marinov/mountain:latest
+systemctl reboot
+rpm-ostree rebase ostree-image-signed:docker://ghcr.io/borisalv-marinov/mountain:latest
+systemctl reboot
+```
 
-If build on Fedora Atomic, you can generate an offline ISO with the instructions available [here](https://blue-build.org/how-to/generate-iso/#_top). These ISOs cannot unfortunately be distributed on GitHub for free due to large sizes, so for public projects something else has to be used for hosting.
+The first rebase installs the signing keys and policy; the second switches to the signed image. With an NVIDIA GPU use `mountain-nvidia` instead of `mountain` in both commands.
 
 ## Verification
 
 These images are signed with [Sigstore](https://www.sigstore.dev/)'s [cosign](https://github.com/sigstore/cosign). You can verify the signature by downloading the `cosign.pub` file from this repo and running the following command:
 
 ```bash
-cosign verify --key cosign.pub ghcr.io/blue-build/template
+cosign verify --key cosign.pub ghcr.io/borisalv-marinov/mountain
 ```

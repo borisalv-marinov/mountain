@@ -198,7 +198,7 @@ ColumnLayout {
             GlassCard {
                 Layout.fillWidth: true
                 padding: 6
-                CardHeader { title: i18n("Updates"); subtitle: i18n("Updates are manual. Run them when you choose.") }
+                CardHeader { title: i18n("Updates"); subtitle: i18n("Updates download by themselves and install when you restart.") }
                 SettingRow {
                     text: i18n("Check for updates")
                     iconName: "system-software-update"

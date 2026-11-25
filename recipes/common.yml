@@ -50,6 +50,9 @@ modules:
         - clamav # virus scan on demand (Settings > Privacy & security)
         - clamav-update # freshclam, run by the daily timer and by Update definitions / Scan now
         - greenboot # a new system that fails its health checks at boot is rolled back automatically
+    remove:
+      packages:
+        - krfb # KDE Desktop Sharing: its remote-control prompt pre-ticks "allow without asking next time"; nothing in Mountain uses it
 
   - type: script
     scripts:
@@ -95,6 +98,7 @@ modules:
         - greenboot-healthcheck.service # boot health checks; failing boot_counter times rolls back to the previous system
         - mountain-signed-origin.service # a rebase-installed PC gets a signature-enforced origin
         - mountain-virus-definitions-auto.timer # virus definitions download by themselves: a minute after start, then daily (owner, 21 Nov)
+        - mountain-app-updates.timer # Flatpak apps (all browsers) update once a day, quietly, not on metered networks
         - mountain-protect-guard.service # root service: Active Protection stopped, frozen or paused by a program (not the admin password) is put back within 5 s
       disabled:
         - input-remapper.service # controller remapping daemon (~90 MB); advanced users can enable it
@@ -106,6 +110,7 @@ modules:
       enabled:
         - mountain-protect.service # Active Protection: real-time, local-only, light (watcher only; scans on demand)
         - mountain-gamemode.service # Game Mode: full power while a game runs (one pgrep every 5 s)
+        - mountain-app-updates.timer # the user's own Flatpak apps, same rules
       masked:
         - kunifiedpush-distributor.service # push notifications for KDE apps Mountain doesn't ship
 

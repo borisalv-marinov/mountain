@@ -26,5 +26,7 @@ ColumnLayout {
         visible: parent.subtitle !== ""
         text: parent.subtitle
         dim: true
+        wrapMode: Text.WordWrap
+        maximumLineCount: 2
     }
 }

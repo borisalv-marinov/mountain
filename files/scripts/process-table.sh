@@ -8,18 +8,22 @@ f=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.processtable/contents/ui/Pr
 [[ -f $f ]] || { echo "process-table: $f not found"; exit 1; }
 # the same names as Mountain's Task Manager (/usr/libexec/mountain-taskmanager)
 names=$(sed -n "/^names='/,/'$/p" /usr/libexec/mountain-taskmanager | sed "1s/^names='//; \$s/'$//" | tr '\n' '|')
+bgn=$(sed -n "/^bgnames='/,/'$/p" /usr/libexec/mountain-taskmanager | sed "1s/^bgnames='//; \$s/'$//" | tr '\n' '|')
 [[ $names == *"plasmashell=Windows Explorer"* ]] || { echo "process-table: name list not found in mountain-taskmanager"; exit 1; }
-python3 - "$f" "$names" <<'PY'
+python3 - "$f" "$names" "$bgn" <<'PY'
 import json, sys
-p, names = sys.argv[1], sys.argv[2]
+p, names, bgn = sys.argv[1:4]
 m = dict(x.split('=', 1) for x in names.split('|') if '=' in x)
+b = dict(x.split('=', 1) for x in bgn.split('|') if '=' in x)
 s = open(p, encoding='utf-8').read()
 pairs = [
     ('    property bool flatList\n',
      '    property bool flatList\n\n'
      '    // Mountain: Windows names and units (MB, not MiB), as Windows Task Manager\n'
      '    readonly property var mtNames: ' + json.dumps(m, ensure_ascii=False) + '\n'
-     '    function mtName(n) { n = String(n ?? ""); return mtNames[n] ?? mtNames[n.split(" ")[0]] ?? n; }\n'
+     '    readonly property var mtBg: ' + json.dumps(b, ensure_ascii=False) + '\n'
+     '    readonly property bool mtIsBg: (Qt.locale().uiLanguages[0] || Qt.locale().name).substring(0, 2) === "bg"\n'
+     '    function mtName(n) { n = String(n ?? ""); n = mtNames[n] ?? mtNames[n.split(" ")[0]] ?? n; return mtIsBg ? (mtBg[n] ?? n) : n; }\n'
      '    function mtUnits(t) { return String(t ?? "").replace(/([0-9])\\s?([KMGT])i\\u200b?B/g, "$1 $2B"); }\n' # KDE writes "191.8 Mi<zero-width space>B"
      '    function mtKeep(row, parent) { // false for kernel threads: pid 2 (kthreadd) and its children\n'
      '        const c = processModel.ppidColumn, i = processModel.pidColumn;\n'

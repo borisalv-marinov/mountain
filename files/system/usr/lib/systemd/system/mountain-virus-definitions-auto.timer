@@ -4,7 +4,8 @@ Description=Mountain: virus definitions, a minute after start and then every day
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=1d
-RandomizedDelaySec=5min
+# short: with 5 min the first download started up to 6 min after boot (vm-test checked at ~6 min and failed)
+RandomizedDelaySec=20s
 Persistent=true
 
 [Install]

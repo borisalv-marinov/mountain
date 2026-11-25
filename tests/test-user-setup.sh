@@ -63,4 +63,8 @@ echo '--mine' > "$B"; HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TE
 ok '[[ $(cat "$B") == --mine ]]' "Brave flags edited by the user are kept"
 rm -f "$B"; HOME=$H XDG_DATA_HOME= XDG_CONFIG_HOME= MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
 ok '[[ ! -e $B ]]' "Brave flags deleted by the user stay deleted"
+# Bulgarian session: Windows' Bulgarian place names (written once; existing files are never rewritten, above)
+B2=$(mktemp -d); HOME=$B2 LANGUAGE=bg@mountain:bg XDG_DATA_HOME= MOUNTAIN_SNAPSHOTS_PLACE=1 MOUNTAIN_SNAP_SRC=/var/home MOUNTAIN_PLACES_TEMPLATE=$T bash "$S"
+ok 'for w in Кошче Версии "Този компютър" Мрежа Начало Документи; do grep -q "<title>$w</title>" "$B2/.local/share/user-places.xbel" || exit 1; done; ! grep -q "<title>Recycle Bin</title>" "$B2/.local/share/user-places.xbel"' "bg: place titles in Bulgarian"
+rm -rf "$B2"
 rm -rf "$H"; exit $rc

@@ -49,6 +49,10 @@ jobs:
         run: bash tests/test-accessibility.sh
       - name: Test Active Protection rules
         run: bash tests/test-protect.sh
+      - name: Test app auto-update units
+        run: bash tests/test-app-updates.sh
+      - name: Test Settings pages (static)
+        run: bash tests/test-settings.sh
       - name: Test virus scan moves threats to quarantine
         run: bash tests/test-security-scan.sh
       - name: Test Active Protection watcher end to end

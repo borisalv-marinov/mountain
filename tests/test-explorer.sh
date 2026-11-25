@@ -14,7 +14,9 @@ ok '[[ $(x /home/u/Documents "--new-window") == $'"'"'[/home/u/Documents]\n[--ne
 ok '[[ $(x /home/u/DesktopX) == "[/home/u/DesktopX]" ]]' "a folder that only starts with the same letters is unchanged"
 mkdir -p "$T/var/home/u/Desktop/Coding"; ln -s var/home "$T/home"
 ok '[[ $(UH=$T/var/home/u x "$T/home/u/Desktop/Coding") == "[desktop:/Coding]" ]]' "a path through the /home link (Bazzite: /home -> /var/home)"
+ok '[[ $(UH=$T/var/home/u x "$T/home/u/Pictures") == "[$(realpath -m "$T")/var/home/u/Pictures]" ]]' "a folder through the /home link opens on its real path (breadcrumb: Home > Pictures, not / > home > u)"
 P=$T/data/mountain/This\ PC; x --this-pc
+ok '[[ $(x /) == "[file://$T/data/mountain/This%20PC]" ]]' "the Linux root opens This PC (the drives), not bin, boot, dev"
 ok '[[ $(ls "$P") == $'"'"'Games (D:)
 Local Disk (C:)
 USB Drive (E:)'"'"' && $(readlink "$P/Local Disk (C:)") == /home && $(readlink "$P/Games (D:)") == /run/media/u/Games ]]' "This PC: C: the home parent, other drives lettered D:, E: with their labels (USB without a label: USB Drive)"
@@ -24,4 +26,7 @@ USB Drive (E:)'"'"' ]]' "This PC: Dolphin sorts by link target, giving C:, D:, E
 ok '[[ $(readlink "$P/USB Drive (E:)") == "/run/media/u/USB stick" ]]' "a mount point with a space is linked right"
 ok '[[ $(x --open-this-pc) == "[file://$T/data/mountain/This%20PC]" && $(x "$P") == "[file://$T/data/mountain/This%20PC]" ]]' "This PC opens with the exact URL of its sidebar place (location bar reads This PC)"
 ok 'grep -q "^Exec=/usr/libexec/mountain-explorer --open-this-pc" "$(dirname "$S")/../../etc/skel/Desktop/files.desktop"' "the This PC desktop shortcut opens the drive folder"
+W=$(dirname "$0")/../files/scripts/windows-names.sh
+ok 'grep -q "ren org.kde.dolphin.desktop \"File Explorer\" \"Файлов мениджър\"" "$W" && grep -q "ren org.kde.plasma-systemmonitor.desktop \"Task Manager\" \"Диспечер на задачите\"" "$W"' "Bulgarian launcher names (Name[bg]) for File Explorer and Task Manager"
+ok 'grep -q "patch(f./usr/share/locale\|patch(f.{loc}/bg/LC_MESSAGES" "$W"' "the real bg catalogs get the Windows names too (title bars do not depend on LANGUAGE=bg@mountain)"
 exit $rc

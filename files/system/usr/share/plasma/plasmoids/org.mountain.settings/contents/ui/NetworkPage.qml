@@ -67,7 +67,7 @@ ColumnLayout {
             disconnectSource(source);
             const n = (data["stdout"] || "").trim().split(/\s+/).map(Number).filter(x => x >= 0);
             const b = n.length === 2 ? n[0] + n[1] : -1;
-            net.usage = b < 0 ? "" : i18n("%1 since you turned on this PC", b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB");
+            net.usage = b < 0 ? "" : i18n("%1 used since start", b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB");
         }
     }
     onHeroLineChanged: readUsage()
@@ -89,7 +89,8 @@ ColumnLayout {
         padding: 12
         GridLayout {
             Layout.fillWidth: true
-            columns: width > 640 ? 2 : 1 // two items (connection, Data usage): a third empty column pushed Data usage past the card edge
+            Layout.preferredWidth: 1 // never wider than the card, so Data usage stays inside it
+            columns: 1 // Data usage on its own full-width line: sharing one line left it ~0 px wide and its text ran out of the card (vm-test 45456337358)
             columnSpacing: 8
             rowSpacing: 4
             RowLayout {

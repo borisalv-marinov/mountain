@@ -9,8 +9,11 @@ ColumnLayout {
     property var rows: []
     property string host: ""
 
+    // os-release MOUNTAIN_VERSION|MOUNTAIN_BUILD, stamped by files/scripts/branding.sh at image build
+    function mtVer(s) { const p = (s || "").split("|"); return !p[0] ? "Mountain" : p[1] ? i18n("Mountain %1 (build %2)", p[0], p[1]) : "Mountain " + p[0]; }
+
     function load() {
-        app.sh("echo \"$(hostname)\"; echo \"$(. /etc/os-release; echo $PRETTY_NAME)\"; echo \"$(lscpu | sed -n 's/^Model name: *//p' | head -1)\"; echo \"$(free -b | awk '/^Mem:/{print $2}')\"; "
+        app.sh("echo \"$(hostname)\"; echo \"$(. /usr/lib/os-release; echo \"$MOUNTAIN_VERSION|$MOUNTAIN_BUILD\")\"; echo \"$(lscpu | sed -n 's/^Model name: *//p' | head -1)\"; echo \"$(free -b | awk '/^Mem:/{print $2}')\"; "
             + "echo \"$(lspci 2>/dev/null | grep -iE 'vga|3d|display' | sed 's/^[^ ]* [^:]*: //' | head -2 | paste -sd ';')\" # " + Date.now(), out => {
             const l = out.split("\n");
             host = l[0];
@@ -19,7 +22,7 @@ ColumnLayout {
                 { t: i18n("Processor"), v: l[2] || i18n("Unknown"), i: "computer" },
                 { t: i18n("Installed RAM"), v: l[3] > 0 ? (l[3] / 1073741824).toFixed(1) + " GB" : i18n("Unknown"), i: "media-flash" },
                 { t: i18n("Graphics"), v: l[4] || i18n("Unknown"), i: "monitor" },
-                { t: i18n("Mountain version"), v: l[1] || i18n("Unknown"), i: "help-about" }
+                { t: i18n("Mountain version"), v: mtVer(l[1]), i: "help-about" }
             ];
         });
     }

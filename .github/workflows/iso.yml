@@ -1,0 +1,150 @@
+name: iso
+run-name: "iso (installer ISO + install test)"
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image to install (a branch build, e.g. ghcr.io/borisalv-marinov/mountain:br-v76-readiness-…). Empty: latest. Only latest from main is published."
+        required: false
+  workflow_run: # every successful image build of main after a push (merge), not the daily rebuild
+    workflows: [bluebuild]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  iso:
+    name: Build installer ISO, test an unattended install, publish
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04 # 26.04 denies bib mounts
+    timeout-minutes: 240
+    permissions:
+      contents: write # release
+      packages: read
+    env:
+      REF: ${{ inputs.image || 'ghcr.io/borisalv-marinov/mountain:latest' }} # the NVIDIA image is reached by rebase (see README); one ISO keeps this cheap
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: files/iso
+      - name: Enable KVM and install tools
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          echo 'Acquire::Retries "5"; Acquire::ForceIPv4 "true"; Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-mountain-retries >/dev/null
+          ok=; for i in 1 2 3; do sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-utils ovmf && { ok=1; break; }; sleep 30; done; [ "$ok" = 1 ]
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Pull the image
+        run: |
+          echo "${{ github.token }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          sudo podman pull "$REF"
+
+      # Two ISOs from the same image: the TEST one has an unattended kickstart (never shipped); the RELEASE one only
+      # adds the signed-image switch and stays interactive (disk screen with "Encrypt my data").
+      - name: Build the test ISO
+        run: |
+          mkdir -p "$HOME/iso/test" && cd "$HOME/iso/test"
+          ssh-keygen -t ed25519 -N "" -f key -q
+          KS="$(sed "s|@SSHKEY@|$(cat key.pub)|" "$GITHUB_WORKSPACE/files/iso/test.ks"; cat "$GITHUB_WORKSPACE/files/iso/post-signed.ks")"
+          printf "[customizations.installer.kickstart]\ncontents = '''\n%s\n'''\n" "$KS" > config.toml
+          mkdir -p output
+          sudo podman run --rm --privileged --pull=newer \
+            --security-opt label=type:unconfined_t --security-opt apparmor=unconfined \
+            -v "$PWD/config.toml:/config.toml:ro" -v "$PWD/output:/output" \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type anaconda-iso --rootfs btrfs --local "$REF"
+          sudo chown -R "$USER" output
+          mv output/bootiso/install.iso ../test.iso
+          ls -lh ../test.iso; df -h /
+
+      - name: Install test (unattended install in QEMU, then boot the installed disk)
+        run: |
+          cd "$HOME/iso"
+          set +e
+          OV=/usr/share/OVMF; CODE=$OV/OVMF_CODE_4M.fd; VARS=$OV/OVMF_VARS_4M.fd
+          [ -e "$CODE" ] || { CODE=$OV/OVMF_CODE.fd; VARS=$OV/OVMF_VARS.fd; }
+          cp "$VARS" vars.fd; qemu-img create -f qcow2 disk.qcow2 64G
+          COMMON="-enable-kvm -cpu host -m 8192 -smp 4 -machine q35 -display none -serial file:serial.log \
+            -drive if=pflash,format=raw,readonly=on,file=$CODE -drive if=pflash,format=raw,file=vars.fd \
+            -drive file=disk.qcow2,if=virtio,bootindex=2 -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22"
+          printf '# ISO install test (mountain)\n\n| Check | Result | Evidence |\n|---|---|---|\n' > report.md
+          # phase 1: boot the ISO; the kickstart ends with "reboot", -no-reboot turns that into qemu exiting
+          timeout 3600 qemu-system-x86_64 $COMMON -no-reboot \
+            -device ich9-ahci,id=ahci -drive if=none,id=cd,file=test.iso,media=cdrom,readonly=on -device ide-cd,drive=cd,bootindex=1
+          rc=$?
+          echo "| Unattended install finished and rebooted | $([ $rc -eq 0 ] && echo PASS || echo FAIL) | qemu exit $rc (124 = timeout) |" >> report.md
+          if [ $rc -ne 0 ]; then
+            cat report.md >> "$GITHUB_STEP_SUMMARY"; tail -40 serial.log; exit 1
+          fi
+          # phase 2: boot the installed disk only
+          qemu-system-x86_64 $COMMON -daemonize -pidfile qemu.pid
+          SSH="ssh -i key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes tester@127.0.0.1"
+          up=; for _ in $(seq 90); do $SSH true 2>/dev/null && { up=1; break; }; sleep 10; done
+          if [ -z "$up" ]; then
+            echo "| Installed system: SSH login within 15 min | FAIL | never came up |" >> report.md
+            cat report.md >> "$GITHUB_STEP_SUMMARY"; tail -40 serial.log; exit 1
+          fi
+          echo "| Installed system: SSH login | PASS | tester |" >> report.md
+          sleep 60 # let the desktop start
+          FAIL=0
+          chk() { # name command expected-regex
+            local out; out=$($SSH "$2" 2>&1); echo "$out" | grep -Eq -- "$3" && r=PASS || { r=FAIL; FAIL=1; }
+            echo "| $1 | $r | \`$(echo "$out" | head -3 | tr '\n|' ' /' | cut -c1-80)\` |" >> report.md
+          }
+          chk "Booted image is Mountain" "sudo bootc status --format=json | jq -r .status.booted.image.image.image" 'ghcr.io/borisalv-marinov/mountain'
+          chk "rpm-ostree status shows Mountain" "rpm-ostree status" 'borisalv-marinov/mountain'
+          chk "Follows the signed image" "rpm-ostree status | head -5" 'ostree-image-signed'
+          chk "/var/home is Btrfs" "findmnt -no FSTYPE -T /var/home" '^btrfs$'
+          chk "/var/home is a subvolume" "stat -c %i /var/home" '^256$'
+          chk "display-manager active" "systemctl is-active display-manager" '^active$'
+          chk "SELinux enforcing" "getenforce" '^Enforcing$'
+          chk "os-release" "grep PRETTY_NAME /etc/os-release" 'Mountain'
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          kill "$(cat qemu.pid)"
+          [ $FAIL = 0 ] || { echo "::error::install test failed"; exit 1; }
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: iso-report
+          path: |
+            /home/runner/iso/report.md
+            /home/runner/iso/serial.log
+          if-no-files-found: ignore
+
+      # only a tested image gets a published ISO
+      - name: Build the release ISO
+        if: env.REF == 'ghcr.io/borisalv-marinov/mountain:latest' && github.ref == 'refs/heads/main'
+        run: |
+          rm -rf "$HOME/iso/test" "$HOME/iso/test.iso" "$HOME/iso/disk.qcow2"
+          mkdir -p "$HOME/iso/rel" && cd "$HOME/iso/rel"
+          printf "[customizations.installer.kickstart]\ncontents = '''\n%s\n'''\n" "$(cat "$GITHUB_WORKSPACE/files/iso/post-signed.ks")" > config.toml
+          mkdir -p output
+          sudo podman run --rm --privileged --pull=newer \
+            --security-opt label=type:unconfined_t --security-opt apparmor=unconfined \
+            -v "$PWD/config.toml:/config.toml:ro" -v "$PWD/output:/output" \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type anaconda-iso --rootfs btrfs --local "$REF"
+          sudo chown -R "$USER" output
+          mv output/bootiso/install.iso mountain.iso
+          ls -lh mountain.iso
+
+      # a GitHub release file is limited to 2 GiB and the ISO carries the whole OS, so it goes up in parts
+      - name: Publish as a release named by date
+        if: env.REF == 'ghcr.io/borisalv-marinov/mountain:latest' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$HOME/iso/rel"
+          split -b 1900M -d -a 2 mountain.iso mountain.iso.part
+          sha256sum mountain.iso > SHA256SUMS
+          TAG="iso-$(date -u +%F)"
+          gh release delete "$TAG" -y --cleanup-tag --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create "$TAG" mountain.iso.part* SHA256SUMS --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Mountain installer ISO $(date -u +%F)" \
+            --notes "Download every mountain.iso.partNN, then: cat mountain.iso.part* > mountain.iso && sha256sum -c SHA256SUMS. Write mountain.iso to a USB stick. Tick Encrypt my data on the disk screen."

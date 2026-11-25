@@ -91,12 +91,14 @@ GlassCard {
         }
     }
 
-    RowLayout {
+    GridLayout { // label and button side by side on a wide card; stacked on the narrow Home card, where Bulgarian was cut ("Всички устрой…")
+        columns: width >= 480 ? 2 : 1
+        columnSpacing: 8
         Layout.fillWidth: true
         Layout.leftMargin: 8
         Layout.rightMargin: 14
         Layout.bottomMargin: 6
-        spacing: 8
+        rowSpacing: 4
         SettingRow {
             text: i18n("View all devices")
             chevron: false

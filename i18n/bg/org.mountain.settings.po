@@ -46,8 +46,8 @@ msgstr "%1 процента"
 msgid "%1 pointer speed"
 msgstr "Скорост на показалеца: %1"
 
-msgid "%1 since you turned on this PC"
-msgstr "%1 от включването на този компютър"
+msgid "%1 used since start"
+msgstr "%1 използвани от стартирането"
 
 msgid "%1 used of %2 · %3 free"
 msgstr "%1 използвани от %2 · %3 свободни"
@@ -119,7 +119,7 @@ msgid "Add a language"
 msgstr "Добавяне на език"
 
 msgid "Add device"
-msgstr "Добавяне на устройство"
+msgstr "Добави устройство"
 
 msgid "Add, connect, manage"
 msgstr "Добавяне, свързване, управление"
@@ -1207,11 +1207,11 @@ msgstr "Актуализации"
 msgid "Updates & recovery"
 msgstr "Актуализации и възстановяване"
 
-msgid "Updates are manual. Run them when you choose."
-msgstr "Актуализациите са ръчни. Изпълнявайте ги, когато пожелаете."
+msgid "Updates download by themselves and install when you restart."
+msgstr "Актуализациите се изтеглят сами и се инсталират при рестартиране."
 
-msgid "Updates are manual: open the Updates app and run it when you choose"
-msgstr "Актуализациите са ръчни: отворете приложението за актуализации и го стартирайте, когато пожелаете"
+msgid "Updates download by themselves and install when you restart. Open the Updates app to check now"
+msgstr "Актуализациите се изтеглят сами и се инсталират при рестартиране. Отворете приложението за актуализации, за да проверите сега"
 
 msgid "Use on lock screen too"
 msgstr "Използване и за заключения екран"
@@ -1235,7 +1235,7 @@ msgid "Variable refresh rate (adaptive sync)"
 msgstr "Променлива честота на опресняване (адаптивна синхронизация)"
 
 msgid "View all devices"
-msgstr "Преглед на всички устройства"
+msgstr "Всички устройства"
 
 msgid "Virus & threat protection"
 msgstr "Защита от вируси и заплахи"
@@ -1469,3 +1469,9 @@ msgstr "Увеличаване на екрана (Win+Plus, Win+Esc)"
 
 msgid "Zoom in on the screen: Win+Plus and Win+Minus, Win+Esc back to normal"
 msgstr "Увеличаване на екрана: Win+Plus и Win+Minus, Win+Esc връща нормалния размер"
+
+msgid "Mountain %1 (build %2)"
+msgstr "Mountain %1 (компилация %2)"
+
+msgid "Add, remove or change other people who use this PC"
+msgstr "Добавяне, премахване или промяна на други хора, които използват този компютър"

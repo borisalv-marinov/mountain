@@ -1,3 +1,13 @@
 [General]
 # v7.1: opens a blank page like Windows Notepad (no "Recent files" welcome page)
 Show welcome view for new window=false
+
+[KTextEditor View]
+# v7.6: Notepad's status bar is "Line, Column | encoding | Unix (LF)" - no INSERT, dictionary, indentation or syntax mode
+Show Statusbar Input Mode=false
+Show Statusbar Dictionary=false
+Show Statusbar Tab Settings=false
+Show Statusbar Highlighting Mode=false
+Show Line Ending Type in Statusbar=true
+Show Statusbar Line Column=true
+Show File Encoding=true

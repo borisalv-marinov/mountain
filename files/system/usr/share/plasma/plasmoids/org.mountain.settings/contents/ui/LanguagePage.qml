@@ -25,7 +25,9 @@ ColumnLayout {
         if (!/^[A-Za-z0-9_@-]+$/.test(code)) {
             return;
         }
-        const value = code.indexOf("en") === 0 ? code : code + ":en_US";
+        // Bulgarian: Mountain's "bg@mountain" catalog (Windows' Bulgarian names) first. Plasma applies this value after the session env
+        // scripts, so mountain-names.sh alone was overwritten (vm-test 45429082715: LANGUAGE=bg:en_US)
+        const value = code.indexOf("en") === 0 ? code : (code === "bg" ? "bg@mountain:bg:en_US" : code + ":en_US");
         app.sh("kwriteconfig6 --file plasma-localerc --group Translations --key LANGUAGE " + value + " # " + Date.now(), () => {
             lang.current = code;
             lang.changed = true;

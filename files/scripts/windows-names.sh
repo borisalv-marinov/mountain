@@ -2,17 +2,18 @@
 # Windows-familiar app names, and developer/advanced entries hidden from the start menu (still runnable from Terminal).
 set -euo pipefail
 a=/usr/share/applications; hide=()
-ren() { # file new-name; translated Name[xx] lines are dropped so every language shows the familiar name
+ren() { # file new-name [bulgarian-name]; translated Name[xx] lines are dropped so every language shows the familiar name
   [[ -f $a/$1 ]] || { echo "windows-names: missing $1"; return 1; }
   sed -i -E "0,/^Name=/s|^Name=.*|Name=$2|; /^Name\[/d" "$a/$1"
+  [[ -z ${3:-} ]] || sed -i -E "0,/^Name=/s|^Name=.*|&\nName[bg]=$3|" "$a/$1" # Windows' Bulgarian name in Start, the taskbar and Alt+Tab
 }
 ren systemsettings.desktop "All Settings" # the full KDE app; "Settings" is our Windows-style one (org.mountain.settings)
-ren org.kde.dolphin.desktop "File Explorer"
+ren org.kde.dolphin.desktop "File Explorer" "Файлов мениджър"
 # Desktop folders open through desktop:/ (shortcut names without ".desktop"); the wrapper passes everything else to Dolphin
 sed -i -E 's#^Exec=dolphin( |$)#Exec=/usr/libexec/mountain-explorer\1#' "$a/org.kde.dolphin.desktop"
 grep -q '^Exec=/usr/libexec/mountain-explorer' "$a/org.kde.dolphin.desktop" || { echo "windows-names: File Explorer Exec not set"; exit 1; }
 ren org.kde.konsole.desktop "Terminal"
-ren org.kde.plasma-systemmonitor.desktop "Task Manager"
+ren org.kde.plasma-systemmonitor.desktop "Task Manager" "Диспечер на задачите"
 ren org.kde.kinfocenter.desktop "System Information"
 ren org.kde.kwrite.desktop "Notepad"
 # v6: everyday apps with their Windows names
@@ -114,17 +115,32 @@ for mo in glob.glob(f'{loc}/de/LC_MESSAGES/*.mo') + glob.glob(f'{loc}/fr/LC_MESS
         elif isinstance(k, str) and k in ui and re.fullmatch(f'({uicat[k]})\\.mo', os.path.basename(mo)):
             found.setdefault(os.path.basename(mo), {})[k] = ui[k]
             if k in bgui: found_bg.setdefault(os.path.basename(mo), {})[k] = bgui[k]
-def write(path, d):
-    d = {'': 'Content-Type: text/plain; charset=UTF-8\n', **d}  # with no charset, non-ASCII text does not read back
-    keys = sorted(d); ids = [k.encode() for k in keys]; strs = [d[k].encode() for k in keys]
+def pack(path, ent):  # {msgid: msgstr} as bytes
+    keys = sorted(ent); ids = keys; strs = [ent[k] for k in keys]
     n = len(ids); o = 28 + 16 * n; tab, data = [], b''
     for b in ids + strs: tab.append((len(b), o + len(data))); data += b + b'\0'
     open(path, 'wb').write(struct.pack('<7I', 0x950412de, 0, n, 28, 28 + 8 * n, 0, o) + b''.join(struct.pack('<2I', *t) for t in tab) + data)
+def write(path, d):
+    d = {'': 'Content-Type: text/plain; charset=UTF-8\n', **d}  # with no charset, non-ASCII text does not read back
+    pack(path, {k.encode(): v.encode() for k, v in d.items()})
     assert gettext.GNUTranslations(open(path, 'rb'))._catalog == d, 'catalog does not read back: ' + path
+def patch(path, d):  # the real Bulgarian catalog with these msgids replaced; header, plurals and the rest stay
+    b = open(path, 'rb').read(); e = '<' if struct.unpack('<I', b[:4])[0] == 0x950412de else '>'
+    n, io, so = struct.unpack(e + '3I', b[8:20]); ent = {}
+    for i in range(n):
+        (l, o), (m, p) = (struct.unpack(e + '2I', b[t + 8 * i:t + 8 * i + 8]) for t in (io, so)); ent[b[o:o + l]] = b[p:p + m]
+    ent.update({k.encode(): v.encode() for k, v in d.items()}); pack(path, ent)
+    assert all(gettext.GNUTranslations(open(path, 'rb'))._catalog.get(k) == v for k, v in d.items()), 'bg catalog does not read back: ' + path
 os.makedirs(f'{loc}/en@mountain/LC_MESSAGES', exist_ok=True)
 for c, d in found.items(): write(f'{loc}/en@mountain/LC_MESSAGES/{c}', d)
 os.makedirs(f'{loc}/bg@mountain/LC_MESSAGES', exist_ok=True)
 for c, d in found_bg.items(): write(f'{loc}/bg@mountain/LC_MESSAGES/{c}', d)
+# Whether LANGUAGE carries "bg@mountain" depends on when Plasma applies plasma-localerc (the VM showed "Мониториране на системата"
+# and "Dolphin" in Bulgarian), so the plain bg catalogs get the same names too; a catalog without them is the real bg one
+npatch = 0
+for c, d in found_bg.items():
+    if os.path.exists(f'{loc}/bg/LC_MESSAGES/{c}'): patch(f'{loc}/bg/LC_MESSAGES/{c}', d); npatch += 1
+assert npatch, 'no Bulgarian catalog to rename the apps in'
 seen = {k.split('\x04')[-1] for d in found.values() for k in d}
 print('windows-names: titles renamed in', len(found), 'catalogs; not found:', sorted(set(names) - seen) or 'none')
 assert {'KCalc', 'Okular', 'Konsole', 'KolourPaint'} <= seen, 'app display names not found in any catalog'

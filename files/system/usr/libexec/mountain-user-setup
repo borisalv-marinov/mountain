@@ -71,10 +71,14 @@ dir() { # xdg key, fallback name
   [[ -n $d && $d != "$HOME" ]] && echo "$d" || echo "$HOME/$2"
 }
 esc() { local s=${1//&/"&amp;"}; s=${s//</"&lt;"}; echo "${s//>/"&gt;"}"; } # quoted: bash 5.2+ treats & in replacements as the match
+# Bulgarian session (LANGUAGE/LANG bg*, as mountain-names.sh): Windows' Bulgarian place names, chosen when the file is first written
+bg=; case ${LANGUAGE:-${LANG:-}} in bg*) bg=1 ;; esac
+declare -A bgt=([Home]=Начало [Recent]=Последни [Desktop]="Работен плот" [Documents]=Документи [Downloads]=Изтегляния [Pictures]=Картини [Music]=Музика [Videos]=Видеоклипове ["Recycle Bin"]=Кошче [Versions]=Версии)
 n=0; places=
 add() { # href title icon
+  local t=$2; [[ -n $bg ]] && t=${bgt[$2]:-$2}
   places+=" <bookmark href=\"$(esc "$1")\">
-  <title>$(esc "$2")</title>
+  <title>$(esc "$t")</title>
   <info>
    <metadata owner=\"http://freedesktop.org\"><bookmark:icon name=\"$3\"/></metadata>
    <metadata owner=\"http://www.kde.org\"><ID>mountain/$n</ID><isSystemItem>true</isSystemItem></metadata>
@@ -98,8 +102,10 @@ done
 snap=${MOUNTAIN_SNAP_SRC:-/var/home}
 [[ ${MOUNTAIN_SNAPSHOTS_PLACE:-} == 1 || $(stat -c %i "$snap" 2>/dev/null) == 256 ]] && add "$(url "$snap/.snapshots")" "Versions" document-revert
 mkdir -p "$(dirname "$out")"
-python3 - "$tpl" "$out" "$places" "$(url "${XDG_DATA_HOME:-$HOME/.local/share}/mountain/This PC")" <<'PY'
+python3 - "$tpl" "$out" "$places" "$(url "${XDG_DATA_HOME:-$HOME/.local/share}/mountain/This PC")" "$bg" <<'PY'
 import sys
-t, o, p, h = sys.argv[1:]
-open(o, "w").write(open(t).read().replace("@PLACES@", p).replace("@THISPC@", h))
+t, o, p, h, bg = sys.argv[1:]
+x = open(t).read().replace("@PLACES@", p).replace("@THISPC@", h)
+if bg: x = x.replace("<title>This PC</title>", "<title>Този компютър</title>").replace("<title>Network</title>", "<title>Мрежа</title>")
+open(o, "w", encoding="utf-8").write(x)
 PY
