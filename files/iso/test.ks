@@ -12,6 +12,6 @@ sshkey --username=tester "@SSHKEY@"
 reboot
 %post
 systemctl enable sshd
-firewall-offline-cmd --zone=mountain --add-service=ssh || true
+firewall-offline-cmd --add-service=ssh || true # default zone, whatever the image names it
 echo 'tester ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/zz-iso-test
 %end

@@ -74,7 +74,7 @@ jobs:
           cp "$VARS" vars.fd; qemu-img create -f qcow2 disk.qcow2 64G
           COMMON="-enable-kvm -cpu host -m 8192 -smp 4 -machine q35 -display none -serial file:serial.log \
             -drive if=pflash,format=raw,readonly=on,file=$CODE -drive if=pflash,format=raw,file=vars.fd \
-            -drive file=disk.qcow2,if=virtio,bootindex=2 -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22"
+            -drive if=none,id=hd,file=disk.qcow2 -device virtio-blk-pci,drive=hd,bootindex=2 -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22"
           printf '# ISO install test (mountain)\n\n| Check | Result | Evidence |\n|---|---|---|\n' > report.md
           # phase 1: boot the ISO; the kickstart ends with "reboot", -no-reboot turns that into qemu exiting
           timeout 3600 qemu-system-x86_64 $COMMON -no-reboot \
@@ -86,7 +86,7 @@ jobs:
           fi
           # phase 2: boot the installed disk only
           qemu-system-x86_64 $COMMON -daemonize -pidfile qemu.pid
-          SSH="ssh -i key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes tester@127.0.0.1"
+          SSH="ssh -i test/key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=8 -o BatchMode=yes tester@127.0.0.1"
           up=; for _ in $(seq 90); do $SSH true 2>/dev/null && { up=1; break; }; sleep 10; done
           if [ -z "$up" ]; then
             echo "| Installed system: SSH login within 15 min | FAIL | never came up |" >> report.md
