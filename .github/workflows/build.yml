@@ -107,7 +107,7 @@ jobs:
       - name: Add the image checker as the last recipe step
         run: cp tests/check-image.sh files/scripts/check-image.sh
       - name: Build Custom Image
-        uses: blue-build/github-action@c295af864f2802fc6aea227507af43d35823db81 # v1.13
+        uses: blue-build/github-action@fb86c457fd3d0e13d5e9c1875c6305cf28b09234 # v1.14.0
         with:
           skip_checkout: true
           recipe: ${{ matrix.recipe }}
